@@ -1,5 +1,1 @@
 blank_issues_enabled: true
-contact_links:
-  - name: 安全漏洞报告 / Security Vulnerability
-    url: https://github.com/NewFuture/openclaw-wechat/security/advisories/new
-    about: 请通过私密渠道提交安全问题，不要创建普通 Issue。
