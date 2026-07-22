@@ -1,28 +1,28 @@
-name: Feature request
-description: Propose an improvement to the plugin
-title: "[Feature]: "
+name: 功能建议 / Feature Request
+description: 提议插件的新功能或改进方向
+title: "[建议]: "
 body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem
-      description: What limitation or use case should this change address?
+      label: 使用场景或问题
+      description: 希望解决什么限制、问题或使用场景？
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed solution
-      description: Describe the behavior you would like to see.
+      label: 建议方案
+      description: 请描述期望的功能或行为。
     validations:
       required: true
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives considered
-      description: Describe any workarounds or alternative designs you considered.
+      label: 已考虑的替代方案
+      description: 请描述尝试过的临时方案或其他设计。
   - type: textarea
     id: context
     attributes:
-      label: Additional context
-      description: Add examples or screenshots, with sensitive information removed.
+      label: 补充信息
+      description: 可添加示例或截图，请先移除其中的敏感信息。

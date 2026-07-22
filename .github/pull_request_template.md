@@ -1,14 +1,14 @@
-## Summary
+## 变更说明
 
-<!-- Explain what changed and why. -->
+<!-- 请说明改动内容、背景及原因。 -->
 
-## Validation
+## 验证方式
 
-<!-- List the commands or scenarios used to validate the change. -->
+<!-- 请列出用于验证改动的命令或场景。 -->
 
-## Checklist
+## 检查清单
 
-- [ ] `npm run check` passes locally.
-- [ ] Tests cover behavior changes.
-- [ ] Documentation and both changelogs are updated when needed.
-- [ ] No credentials, account identifiers, or private message content are included.
+- [ ] 已在本地或 CI 中通过 `npm run check`。
+- [ ] 行为变更已添加或更新测试。
+- [ ] 必要时已更新文档及中英文变更日志。
+- [ ] 未包含凭据、账号标识或私聊内容等敏感信息。
