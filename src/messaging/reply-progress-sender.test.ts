@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockLoggerWarn, mockSendMessageItemWeixin } = vi.hoisted(() => ({
   mockLoggerWarn: vi.fn(),
@@ -23,6 +23,10 @@ describe("WeixinReplyProgressSender", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSendMessageItemWeixin.mockResolvedValue({ messageId: "msg-1" });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("sends tool start and result messages from item lifecycle events", async () => {
