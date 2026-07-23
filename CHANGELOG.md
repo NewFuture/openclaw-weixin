@@ -8,8 +8,9 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Changed
 
-- Prepared the first community-maintained npm distribution as
-  `openclaw-wechat`, derived from Tencent's `openclaw-weixin`.
+- Prepared the first community-maintained npm distribution as the unscoped
+  `openclaw-weixin` package, derived from Tencent's
+  `@tencent-weixin/openclaw-weixin`.
 - Preserved the internal `openclaw-weixin` plugin/channel id, configuration
   keys, and state paths for in-place migration.
 - Added community repository metadata, package-content checks, and an

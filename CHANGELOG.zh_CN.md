@@ -8,8 +8,8 @@
 
 ### 变更
 
-- 基于腾讯 `openclaw-weixin` 准备首个社区维护的 npm 发行包
-  `openclaw-wechat`。
+- 基于腾讯 `@tencent-weixin/openclaw-weixin` 准备首个社区维护的未加 scope
+  npm 发行包 `openclaw-weixin`。
 - 保留内部 `openclaw-weixin` 插件/channel ID、配置键与状态目录，支持原位
   切换。
 - 增加社区仓库元数据、包内容检查和 npm Trusted Publishing 工作流。

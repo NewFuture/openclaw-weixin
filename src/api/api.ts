@@ -47,10 +47,7 @@ interface PackageJson {
  */
 function isOwnPackageJson(parsed: PackageJson): boolean {
   if (parsed.ilink_appid !== undefined) return true;
-  return (
-    typeof parsed.name === "string" &&
-    (parsed.name.includes("openclaw-weixin") || parsed.name === "openclaw-wechat")
-  );
+  return typeof parsed.name === "string" && parsed.name.includes("openclaw-weixin");
 }
 
 /**

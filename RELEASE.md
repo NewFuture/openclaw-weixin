@@ -1,6 +1,6 @@
 # npm release process
 
-`openclaw-wechat` publishes only to the official npm registry. Never commit an
+`openclaw-weixin` publishes only to the official npm registry. Never commit an
 npm token or add `NODE_AUTH_TOKEN` to the release workflow.
 
 ## First publication
@@ -8,8 +8,8 @@ npm token or add `NODE_AUTH_TOKEN` to the release workflow.
 npm normally requires a package to exist before its Trusted Publisher can be
 configured. A maintainer must therefore bootstrap the unscoped package once:
 
-1. Confirm the `openclaw-wechat` name is available and that the publishing npm
-   account uses two-factor authentication.
+1. Confirm the unscoped `openclaw-weixin` name and version are available and
+   that the publishing npm account uses two-factor authentication.
 2. From the exact clean release commit, run `npm ci`, `npm run check`, and
    `npm run pack:check`.
 3. Inspect the generated package with `npm pack --json --ignore-scripts`, then
@@ -20,7 +20,7 @@ configured. A maintainer must therefore bootstrap the unscoped package once:
 
 The initial community package keeps version `2.4.6`, matching the code and
 plugin manifest inherited from the upstream release. If that exact
-`openclaw-wechat@2.4.6` version already exists, stop and update
+`openclaw-weixin@2.4.6` version already exists, stop and update
 `package.json`, `package-lock.json`, `openclaw.plugin.json`, and both
 changelogs together before publishing.
 

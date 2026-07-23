@@ -1,11 +1,11 @@
 {
-  "name": "openclaw-wechat",
+  "name": "openclaw-weixin",
   "version": "2.4.6",
   "description": "Community-maintained OpenClaw WeChat channel plugin",
   "license": "MIT",
   "author": "Tencent",
   "contributors": [
-    "NewFuture and openclaw-wechat contributors"
+    "Contributors to NewFuture/openclaw-wechat"
   ],
   "repository": {
     "type": "git",
@@ -77,7 +77,7 @@
       "order": 75
     },
     "install": {
-      "npmSpec": "openclaw-wechat",
+      "npmSpec": "openclaw-weixin",
       "defaultChoice": "npm",
       "minHostVersion": ">=2026.5.12"
     }

@@ -3,7 +3,7 @@
 ## Supported versions
 
 Security fixes are provided for the latest community release. Upgrade to the
-latest published `openclaw-wechat` version before reporting an issue that may
+latest published `openclaw-weixin` version before reporting an issue that may
 already be fixed.
 
 ## Reporting a vulnerability

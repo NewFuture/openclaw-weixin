@@ -80,7 +80,7 @@ describe("assertHostCompatibility", () => {
 
   it("points unsupported hosts to the community package", () => {
     expect(() => assertHostCompatibility("2026.5.11")).toThrowError(
-      /openclaw plugins install npm:openclaw-wechat --force/,
+      /openclaw plugins install npm:openclaw-weixin --force/,
     );
   });
 });
