@@ -9,16 +9,16 @@ import { redactBody, redactUrl } from "../util/redact.js";
 
 import type {
   BaseInfo,
-  GetUploadUrlReq,
-  GetUploadUrlResp,
+  GetConfigResp,
   GetUpdatesReq,
   GetUpdatesResp,
-  NotifyStopResp,
+  GetUploadUrlReq,
+  GetUploadUrlResp,
   NotifyStartResp,
+  NotifyStopResp,
   SendMessageReq,
   SendMessageResp,
   SendTypingReq,
-  GetConfigResp,
 } from "./types.js";
 
 export type WeixinApiOptions = {
@@ -134,7 +134,7 @@ export function sanitizeBotAgent(raw: string | undefined): string {
   const trimmed = raw.trim();
   if (!trimmed) return DEFAULT_BOT_AGENT;
 
-  const productRe = /^[A-Za-z0-9_.\-]{1,32}\/[A-Za-z0-9_.+\-]{1,32}$/;
+  const productRe = /^[A-Za-z0-9_.-]{1,32}\/[A-Za-z0-9_.+-]{1,32}$/;
   const commentCharRe = /^[\x20-\x27\x2A-\x7E]{1,64}$/;
 
   // Tokenize on whitespace, but keep `(comment)` glued to the preceding product.
@@ -148,7 +148,7 @@ export function sanitizeBotAgent(raw: string | undefined): string {
       let acc = tok;
       while (i + 1 < rawTokens.length && !acc.endsWith(")")) {
         i += 1;
-        acc += " " + rawTokens[i];
+        acc += ` ${rawTokens[i]}`;
       }
       tokens.push(acc);
     } else {
@@ -267,18 +267,29 @@ export function classifyFetchError(err: unknown): {
   }
 
   const cause = (err as NodeJS.ErrnoException)?.cause;
-  const causeCode = (cause as any)?.code ?? "";
-  const causeStr = String(cause ?? err ?? "") + " " + String(causeCode);
+  const causeCode =
+    typeof cause === "object" && cause !== null && "code" in cause
+      ? String((cause as { code?: unknown }).code ?? "")
+      : "";
+  const causeStr = `${String(cause ?? err ?? "")} ${String(causeCode)}`;
   const matchedCode = causeCode || (typeof cause === "string" ? cause : "");
 
   if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(causeStr)) {
-    return { type: "dns", description: "DNS resolution failed, check DNS configuration", ...(matchedCode ? { code: matchedCode } : {}) };
+    return {
+      type: "dns",
+      description: "DNS resolution failed, check DNS configuration",
+      ...(matchedCode ? { code: matchedCode } : {}),
+    };
   }
   if (/ECONNREFUSED/i.test(causeStr)) {
     return { type: "tcp", description: "TCP connection refused", ...(matchedCode ? { code: matchedCode } : {}) };
   }
   if (/UND_ERR_CONNECT_TIMEOUT|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH/i.test(causeStr)) {
-    return { type: "tcp", description: "TCP connection timeout or unreachable", ...(matchedCode ? { code: matchedCode } : {}) };
+    return {
+      type: "tcp",
+      description: "TCP connection timeout or unreachable",
+      ...(matchedCode ? { code: matchedCode } : {}),
+    };
   }
   if (/UND_ERR_SOCKET|SSL|TLS|CERT|UNABLE_TO_VERIFY|DEPTH_ZERO/i.test(causeStr)) {
     return { type: "tls", description: "TLS handshake error", ...(matchedCode ? { code: matchedCode } : {}) };
@@ -305,12 +316,8 @@ export async function apiGetFetch(params: {
   logger.debug(`GET ${redactUrl(url.toString())}`);
 
   const timeoutMs = params.timeoutMs;
-  const controller =
-    timeoutMs != null && timeoutMs > 0 ? new AbortController() : undefined;
-  const t =
-    controller != null && timeoutMs != null
-      ? setTimeout(() => controller.abort(), timeoutMs)
-      : undefined;
+  const controller = timeoutMs != null && timeoutMs > 0 ? new AbortController() : undefined;
+  const t = controller != null && timeoutMs != null ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
   try {
     const res = await fetch(url.toString(), {
       method: "GET",
@@ -339,10 +346,10 @@ export async function apiGetFetch(params: {
  * This lets gateway channel-stop aborts cancel in-flight long-poll requests
  * immediately while preserving the existing timeout-driven AbortError path.
  */
-function combineAbortSignals(params: {
-  internal?: AbortController;
-  external?: AbortSignal;
-}): { signal?: AbortSignal; cleanup: () => void } {
+function combineAbortSignals(params: { internal?: AbortController; external?: AbortSignal }): {
+  signal?: AbortSignal;
+  cleanup: () => void;
+} {
   const { internal, external } = params;
   if (!external) {
     return { signal: internal?.signal, cleanup: () => {} };
@@ -385,8 +392,7 @@ export async function apiPostFetch(params: {
   const hdrs = buildHeaders({ token: params.token });
   logger.debug(`POST ${redactUrl(url.toString())} body=${redactBody(params.body)}`);
 
-  const controller =
-    params.timeoutMs !== undefined ? new AbortController() : undefined;
+  const controller = params.timeoutMs !== undefined ? new AbortController() : undefined;
   const t =
     controller != null && params.timeoutMs !== undefined
       ? setTimeout(() => controller.abort(), params.timeoutMs)
@@ -471,9 +477,7 @@ export async function getUpdates(
 }
 
 /** Get a pre-signed CDN upload URL for a file. */
-export async function getUploadUrl(
-  params: GetUploadUrlReq & WeixinApiOptions,
-): Promise<GetUploadUrlResp> {
+export async function getUploadUrl(params: GetUploadUrlReq & WeixinApiOptions): Promise<GetUploadUrlResp> {
   const rawText = await apiPostFetch({
     baseUrl: params.baseUrl,
     endpoint: "ilink/bot/getuploadurl",
@@ -511,10 +515,7 @@ export async function getUploadUrl(
  * scheduled digests) fails until the user messages it again. Surface that
  * likely cause instead of an opaque empty message.
  */
-export function describeSendMessageFailure(
-  resp: SendMessageResp,
-  body: SendMessageReq,
-): string {
+export function describeSendMessageFailure(resp: SendMessageResp, body: SendMessageReq): string {
   const errmsg = resp.errmsg?.trim();
   if (errmsg) {
     return `sendMessage ret=${resp.ret} errmsg=${errmsg}`;
@@ -525,9 +526,7 @@ export function describeSendMessageFailure(
   return `sendMessage ret=${resp.ret} errmsg=(empty); ${hint}`;
 }
 
-export async function sendMessage(
-  params: WeixinApiOptions & { body: SendMessageReq },
-): Promise<void> {
+export async function sendMessage(params: WeixinApiOptions & { body: SendMessageReq }): Promise<void> {
   const rawText = await apiPostFetch({
     baseUrl: params.baseUrl,
     endpoint: "ilink/bot/sendmessage",
@@ -563,9 +562,7 @@ export async function getConfig(
 }
 
 /** Send a typing indicator to a user. */
-export async function sendTyping(
-  params: WeixinApiOptions & { body: SendTypingReq },
-): Promise<void> {
+export async function sendTyping(params: WeixinApiOptions & { body: SendTypingReq }): Promise<void> {
   await apiPostFetch({
     baseUrl: params.baseUrl,
     endpoint: "ilink/bot/sendtyping",

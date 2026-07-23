@@ -1,13 +1,10 @@
+import type { WeixinMessage } from "../api/types.js";
+import { MessageItemType } from "../api/types.js";
+import { downloadAndDecryptBuffer, downloadPlainCdnBuffer } from "../cdn/pic-decrypt.js";
 import type { WeixinInboundMediaOpts } from "../messaging/inbound.js";
 import { logger } from "../util/logger.js";
 import { getMimeFromFilename } from "./mime.js";
-import {
-  downloadAndDecryptBuffer,
-  downloadPlainCdnBuffer,
-} from "../cdn/pic-decrypt.js";
 import { silkToWav } from "./silk-transcode.js";
-import type { WeixinMessage } from "../api/types.js";
-import { MessageItemType } from "../api/types.js";
 
 const WEIXIN_MEDIA_MAX_BYTES = 100 * 1024 * 1024;
 
@@ -34,15 +31,13 @@ export async function downloadMediaFromItem(
     label: string;
   },
 ): Promise<WeixinInboundMediaOpts> {
-  const { cdnBaseUrl, saveMedia, log, errLog, label } = deps;
+  const { cdnBaseUrl, saveMedia, errLog, label } = deps;
   const result: WeixinInboundMediaOpts = {};
 
   if (item.type === MessageItemType.IMAGE) {
     const img = item.image_item;
     if (!img?.media?.encrypt_query_param && !img?.media?.full_url) return result;
-    const aesKeyBase64 = img.aeskey
-      ? Buffer.from(img.aeskey, "hex").toString("base64")
-      : img.media.aes_key;
+    const aesKeyBase64 = img.aeskey ? Buffer.from(img.aeskey, "hex").toString("base64") : img.media.aes_key;
     logger.debug(
       `${label} image: encrypt_query_param=${(img.media.encrypt_query_param ?? "").slice(0, 40)}... hasAesKey=${Boolean(aesKeyBase64)} aeskeySource=${img.aeskey ? "image_item.aeskey" : "media.aes_key"} full_url=${Boolean(img.media.full_url)}`,
     );
@@ -70,8 +65,7 @@ export async function downloadMediaFromItem(
     }
   } else if (item.type === MessageItemType.VOICE) {
     const voice = item.voice_item;
-    if ((!voice?.media?.encrypt_query_param && !voice?.media?.full_url) || !voice?.media?.aes_key)
-      return result;
+    if ((!voice?.media?.encrypt_query_param && !voice?.media?.full_url) || !voice?.media?.aes_key) return result;
     try {
       const silkBuf = await downloadAndDecryptBuffer(
         voice.media.encrypt_query_param ?? "",
@@ -110,13 +104,7 @@ export async function downloadMediaFromItem(
         fileItem.media.full_url,
       );
       const mime = getMimeFromFilename(fileItem.file_name ?? "file.bin");
-      const saved = await saveMedia(
-        buf,
-        mime,
-        "inbound",
-        WEIXIN_MEDIA_MAX_BYTES,
-        fileItem.file_name ?? undefined,
-      );
+      const saved = await saveMedia(buf, mime, "inbound", WEIXIN_MEDIA_MAX_BYTES, fileItem.file_name ?? undefined);
       result.decryptedFilePath = saved.path;
       result.fileMediaType = mime;
       logger.debug(`${label} file: saved to ${saved.path} mime=${mime}`);

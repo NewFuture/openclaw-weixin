@@ -17,6 +17,16 @@ body:
     validations:
       required: true
   - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: 验收标准 / Acceptance Criteria
+      description: 请列出可观察、可测试的完成条件。
+      placeholder: |
+        - [ ] 当……时，应……
+        - [ ] 现有兼容行为保持不变。
+    validations:
+      required: true
+  - type: textarea
     id: alternatives
     attributes:
       label: 已考虑的替代方案

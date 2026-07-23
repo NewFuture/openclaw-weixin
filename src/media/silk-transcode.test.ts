@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../util/logger.js", () => ({
   logger: {
@@ -34,17 +34,18 @@ describe("silkToWav", () => {
     const { silkToWav } = await import("./silk-transcode.js");
     const result = await silkToWav(Buffer.from("fake-silk"));
     expect(result).not.toBeNull();
-    expect(result!.length).toBe(44 + fakePcm.byteLength); // WAV header + PCM data
+    if (!result) throw new Error("Expected a WAV buffer");
+    expect(result.length).toBe(44 + fakePcm.byteLength); // WAV header + PCM data
 
     // Verify WAV header
-    expect(result!.toString("ascii", 0, 4)).toBe("RIFF");
-    expect(result!.toString("ascii", 8, 12)).toBe("WAVE");
-    expect(result!.toString("ascii", 12, 16)).toBe("fmt ");
-    expect(result!.readUInt16LE(20)).toBe(1); // PCM format
-    expect(result!.readUInt16LE(22)).toBe(1); // mono
-    expect(result!.readUInt32LE(24)).toBe(24000); // sample rate
-    expect(result!.readUInt16LE(34)).toBe(16); // bits per sample
-    expect(result!.toString("ascii", 36, 40)).toBe("data");
+    expect(result.toString("ascii", 0, 4)).toBe("RIFF");
+    expect(result.toString("ascii", 8, 12)).toBe("WAVE");
+    expect(result.toString("ascii", 12, 16)).toBe("fmt ");
+    expect(result.readUInt16LE(20)).toBe(1); // PCM format
+    expect(result.readUInt16LE(22)).toBe(1); // mono
+    expect(result.readUInt32LE(24)).toBe(24000); // sample rate
+    expect(result.readUInt16LE(34)).toBe(16); // bits per sample
+    expect(result.toString("ascii", 36, 40)).toBe("data");
   });
 
   it("returns null when decode fails", async () => {

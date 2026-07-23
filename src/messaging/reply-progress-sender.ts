@@ -66,7 +66,9 @@ export class WeixinReplyProgressSender {
         });
       })
       .catch((err) => {
-        logger.warn(`${label}: failed to=${this.to} accountId=${this.accountId} runId=${this.runId} err=${String(err)}`);
+        logger.warn(
+          `${label}: failed to=${this.to} accountId=${this.accountId} runId=${this.runId} err=${String(err)}`,
+        );
       });
   }
 

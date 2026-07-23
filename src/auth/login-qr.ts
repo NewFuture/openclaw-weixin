@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import { apiGetFetch, apiPostFetch } from "../api/api.js";
-import { listIndexedWeixinAccountIds, loadWeixinAccount } from "./accounts.js";
 import { logger } from "../util/logger.js";
 import { redactToken } from "../util/redact.js";
+import { listIndexedWeixinAccountIds, loadWeixinAccount } from "./accounts.js";
 
 type ActiveLogin = {
   sessionKey: string;
@@ -12,7 +12,15 @@ type ActiveLogin = {
   qrcodeUrl: string;
   startedAt: number;
   botToken?: string;
-  status?: "wait" | "scaned" | "confirmed" | "expired" | "scaned_but_redirect" | "need_verifycode" | "verify_code_blocked" | "binded_redirect";
+  status?:
+    | "wait"
+    | "scaned"
+    | "confirmed"
+    | "expired"
+    | "scaned_but_redirect"
+    | "need_verifycode"
+    | "verify_code_blocked"
+    | "binded_redirect";
   error?: string;
   /** The current effective polling base URL; may be updated on IDC redirect. */
   currentApiBaseUrl?: string;
@@ -38,7 +46,15 @@ interface QRCodeResponse {
 }
 
 interface StatusResponse {
-  status: "wait" | "scaned" | "confirmed" | "expired" | "scaned_but_redirect" | "need_verifycode" | "verify_code_blocked" | "binded_redirect";
+  status:
+    | "wait"
+    | "scaned"
+    | "confirmed"
+    | "expired"
+    | "scaned_but_redirect"
+    | "need_verifycode"
+    | "verify_code_blocked"
+    | "binded_redirect";
   bot_token?: string;
   ilink_bot_id?: string;
   baseurl?: string;
@@ -265,7 +281,7 @@ export async function waitForWeixinLogin(opts: {
   apiBaseUrl: string;
   botType?: string;
 }): Promise<WeixinQrWaitResult> {
-  let activeLogin = activeLogins.get(opts.sessionKey);
+  const activeLogin = activeLogins.get(opts.sessionKey);
 
   if (!activeLogin) {
     logger.warn(`waitForWeixinLogin: no active login sessionKey=${opts.sessionKey}`);
@@ -298,7 +314,9 @@ export async function waitForWeixinLogin(opts: {
     try {
       const currentBaseUrl = activeLogin.currentApiBaseUrl ?? FIXED_BASE_URL;
       const statusResponse = await pollQRStatus(currentBaseUrl, activeLogin.qrcode, activeLogin.pendingVerifyCode);
-      logger.debug(`pollQRStatus: status=${statusResponse.status} hasBotToken=${Boolean(statusResponse.bot_token)} hasBotId=${Boolean(statusResponse.ilink_bot_id)}`);
+      logger.debug(
+        `pollQRStatus: status=${statusResponse.status} hasBotToken=${Boolean(statusResponse.bot_token)} hasBotId=${Boolean(statusResponse.ilink_bot_id)}`,
+      );
       activeLogin.status = statusResponse.status;
 
       switch (statusResponse.status) {
@@ -346,7 +364,9 @@ export async function waitForWeixinLogin(opts: {
             activeLogin,
             opts.botType || DEFAULT_ILINK_BOT_TYPE,
             qrRefreshCount,
-            () => { scannedPrinted = false; },
+            () => {
+              scannedPrinted = false;
+            },
           );
           if (!expiredRefreshResult.success) {
             activeLogins.delete(opts.sessionKey);
@@ -378,7 +398,9 @@ export async function waitForWeixinLogin(opts: {
             activeLogin,
             opts.botType || DEFAULT_ILINK_BOT_TYPE,
             qrRefreshCount,
-            () => { scannedPrinted = false; },
+            () => {
+              scannedPrinted = false;
+            },
           );
           if (!blockedRefreshResult.success) {
             activeLogins.delete(opts.sessionKey);
@@ -403,7 +425,9 @@ export async function waitForWeixinLogin(opts: {
             activeLogin.currentApiBaseUrl = newBaseUrl;
             logger.info(`waitForWeixinLogin: IDC redirect, switching polling host to ${redirectHost}`);
           } else {
-            logger.warn(`waitForWeixinLogin: received scaned_but_redirect but redirect_host is missing, continuing with current host`);
+            logger.warn(
+              `waitForWeixinLogin: received scaned_but_redirect but redirect_host is missing, continuing with current host`,
+            );
           }
           break;
         }
@@ -434,7 +458,6 @@ export async function waitForWeixinLogin(opts: {
           };
         }
       }
-
     } catch (err) {
       logger.error(`Error polling QR status: ${String(err)}`);
       activeLogins.delete(opts.sessionKey);
@@ -447,9 +470,7 @@ export async function waitForWeixinLogin(opts: {
     await new Promise((r) => setTimeout(r, 1000));
   }
 
-  logger.warn(
-    `waitForWeixinLogin: timed out waiting for QR scan sessionKey=${opts.sessionKey} timeoutMs=${timeoutMs}`,
-  );
+  logger.warn(`waitForWeixinLogin: timed out waiting for QR scan sessionKey=${opts.sessionKey} timeoutMs=${timeoutMs}`);
   activeLogins.delete(opts.sessionKey);
   return {
     connected: false,

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../util/logger.js", () => ({
   logger: {
@@ -71,8 +71,6 @@ describe("sendWeixinErrorNotice", () => {
       errLog,
     });
     // Should not throw
-    expect(errLog).toHaveBeenCalledWith(
-      expect.stringContaining("sendWeixinErrorNotice failed"),
-    );
+    expect(errLog).toHaveBeenCalledWith(expect.stringContaining("sendWeixinErrorNotice failed"));
   });
 });

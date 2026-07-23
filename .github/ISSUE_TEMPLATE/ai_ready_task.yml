@@ -1,0 +1,76 @@
+name: AI-ready Implementation Task
+description: Define a bounded implementation task with a verifiable test oracle
+title: "[Task]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for work that is ready to delegate to a contributor or coding agent.
+        Do not include credentials, account identifiers, QR codes, CDN query parameters, or private message content.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and context
+      description: Explain the current behavior, why it is a problem, and the user or maintainer impact.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: List observable outcomes that must all be true when this task is complete.
+      placeholder: |
+        - [ ] Given ..., when ..., then ...
+        - [ ] Existing compatibility behavior remains unchanged.
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: State what this task must not change. Write "N/A" if there are no additional exclusions.
+    validations:
+      required: true
+  - type: textarea
+    id: entry-points
+    attributes:
+      label: Relevant entry points
+      description: Identify likely source files, tests, documentation, or runtime boundaries.
+      placeholder: |
+        - src/...
+        - Existing test: ...
+    validations:
+      required: true
+  - type: textarea
+    id: test-oracle
+    attributes:
+      label: Test oracle
+      description: Describe the focused command or deterministic scenario that proves the fix.
+      placeholder: npm run test:unit -- src/path/to/file.test.ts
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and blockers
+      description: Link prerequisite issues or write "None".
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Highest affected risk area
+      options:
+        - Isolated test or documentation only
+        - Message formatting or media handling
+        - Routing, polling, or concurrency
+        - Authentication, credentials, state migration, or release
+    validations:
+      required: true
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Readiness confirmation
+      options:
+        - label: The task contains no sensitive or real user data.
+          required: true
+        - label: The acceptance criteria are observable without access to the live Weixin backend.
+          required: true

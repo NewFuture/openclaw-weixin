@@ -1,14 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MessageItemType, type GetUpdatesResp, type WeixinMessage } from "../api/types.js";
+import { createChannelRuntimeHarness } from "../../test/helpers/channel-runtime.js";
+import { createDeferred } from "../../test/helpers/deferred.js";
+import { getText, makeTextMessage } from "../../test/helpers/messages.js";
+import type { GetUpdatesResp, WeixinMessage } from "../api/types.js";
 import type { ProcessMessageDeps } from "../messaging/process-message.js";
 
 const getUpdatesMock = vi.fn<(opts: { abortSignal?: AbortSignal }) => Promise<GetUpdatesResp>>();
-const getForUserMock = vi.fn<
-  (userId: string, contextToken?: string) => Promise<{ typingTicket: string }>
->();
-const processOneMessageMock =
-  vi.fn<(message: WeixinMessage, deps: ProcessMessageDeps) => Promise<void>>();
+const getForUserMock = vi.fn<(userId: string, contextToken?: string) => Promise<{ typingTicket: string }>>();
+const processOneMessageMock = vi.fn<(message: WeixinMessage, deps: ProcessMessageDeps) => Promise<void>>();
 const saveGetUpdatesBufMock = vi.fn<(filePath: string, value: string) => void>();
 const setContextTokenMock = vi.fn<(accountId: string, userId: string, token: string) => void>();
 
@@ -30,20 +30,17 @@ vi.mock("../api/config-cache.js", () => ({
 }));
 
 vi.mock("../messaging/process-message.js", () => ({
-  processOneMessage: (message: WeixinMessage, deps: ProcessMessageDeps) =>
-    processOneMessageMock(message, deps),
+  processOneMessage: (message: WeixinMessage, deps: ProcessMessageDeps) => processOneMessageMock(message, deps),
 }));
 
 vi.mock("../messaging/inbound.js", () => ({
-  setContextToken: (accountId: string, userId: string, token: string) =>
-    setContextTokenMock(accountId, userId, token),
+  setContextToken: (accountId: string, userId: string, token: string) => setContextTokenMock(accountId, userId, token),
 }));
 
 vi.mock("../storage/sync-buf.js", () => ({
   getSyncBufFilePath: () => "sync-buf",
   loadGetUpdatesBuf: () => undefined,
-  saveGetUpdatesBuf: (filePath: string, value: string) =>
-    saveGetUpdatesBufMock(filePath, value),
+  saveGetUpdatesBuf: (filePath: string, value: string) => saveGetUpdatesBufMock(filePath, value),
 }));
 
 vi.mock("../util/logger.js", () => ({
@@ -57,10 +54,15 @@ vi.mock("../util/logger.js", () => ({
   },
 }));
 
+import { monitorWeixinProvider } from "./monitor.js";
+
 describe("monitorWeixinProvider", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getForUserMock.mockResolvedValue({ typingTicket: "ticket" });
+  });
+
   it("orders ordinary admission while approvals bypass an active ordinary turn", async () => {
-    vi.resetModules();
-    const { monitorWeixinProvider } = await import("./monitor.js");
     const abortController = new AbortController();
     const firstPreprocessing = createDeferred();
     const firstRun = createDeferred();
@@ -70,15 +72,15 @@ describe("monitorWeixinProvider", () => {
     const responses: GetUpdatesResp[] = [
       {
         ret: 0,
-        msgs: [makeMessage("first", { message_id: 101, context_token: "token-1" })],
+        msgs: [makeMonitorMessage("first", { message_id: 101, context_token: "token-1" })],
         get_updates_buf: "cursor-1",
       },
       {
         ret: 0,
         msgs: [
-          makeMessage("second", { message_id: 102, context_token: "token-2" }),
-          makeMessage("third", { message_id: 104, context_token: "token-4" }),
-          makeMessage("/approve plugin:test approve", {
+          makeMonitorMessage("second", { message_id: 102, context_token: "token-2" }),
+          makeMonitorMessage("third", { message_id: 104, context_token: "token-4" }),
+          makeMonitorMessage("/approve plugin:test approve", {
             message_id: 103,
             context_token: "token-3",
           }),
@@ -98,7 +100,6 @@ describe("monitorWeixinProvider", () => {
         abortSignal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
       });
     });
-    getForUserMock.mockResolvedValue({ typingTicket: "ticket" });
     processOneMessageMock.mockImplementation(async (message, deps) => {
       const text = getText(message);
       started.push(text);
@@ -118,12 +119,13 @@ describe("monitorWeixinProvider", () => {
       }
     });
 
+    const harness = createChannelRuntimeHarness();
     const monitor = monitorWeixinProvider({
       baseUrl: "https://example.test",
       cdnBaseUrl: "https://cdn.example.test",
       accountId: "acc-monitor",
-      config: {} as never,
-      channelRuntime: {} as never,
+      config: {},
+      channelRuntime: harness.channelRuntime,
       abortSignal: abortController.signal,
       runtime: { log: vi.fn(), error: vi.fn() },
     });
@@ -149,24 +151,44 @@ describe("monitorWeixinProvider", () => {
       await monitor;
     }
   });
+
+  it("returns when an in-flight poll is aborted", async () => {
+    const abortController = new AbortController();
+    const harness = createChannelRuntimeHarness();
+    getUpdatesMock.mockImplementation(
+      async ({ abortSignal }) =>
+        await new Promise<GetUpdatesResp>((_, reject) => {
+          if (abortSignal?.aborted) {
+            reject(new Error("aborted"));
+            return;
+          }
+          abortSignal?.addEventListener("abort", () => reject(new Error("aborted")), {
+            once: true,
+          });
+        }),
+    );
+
+    const monitor = monitorWeixinProvider({
+      baseUrl: "https://example.test",
+      cdnBaseUrl: "https://cdn.example.test",
+      accountId: "acc-monitor",
+      config: {},
+      channelRuntime: harness.channelRuntime,
+      abortSignal: abortController.signal,
+      runtime: { log: vi.fn(), error: vi.fn() },
+    });
+
+    await vi.waitFor(() => expect(getUpdatesMock).toHaveBeenCalledOnce());
+    abortController.abort();
+
+    await expect(monitor).resolves.toBeUndefined();
+    expect(getUpdatesMock.mock.calls[0]?.[0].abortSignal).toBe(abortController.signal);
+  });
 });
 
-function makeMessage(text: string, overrides: Partial<WeixinMessage> = {}): WeixinMessage {
-  return {
+function makeMonitorMessage(text: string, overrides: Partial<WeixinMessage> = {}): WeixinMessage {
+  return makeTextMessage(text, {
     from_user_id: "user-a",
-    item_list: [{ type: MessageItemType.TEXT, text_item: { text } }],
     ...overrides,
-  };
-}
-
-function getText(message: WeixinMessage): string {
-  return message.item_list?.[0]?.text_item?.text ?? "";
-}
-
-function createDeferred(): { promise: Promise<void>; resolve: () => void } {
-  let resolve!: () => void;
-  const promise = new Promise<void>((innerResolve) => {
-    resolve = innerResolve;
   });
-  return { promise, resolve };
 }

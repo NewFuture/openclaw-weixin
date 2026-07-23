@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { truncate, redactToken, redactBody, redactUrl } from "./redact.js";
+import { redactBody, redactToken, redactUrl, truncate } from "./redact.js";
 
 describe("truncate", () => {
   it("returns empty string for undefined", () => {
@@ -84,13 +84,11 @@ describe("redactUrl", () => {
   });
 
   it("strips query parameters", () => {
-    expect(redactUrl("https://example.com/upload?sig=secret&token=abc")).toBe(
-      "https://example.com/upload?<redacted>",
-    );
+    expect(redactUrl("https://example.com/upload?sig=secret&token=abc")).toBe("https://example.com/upload?<redacted>");
   });
 
   it("handles invalid URLs gracefully", () => {
-    const result = redactUrl("not-a-url-but-very-long-" + "x".repeat(100));
+    const result = redactUrl(`not-a-url-but-very-long-${"x".repeat(100)}`);
     expect(result).toContain("…(len=");
   });
 });

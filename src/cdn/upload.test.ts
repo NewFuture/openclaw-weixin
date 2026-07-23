@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import fs from "node:fs/promises";
 import fsSync from "node:fs";
-import path from "node:path";
+import fs from "node:fs/promises";
 import os from "node:os";
+import path from "node:path";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../util/logger.js", () => ({
   logger: {
@@ -26,7 +26,12 @@ const { mockFetch } = vi.hoisted(() => ({
 }));
 vi.stubGlobal("fetch", mockFetch);
 
-import { downloadRemoteImageToTemp, uploadFileToWeixin, uploadVideoToWeixin, uploadFileAttachmentToWeixin } from "./upload.js";
+import {
+  downloadRemoteImageToTemp,
+  uploadFileAttachmentToWeixin,
+  uploadFileToWeixin,
+  uploadVideoToWeixin,
+} from "./upload.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -40,7 +45,10 @@ describe("downloadRemoteImageToTemp", () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        arrayBuffer: () => Promise.resolve(imageBytes.buffer.slice(imageBytes.byteOffset, imageBytes.byteOffset + imageBytes.byteLength)),
+        arrayBuffer: () =>
+          Promise.resolve(
+            imageBytes.buffer.slice(imageBytes.byteOffset, imageBytes.byteOffset + imageBytes.byteLength),
+          ),
         headers: new Headers({ "content-type": "image/png" }),
       });
       const filePath = await downloadRemoteImageToTemp("https://example.com/photo.png", tmpDir);
@@ -59,9 +67,9 @@ describe("downloadRemoteImageToTemp", () => {
       status: 404,
       statusText: "Not Found",
     });
-    await expect(
-      downloadRemoteImageToTemp("https://example.com/missing.png", "/tmp/test"),
-    ).rejects.toThrow("remote media download failed");
+    await expect(downloadRemoteImageToTemp("https://example.com/missing.png", "/tmp/test")).rejects.toThrow(
+      "remote media download failed",
+    );
   });
 });
 

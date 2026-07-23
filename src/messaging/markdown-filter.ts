@@ -53,8 +53,7 @@ export class StreamingMarkdownFilter {
       else if (this.sol) out += this.pumpSOL(eof);
       else out += this.pumpBody(eof);
 
-      if (this.buf.length === sLen && this.sol === sSol &&
-          this.fence === sFence && this.inl === sInl) break;
+      if (this.buf.length === sLen && this.sol === sSol && this.fence === sFence && this.inl === sInl) break;
     }
 
     if (eof && this.inl) {
@@ -290,7 +289,7 @@ export class StreamingMarkdownFilter {
       case "italic": {
         for (let j = 0; j < this.inl.acc.length; j++) {
           if (this.inl.acc[j] === "\n") {
-            const r = "*" + this.inl.acc.slice(0, j + 1);
+            const r = `*${this.inl.acc.slice(0, j + 1)}`;
             this.buf = this.inl.acc.slice(j + 1);
             this.inl = null;
             this.sol = true;
@@ -313,7 +312,7 @@ export class StreamingMarkdownFilter {
       case "uitalic": {
         for (let j = 0; j < this.inl.acc.length; j++) {
           if (this.inl.acc[j] === "\n") {
-            const r = "_" + this.inl.acc.slice(0, j + 1);
+            const r = `_${this.inl.acc.slice(0, j + 1)}`;
             this.buf = this.inl.acc.slice(j + 1);
             this.inl = null;
             this.sol = true;
@@ -338,7 +337,7 @@ export class StreamingMarkdownFilter {
         if (cb === -1) return "";
         if (cb + 1 >= this.inl.acc.length) return "";
         if (this.inl.acc[cb + 1] !== "(") {
-          const r = "![" + this.inl.acc.slice(0, cb + 1);
+          const r = `![${this.inl.acc.slice(0, cb + 1)}`;
           this.buf = this.inl.acc.slice(cb + 1);
           this.inl = null;
           return r;

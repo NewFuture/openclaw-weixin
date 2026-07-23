@@ -37,11 +37,9 @@ describe("WeixinReplyProgressSender", () => {
       opts: { baseUrl: "https://api.example.com", contextToken: "ctx-1" },
     });
 
-    vi.spyOn(Date, "now")
-      .mockReturnValueOnce(1700000000000)
-      .mockReturnValueOnce(1700000000100);
+    vi.spyOn(Date, "now").mockReturnValueOnce(1700000000000).mockReturnValueOnce(1700000000100);
 
-    sender.replyOptions.onItemEvent({
+    const startEvent = {
       itemId: "tool:call-1",
       kind: "tool",
       name: "read",
@@ -49,15 +47,17 @@ describe("WeixinReplyProgressSender", () => {
       status: "running",
       summary: "should not be sent",
       progressText: "should not be sent",
-    });
-    sender.replyOptions.onItemEvent({
+    };
+    const endEvent = {
       itemId: "tool:call-1",
       kind: "tool",
       name: "read",
       phase: "end",
       status: "completed",
       summary: "should not be sent",
-    });
+    };
+    sender.replyOptions.onItemEvent(startEvent);
+    sender.replyOptions.onItemEvent(endEvent);
 
     await sender.finalize();
 
@@ -192,9 +192,7 @@ describe("WeixinReplyProgressSender", () => {
     });
     await sender.finalize();
 
-    expect(mockLoggerWarn).toHaveBeenCalledWith(
-      expect.stringContaining("sendToolCallStartMessage: failed"),
-    );
+    expect(mockLoggerWarn).toHaveBeenCalledWith(expect.stringContaining("sendToolCallStartMessage: failed"));
     expect(mockSendMessageItemWeixin).toHaveBeenCalledOnce();
   });
 });

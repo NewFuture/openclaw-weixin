@@ -112,9 +112,7 @@ export async function registerUserInFrameworkStore(params: {
 
     content.allowFrom.push(trimmedUserId);
     fs.writeFileSync(filePath, JSON.stringify(content, null, 2), "utf-8");
-    logger.info(
-      `registerUserInFrameworkStore: added userId=${trimmedUserId} accountId=${accountId} path=${filePath}`,
-    );
+    logger.info(`registerUserInFrameworkStore: added userId=${trimmedUserId} accountId=${accountId} path=${filePath}`);
     return { changed: true };
   });
 }

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockStateDir = fs.mkdtempSync(path.join(os.tmpdir(), "debug-mode-test-"));
 
@@ -13,7 +13,7 @@ vi.mock("../util/logger.js", () => ({
   logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() },
 }));
 
-import { toggleDebugMode, isDebugMode, _resetForTest } from "./debug-mode.js";
+import { _resetForTest, isDebugMode, toggleDebugMode } from "./debug-mode.js";
 
 describe("debug-mode", () => {
   beforeEach(() => {

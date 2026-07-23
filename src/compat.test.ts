@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
-  parseOpenClawVersion,
+  assertHostCompatibility,
   compareVersions,
   isHostVersionSupported,
-  assertHostCompatibility,
+  parseOpenClawVersion,
   SUPPORTED_HOST_MIN,
 } from "./compat.js";
 

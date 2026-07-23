@@ -1,11 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-
-import { logger } from "../util/logger.js";
-import { generateId } from "../util/random.js";
-import type { WeixinMessage, MessageItem } from "../api/types.js";
+import type { MessageItem, WeixinMessage } from "../api/types.js";
 import { MessageItemType } from "../api/types.js";
 import { resolveStateDir } from "../storage/state-dir.js";
+import { logger } from "../util/logger.js";
+import { generateId } from "../util/random.js";
 
 // ---------------------------------------------------------------------------
 // Context token store (in-process cache + disk persistence)
@@ -27,12 +26,7 @@ function contextTokenKey(accountId: string, userId: string): string {
 // ---------------------------------------------------------------------------
 
 function resolveContextTokenFilePath(accountId: string): string {
-  return path.join(
-    resolveStateDir(),
-    "openclaw-weixin",
-    "accounts",
-    `${accountId}.context-tokens.json`,
-  );
+  return path.join(resolveStateDir(), "openclaw-weixin", "accounts", `${accountId}.context-tokens.json`);
 }
 
 /** Persist all context tokens for a given account to disk. */
@@ -106,9 +100,7 @@ export function setContextToken(accountId: string, userId: string, token: string
 export function getContextToken(accountId: string, userId: string): string | undefined {
   const k = contextTokenKey(accountId, userId);
   const val = contextTokenStore.get(k);
-  logger.debug(
-    `getContextToken: key=${k} found=${val !== undefined} storeSize=${contextTokenStore.size}`,
-  );
+  logger.debug(`getContextToken: key=${k} found=${val !== undefined} storeSize=${contextTokenStore.size}`);
   return val;
 }
 
@@ -120,10 +112,7 @@ export function getContextToken(accountId: string, userId: string): string | und
  * Returns all matching accountIds (not just the first) so the caller can
  * detect ambiguity when multiple accounts have sessions with the same user.
  */
-export function findAccountIdsByContextToken(
-  accountIds: string[],
-  userId: string,
-): string[] {
+export function findAccountIdsByContextToken(accountIds: string[], userId: string): string[] {
   return accountIds.filter((id) => contextTokenStore.has(contextTokenKey(id, userId)));
 }
 

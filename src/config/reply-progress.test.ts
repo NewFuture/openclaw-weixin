@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
+import { describe, expect, it } from "vitest";
 
 import { resolveReplyProgressMessagesEnabled } from "./reply-progress.js";
 
