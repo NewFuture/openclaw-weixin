@@ -101,4 +101,3 @@ behavioral changes when the work can be separated.
 - Compatibility, privacy, state migration, and multi-account behavior have been
   considered explicitly.
 - Related developer and bilingual user documentation is updated.
-

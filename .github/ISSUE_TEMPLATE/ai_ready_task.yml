@@ -74,4 +74,3 @@ body:
           required: true
         - label: The acceptance criteria are observable without access to the live Weixin backend.
           required: true
-
