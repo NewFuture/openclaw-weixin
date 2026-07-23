@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../util/logger.js", () => ({
   logger: {
@@ -14,9 +14,9 @@ const { mockFetch } = vi.hoisted(() => ({
 }));
 vi.stubGlobal("fetch", mockFetch);
 
-import { encryptAesEcb, aesEcbPaddedSize } from "./aes-ecb.js";
-import { uploadBufferToCdn } from "./cdn-upload.js";
 import crypto from "node:crypto";
+import { aesEcbPaddedSize, encryptAesEcb } from "./aes-ecb.js";
+import { uploadBufferToCdn } from "./cdn-upload.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -81,10 +81,7 @@ describe("uploadBufferToCdn", () => {
       aeskey,
     });
     expect(result.downloadParam).toBe("dl-full");
-    expect(mockFetch).toHaveBeenCalledWith(
-      fullUrl,
-      expect.objectContaining({ method: "POST" }),
-    );
+    expect(mockFetch).toHaveBeenCalledWith(fullUrl, expect.objectContaining({ method: "POST" }));
   });
 
   it("retries on server error then succeeds", async () => {

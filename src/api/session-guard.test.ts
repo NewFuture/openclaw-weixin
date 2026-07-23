@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  STALE_TOKEN_ERRCODE,
-  pauseSession,
-  isSessionPaused,
-  getRemainingPauseMs,
-  assertSessionActive,
   _resetForTest,
+  assertSessionActive,
+  getRemainingPauseMs,
+  isSessionPaused,
+  pauseSession,
+  STALE_TOKEN_ERRCODE,
 } from "./session-guard.js";
 
 vi.mock("../util/logger.js", () => ({

@@ -8,7 +8,7 @@
 import type { WeixinApiOptions } from "../api/api.js";
 import { logger } from "../util/logger.js";
 
-import { toggleDebugMode, isDebugMode } from "./debug-mode.js";
+import { toggleDebugMode } from "./debug-mode.js";
 import { sendMessageWeixin } from "./send.js";
 
 export interface SlashCommandResult {
@@ -87,12 +87,7 @@ export async function handleSlashCommand(
         return { handled: true };
       case "/toggle-debug": {
         const enabled = toggleDebugMode(ctx.accountId);
-        await sendReply(
-          ctx,
-          enabled
-            ? "Debug 模式已开启"
-            : "Debug 模式已关闭",
-        );
+        await sendReply(ctx, enabled ? "Debug 模式已开启" : "Debug 模式已关闭");
         return { handled: true };
       }
       default:

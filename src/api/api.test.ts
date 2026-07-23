@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock logger
 vi.mock("../util/logger.js", () => ({
@@ -29,15 +29,15 @@ vi.mock("node:crypto", () => ({
 }));
 
 import {
-  getUpdates,
-  getUploadUrl,
-  sendMessage,
+  classifyFetchError,
   describeSendMessageFailure,
   getConfig,
-  sendTyping,
-  sanitizeBotAgent,
+  getUpdates,
+  getUploadUrl,
   readPackageJsonFromDir,
-  classifyFetchError,
+  sanitizeBotAgent,
+  sendMessage,
+  sendTyping,
 } from "./api.js";
 
 function mockResponse(body: object | string, status = 200, ok = true): Response {
@@ -169,9 +169,7 @@ describe("getUploadUrl", () => {
 
   it("throws on non-ok response", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse("fail", 400, false));
-    await expect(
-      getUploadUrl({ baseUrl: "https://api.example.com/" }),
-    ).rejects.toThrow("getUploadUrl 400");
+    await expect(getUploadUrl({ baseUrl: "https://api.example.com/" })).rejects.toThrow("getUploadUrl 400");
   });
 });
 
@@ -185,9 +183,9 @@ describe("sendMessage", () => {
 
   it("throws on non-ok response", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse("error", 403, false));
-    await expect(
-      sendMessage({ baseUrl: "https://api.example.com/", body: { msg: {} } }),
-    ).rejects.toThrow("sendMessage 403");
+    await expect(sendMessage({ baseUrl: "https://api.example.com/", body: { msg: {} } })).rejects.toThrow(
+      "sendMessage 403",
+    );
   });
 
   it("throws an actionable error when ret is non-zero with empty errmsg and a context_token was sent", async () => {
@@ -210,9 +208,9 @@ describe("sendMessage", () => {
 
 describe("describeSendMessageFailure", () => {
   it("passes through a non-empty server errmsg", () => {
-    expect(
-      describeSendMessageFailure({ ret: -2, errmsg: "rate limited" }, { msg: {} }),
-    ).toBe("sendMessage ret=-2 errmsg=rate limited");
+    expect(describeSendMessageFailure({ ret: -2, errmsg: "rate limited" }, { msg: {} })).toBe(
+      "sendMessage ret=-2 errmsg=rate limited",
+    );
   });
 
   it("flags a likely expired context_token when one was present", () => {
@@ -240,9 +238,7 @@ describe("getConfig", () => {
 
   it("throws on non-ok response", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse("fail", 500, false));
-    await expect(
-      getConfig({ baseUrl: "https://api.example.com/", ilinkUserId: "u" }),
-    ).rejects.toThrow("getConfig 500");
+    await expect(getConfig({ baseUrl: "https://api.example.com/", ilinkUserId: "u" })).rejects.toThrow("getConfig 500");
   });
 });
 
@@ -259,9 +255,7 @@ describe("sendTyping", () => {
 
   it("throws on non-ok response", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse("err", 500, false));
-    await expect(
-      sendTyping({ baseUrl: "https://api.example.com/", body: {} }),
-    ).rejects.toThrow("sendTyping 500");
+    await expect(sendTyping({ baseUrl: "https://api.example.com/", body: {} })).rejects.toThrow("sendTyping 500");
   });
 });
 
@@ -278,27 +272,19 @@ describe("sanitizeBotAgent", () => {
   });
 
   it("passes through multiple space-separated products", () => {
-    expect(sanitizeBotAgent("MyBot/1.2.0 LangChain/0.3.5")).toBe(
-      "MyBot/1.2.0 LangChain/0.3.5",
-    );
+    expect(sanitizeBotAgent("MyBot/1.2.0 LangChain/0.3.5")).toBe("MyBot/1.2.0 LangChain/0.3.5");
   });
 
   it("preserves a (comment) attached to a product", () => {
-    expect(sanitizeBotAgent("MyBot/1.2.0 (region=cn;env=prod)")).toBe(
-      "MyBot/1.2.0 (region=cn;env=prod)",
-    );
+    expect(sanitizeBotAgent("MyBot/1.2.0 (region=cn;env=prod)")).toBe("MyBot/1.2.0 (region=cn;env=prod)");
   });
 
   it("supports multi-word comments", () => {
-    expect(sanitizeBotAgent("MyBot/1.2.0 (built on linux)")).toBe(
-      "MyBot/1.2.0 (built on linux)",
-    );
+    expect(sanitizeBotAgent("MyBot/1.2.0 (built on linux)")).toBe("MyBot/1.2.0 (built on linux)");
   });
 
   it("accepts semver pre-release and build metadata", () => {
-    expect(sanitizeBotAgent("MyBot/1.2.0-rc.1+build.5")).toBe(
-      "MyBot/1.2.0-rc.1+build.5",
-    );
+    expect(sanitizeBotAgent("MyBot/1.2.0-rc.1+build.5")).toBe("MyBot/1.2.0-rc.1+build.5");
   });
 
   it("drops tokens that fail to parse, keeps valid ones", () => {
@@ -495,21 +481,17 @@ describe("classifyFetchError", () => {
   });
 
   it("classifies UND_ERR_CONNECT_TIMEOUT as tcp", () => {
-    const err = new Error("fetch failed");
-    (err as any).cause = "UND_ERR_CONNECT_TIMEOUT";
+    const err = Object.assign(new Error("fetch failed"), {
+      cause: "UND_ERR_CONNECT_TIMEOUT",
+    });
     const result = classifyFetchError(err);
     expect(result.type).toBe("tcp");
     expect(result.code).toBe("UND_ERR_CONNECT_TIMEOUT");
   });
 
   it("classifies TLS handshake errors", () => {
-    for (const cause of [
-      "UND_ERR_SOCKET",
-      "ERR_SSL_PROTOCOL_ERROR",
-      "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
-    ]) {
-      const err = new Error("fetch failed");
-      (err as any).cause = cause;
+    for (const cause of ["UND_ERR_SOCKET", "ERR_SSL_PROTOCOL_ERROR", "UNABLE_TO_VERIFY_LEAF_SIGNATURE"]) {
+      const err = Object.assign(new Error("fetch failed"), { cause });
       const result = classifyFetchError(err);
       expect(result.type).toBe("tls");
       expect(result.code).toBe(cause);

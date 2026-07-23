@@ -1,12 +1,11 @@
 import type { ReplyPayload } from "openclaw/plugin-sdk/reply-runtime";
-
-import { sendMessage as sendMessageApi } from "../api/api.js";
 import type { WeixinApiOptions } from "../api/api.js";
-import { logger } from "../util/logger.js";
-import { generateId } from "../util/random.js";
+import { sendMessage as sendMessageApi } from "../api/api.js";
 import type { MessageItem, SendMessageReq } from "../api/types.js";
 import { MessageItemType, MessageState, MessageType } from "../api/types.js";
 import type { UploadedFileInfo } from "../cdn/upload.js";
+import { logger } from "../util/logger.js";
+import { generateId } from "../util/random.js";
 
 export { StreamingMarkdownFilter } from "./markdown-filter.js";
 
@@ -28,9 +27,7 @@ function buildTextMessageReq(params: {
   clientId: string;
 }): SendMessageReq {
   const { to, text, contextToken, runId, clientId } = params;
-  const item_list: MessageItem[] = text
-    ? [{ type: MessageItemType.TEXT, text_item: { text } }]
-    : [];
+  const item_list: MessageItem[] = text ? [{ type: MessageItemType.TEXT, text_item: { text } }] : [];
   return {
     msg: {
       from_user_id: "",
@@ -130,9 +127,7 @@ export async function sendMessageItemWeixin(params: {
       body: req,
     });
   } catch (err) {
-    logger.error(
-      `${params.label ?? "sendMessageItemWeixin"}: failed to=${to} clientId=${clientId} err=${String(err)}`,
-    );
+    logger.error(`${params.label ?? "sendMessageItemWeixin"}: failed to=${to} clientId=${clientId} err=${String(err)}`);
     throw err;
   }
   return { messageId: clientId };
@@ -181,9 +176,7 @@ async function sendMediaItems(params: {
         body: req,
       });
     } catch (err) {
-      logger.error(
-        `${label}: failed to=${to} clientId=${lastClientId} err=${String(err)}`,
-      );
+      logger.error(`${label}: failed to=${to} clientId=${lastClientId} err=${String(err)}`);
       throw err;
     }
   }

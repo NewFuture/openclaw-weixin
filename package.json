@@ -34,14 +34,23 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "vitest run --coverage",
+    "test": "npm run test:coverage",
+    "test:unit": "vitest run --coverage=false",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc --project tsconfig.test.json --noEmit",
+    "lint": "biome lint . --error-on-warnings",
+    "format": "biome check . --write",
+    "format:check": "biome format .",
+    "check:style": "biome check . --error-on-warnings",
+    "check:static": "npm run check:style && npm run typecheck && npm run typecheck:tests",
+    "check:fast": "npm run check:static && npm run test:unit",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
-    "check": "npm run typecheck && npm test && npm run build",
+    "check": "npm run check:static && npm run test:coverage && npm run build",
     "pack:check": "node scripts/check-package.mjs",
     "prepack": "npm run build",
-    "prepublishOnly": "npm run typecheck && npm test"
+    "prepublishOnly": "npm run check:static && npm test"
   },
   "engines": {
     "node": ">=22"
@@ -54,6 +63,7 @@
     "openclaw": ">=2026.5.12"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.4",
     "@vitest/coverage-v8": "^3.1.0",
     "openclaw": "2026.5.12",
     "silk-wasm": "^3.7.1",

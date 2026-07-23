@@ -1,8 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-import { handleSlashCommand } from "./slash-commands.js";
-import type { SlashCommandContext } from "./slash-commands.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isDebugMode, _resetForTest as resetDebugMode } from "./debug-mode.js";
+import type { SlashCommandContext } from "./slash-commands.js";
+import { handleSlashCommand } from "./slash-commands.js";
 
 const mockSendMessageWeixin = vi.hoisted(() => vi.fn().mockResolvedValue({ messageId: "test-id" }));
 

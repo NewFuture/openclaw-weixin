@@ -19,12 +19,16 @@ export async function sendWeixinErrorNotice(params: {
     logger.warn(`sendWeixinErrorNotice: no contextToken for to=${params.to}, sending without context`);
   }
   try {
-    await sendMessageWeixin({ to: params.to, text: params.message, opts: {
-      baseUrl: params.baseUrl,
-      token: params.token,
-      contextToken: params.contextToken,
-      ...(params.runId ? { runId: params.runId } : {}),
-    }});
+    await sendMessageWeixin({
+      to: params.to,
+      text: params.message,
+      opts: {
+        baseUrl: params.baseUrl,
+        token: params.token,
+        contextToken: params.contextToken,
+        ...(params.runId ? { runId: params.runId } : {}),
+      },
+    });
     logger.debug(`sendWeixinErrorNotice: sent to=${params.to}`);
   } catch (err) {
     params.errLog(`[weixin] sendWeixinErrorNotice failed to=${params.to}: ${String(err)}`);

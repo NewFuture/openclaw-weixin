@@ -60,9 +60,7 @@ export async function silkToWav(silkBuf: Buffer): Promise<Buffer | null> {
 
     logger.debug(`silkToWav: decoding ${silkBuf.length} bytes of SILK`);
     const result = await decode(silkBuf, SILK_SAMPLE_RATE);
-    logger.debug(
-      `silkToWav: decoded duration=${result.duration}ms pcmBytes=${result.data.byteLength}`,
-    );
+    logger.debug(`silkToWav: decoded duration=${result.duration}ms pcmBytes=${result.data.byteLength}`);
 
     const wav = pcmBytesToWav(result.data, SILK_SAMPLE_RATE);
     logger.debug(`silkToWav: WAV size=${wav.length}`);

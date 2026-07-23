@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { StreamingMarkdownFilter } from "./markdown-filter.js";
 
 /** Feed entire string at once (one-shot). */
@@ -72,7 +72,6 @@ describe("markdown filtering (migrated from markdownToPlainText)", () => {
 // ---------------------------------------------------------------------------
 
 describe("StreamingMarkdownFilter", () => {
-
   // ---- Plain text -----------------------------------------------------------
 
   describe("plain text passthrough", () => {
@@ -113,13 +112,11 @@ describe("StreamingMarkdownFilter", () => {
     });
 
     it("preserves markdown inside a code fence verbatim (one-shot)", () => {
-      expect(oneShot("```\n**bold** *italic* ~~strike~~\n```\n"))
-        .toBe("```\n**bold** *italic* ~~strike~~\n```\n");
+      expect(oneShot("```\n**bold** *italic* ~~strike~~\n```\n")).toBe("```\n**bold** *italic* ~~strike~~\n```\n");
     });
 
     it("handles multiple fenced blocks (one-shot)", () => {
-      expect(oneShot("```\nblock1\n```\ntext\n```\nblock2\n```\n"))
-        .toBe("```\nblock1\n```\ntext\n```\nblock2\n```\n");
+      expect(oneShot("```\nblock1\n```\ntext\n```\nblock2\n```\n")).toBe("```\nblock1\n```\ntext\n```\nblock2\n```\n");
     });
 
     it("code fence at end of input (one-shot)", () => {
@@ -434,12 +431,7 @@ describe("StreamingMarkdownFilter", () => {
     });
 
     it("preserves table with emoji content", () => {
-      const input = [
-        "| 微信表情 | Emoji |",
-        "|----------|-------|",
-        "| [微笑] | 😊 |",
-        "| [撇嘴] | 😣 |",
-      ].join("\n");
+      const input = ["| 微信表情 | Emoji |", "|----------|-------|", "| [微笑] | 😊 |", "| [撇嘴] | 😣 |"].join("\n");
       expect(oneShot(input)).toBe(input);
     });
 
@@ -506,29 +498,19 @@ describe("StreamingMarkdownFilter", () => {
 
   describe("combined patterns", () => {
     it("heading + bold + inline code", () => {
-      expectFilter(
-        "## **Title**\nUse `code` here.",
-        "## **Title**\nUse `code` here.",
-      );
+      expectFilter("## **Title**\nUse `code` here.", "## **Title**\nUse `code` here.");
     });
 
     it("blockquote + italic + strikethrough", () => {
-      expectFilter(
-        "> *italic* and ~~strike~~",
-        "> *italic* and ~~strike~~",
-      );
+      expectFilter("> *italic* and ~~strike~~", "> *italic* and ~~strike~~");
     });
 
     it("code fence + inline code + image (one-shot)", () => {
-      expect(oneShot("```\nfenced\n```\n`inline` ![img](url)"))
-        .toBe("```\nfenced\n```\n`inline` ");
+      expect(oneShot("```\nfenced\n```\n`inline` ![img](url)")).toBe("```\nfenced\n```\n`inline` ");
     });
 
     it("mixed bold and bold-italic (non-CJK)", () => {
-      expectFilter(
-        "**bold** then ***bold-italic*** then **bold2**",
-        "**bold** then ***bold-italic*** then **bold2**",
-      );
+      expectFilter("**bold** then ***bold-italic*** then **bold2**", "**bold** then ***bold-italic*** then **bold2**");
     });
 
     it("complex document", () => {
@@ -758,10 +740,7 @@ describe("StreamingMarkdownFilter", () => {
     });
 
     it("multiple images on same line", () => {
-      expectFilter(
-        "see ![a](u1) and ![b](u2) end",
-        "see  and  end",
-      );
+      expectFilter("see ![a](u1) and ![b](u2) end", "see  and  end");
     });
 
     it("bold inside code fence is not processed (one-shot)", () => {
@@ -774,10 +753,7 @@ describe("StreamingMarkdownFilter", () => {
     });
 
     it("alternating italic and bold (non-CJK)", () => {
-      expectFilter(
-        "*a* **b** *c* **d**",
-        "*a* **b** *c* **d**",
-      );
+      expectFilter("*a* **b** *c* **d**", "*a* **b** *c* **d**");
     });
 
     it("horizontal rule vs list item at SOL", () => {

@@ -1,6 +1,6 @@
+import { logger } from "../util/logger.js";
 import { decryptAesEcb } from "./aes-ecb.js";
 import { buildCdnDownloadUrl, ENABLE_CDN_URL_FALLBACK } from "./cdn-url.js";
-import { logger } from "../util/logger.js";
 
 /**
  * Download raw bytes from the CDN (no decryption).
@@ -10,11 +10,8 @@ async function fetchCdnBytes(url: string, label: string): Promise<Buffer> {
   try {
     res = await fetch(url);
   } catch (err) {
-    const cause =
-      (err as NodeJS.ErrnoException).cause ?? (err as NodeJS.ErrnoException).code ?? "(no cause)";
-    logger.error(
-      `${label}: fetch network error url=${url} err=${String(err)} cause=${String(cause)}`,
-    );
+    const cause = (err as NodeJS.ErrnoException).cause ?? (err as NodeJS.ErrnoException).code ?? "(no cause)";
+    logger.error(`${label}: fetch network error url=${url} err=${String(err)} cause=${String(cause)}`);
     throw err;
   }
   logger.debug(`${label}: response status=${res.status} ok=${res.ok}`);

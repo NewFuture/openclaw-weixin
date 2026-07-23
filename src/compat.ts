@@ -47,7 +47,10 @@ export function compareVersions(a: OpenClawVersion, b: OpenClawVersion): -1 | 0 
 export function isHostVersionSupported(hostVersion: string): boolean {
   const host = parseOpenClawVersion(hostVersion);
   if (!host) return false;
-  const min = parseOpenClawVersion(SUPPORTED_HOST_MIN)!;
+  const min = parseOpenClawVersion(SUPPORTED_HOST_MIN);
+  if (!min) {
+    throw new Error(`Invalid supported host version: ${SUPPORTED_HOST_MIN}`);
+  }
   return compareVersions(host, min) >= 0;
 }
 
@@ -59,9 +62,7 @@ export function isHostVersionSupported(hostVersion: string): boolean {
  */
 export function assertHostCompatibility(hostVersion: string | undefined): void {
   if (!hostVersion || hostVersion === "unknown") {
-    logger.warn(
-      `[compat] Could not determine host OpenClaw version; skipping compatibility check.`,
-    );
+    logger.warn(`[compat] Could not determine host OpenClaw version; skipping compatibility check.`);
     return;
   }
   if (isHostVersionSupported(hostVersion)) {
@@ -70,8 +71,8 @@ export function assertHostCompatibility(hostVersion: string | undefined): void {
   }
   throw new Error(
     `This version of openclaw-weixin requires OpenClaw >=${SUPPORTED_HOST_MIN}, ` +
-    `but found ${hostVersion}. ` +
-    `Please upgrade OpenClaw, then reinstall or update the community package:\n` +
-    `  openclaw plugins install npm:openclaw-weixin --force`,
+      `but found ${hostVersion}. ` +
+      `Please upgrade OpenClaw, then reinstall or update the community package:\n` +
+      `  openclaw plugins install npm:openclaw-weixin --force`,
   );
 }

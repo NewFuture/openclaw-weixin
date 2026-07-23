@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
-import path from "node:path";
 import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../util/logger.js", () => ({
   logger: {
@@ -42,9 +42,7 @@ describe("resolveFrameworkAllowFromPath", () => {
   it("returns correct path for a given accountId", async () => {
     const { resolveFrameworkAllowFromPath } = await loadModule();
     const result = resolveFrameworkAllowFromPath("test-account");
-    expect(result).toBe(
-      path.join(tmpDir, "credentials", "openclaw-weixin-test-account-allowFrom.json"),
-    );
+    expect(result).toBe(path.join(tmpDir, "credentials", "openclaw-weixin-test-account-allowFrom.json"));
   });
 
   it("respects OPENCLAW_OAUTH_DIR override", async () => {
@@ -65,8 +63,7 @@ describe("resolveFrameworkAllowFromPath", () => {
 
 describe("registerUserInFrameworkStore", () => {
   it("creates file and adds userId when file does not exist", async () => {
-    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } =
-      await loadModule();
+    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } = await loadModule();
     const result = await registerUserInFrameworkStore({
       accountId: "acc1",
       userId: "user-abc",
@@ -79,15 +76,10 @@ describe("registerUserInFrameworkStore", () => {
   });
 
   it("appends userId to existing allowFrom list", async () => {
-    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } =
-      await loadModule();
+    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } = await loadModule();
     const filePath = resolveFrameworkAllowFromPath("acc2");
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(
-      filePath,
-      JSON.stringify({ version: 1, allowFrom: ["existing-user"] }),
-      "utf-8",
-    );
+    fs.writeFileSync(filePath, JSON.stringify({ version: 1, allowFrom: ["existing-user"] }), "utf-8");
 
     const result = await registerUserInFrameworkStore({
       accountId: "acc2",
@@ -100,15 +92,10 @@ describe("registerUserInFrameworkStore", () => {
   });
 
   it("returns changed=false when userId already exists", async () => {
-    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } =
-      await loadModule();
+    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } = await loadModule();
     const filePath = resolveFrameworkAllowFromPath("acc3");
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(
-      filePath,
-      JSON.stringify({ version: 1, allowFrom: ["user-abc"] }),
-      "utf-8",
-    );
+    fs.writeFileSync(filePath, JSON.stringify({ version: 1, allowFrom: ["user-abc"] }), "utf-8");
 
     const result = await registerUserInFrameworkStore({
       accountId: "acc3",
@@ -130,8 +117,7 @@ describe("registerUserInFrameworkStore", () => {
   });
 
   it("trims userId before storing", async () => {
-    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } =
-      await loadModule();
+    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } = await loadModule();
     await registerUserInFrameworkStore({
       accountId: "acc5",
       userId: "  user-trimmed  ",
@@ -151,15 +137,17 @@ describe("registerUserInFrameworkStore", () => {
     });
 
     expect(mockWithFileLock).toHaveBeenCalledTimes(1);
-    const [lockPath, lockOpts] = mockWithFileLock.mock.calls[0]!;
+    const firstCall = mockWithFileLock.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    if (!firstCall) throw new Error("withFileLock was not called");
+    const [lockPath, lockOpts] = firstCall;
     expect(lockPath).toContain("openclaw-weixin-acc6-allowFrom.json");
     expect(lockOpts).toHaveProperty("retries");
     expect(lockOpts).toHaveProperty("stale");
   });
 
   it("handles corrupted file gracefully", async () => {
-    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } =
-      await loadModule();
+    const { registerUserInFrameworkStore, resolveFrameworkAllowFromPath } = await loadModule();
     const filePath = resolveFrameworkAllowFromPath("acc7");
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, "not-valid-json{{{", "utf-8");

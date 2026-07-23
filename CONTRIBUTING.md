@@ -23,10 +23,34 @@ Install the exact dependency versions recorded in the lockfile:
 npm ci
 ```
 
-Run the same type checking, coverage tests, and build used by CI:
+Read [AGENTS.md](./AGENTS.md) for repository invariants and
+[the architecture guide](./docs/architecture.md) for lifecycle and data flow.
+These rules apply whether a change is written manually or with coding-agent
+assistance.
+
+Run one affected suite while iterating:
+
+```shell
+npm run test:unit -- src/path/to/file.test.ts
+```
+
+Run the fast type, style, and unit-test gate:
+
+```shell
+npm run check:fast
+```
+
+Run the same formatting, linting, type checking, coverage tests, and build used
+by CI:
 
 ```shell
 npm run check
+```
+
+Apply repository formatting with:
+
+```shell
+npm run format
 ```
 
 Inspect the npm package contents when changing entry points, build output, or
@@ -49,3 +73,5 @@ npm run pack:check
 - Update both changelogs when a change affects users.
 - Remove credentials, account identifiers, QR codes, and private message
   content from tests, logs, screenshots, and issue descriptions.
+- Review and take responsibility for all submitted changes, including
+  AI-assisted changes.

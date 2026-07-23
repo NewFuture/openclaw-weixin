@@ -31,11 +31,7 @@ if (pluginManifest.version !== packageJson.version) {
 
 const npmArgs = ["pack", "--dry-run", "--json", "--ignore-scripts"];
 const npmExecPath = process.env.npm_execpath;
-const command = npmExecPath
-  ? process.execPath
-  : process.platform === "win32"
-    ? process.env.ComSpec
-    : "npm";
+const command = npmExecPath ? process.execPath : process.platform === "win32" ? process.env.ComSpec : "npm";
 const args = npmExecPath
   ? [npmExecPath, ...npmArgs]
   : process.platform === "win32"
@@ -58,14 +54,7 @@ try {
 }
 
 const files = new Set(report[0]?.files?.map((file) => file.path.replaceAll("\\", "/")) ?? []);
-for (const required of [
-  "package.json",
-  "LICENSE",
-  "README.md",
-  "openclaw.plugin.json",
-  "index.ts",
-  "dist/index.js",
-]) {
+for (const required of ["package.json", "LICENSE", "README.md", "openclaw.plugin.json", "index.ts", "dist/index.js"]) {
   if (!files.has(required)) {
     fail(`missing required file ${required}`);
   }

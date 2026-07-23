@@ -49,9 +49,7 @@ export class WeixinConfigManager {
             nextFetchAt: now + Math.random() * CONFIG_CACHE_TTL_MS,
             retryDelayMs: CONFIG_CACHE_INITIAL_RETRY_MS,
           });
-          this.log(
-            `[weixin] config ${entry?.everSucceeded ? "refreshed" : "cached"} for ${userId}`,
-          );
+          this.log(`[weixin] config ${entry?.everSucceeded ? "refreshed" : "cached"} for ${userId}`);
           fetchOk = true;
         }
       } catch (err) {

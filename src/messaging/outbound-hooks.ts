@@ -1,6 +1,6 @@
 import {
-  fireAndForgetHook,
   buildCanonicalSentMessageHookContext,
+  fireAndForgetHook,
   toPluginMessageContext,
   toPluginMessageSentEvent,
 } from "openclaw/plugin-sdk/hook-runtime";
@@ -77,12 +77,7 @@ export function emitWeixinMessageSent(params: {
     runId: params.runId,
   });
   fireAndForgetHook(
-    Promise.resolve(
-      hookRunner!.runMessageSent(
-        toPluginMessageSentEvent(canonical),
-        toPluginMessageContext(canonical),
-      ),
-    ),
+    Promise.resolve(hookRunner.runMessageSent(toPluginMessageSentEvent(canonical), toPluginMessageContext(canonical))),
     "weixin: message_sent plugin hook failed",
   );
 }

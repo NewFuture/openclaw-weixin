@@ -19,14 +19,7 @@ export function getSyncBufFilePath(accountId: string): string {
 
 /** Legacy single-account syncbuf (pre multi-account): `.openclaw-weixin-sync/default.json`. */
 function getLegacySyncBufDefaultJsonPath(): string {
-  return path.join(
-    resolveStateDir(),
-    "agents",
-    "default",
-    "sessions",
-    ".openclaw-weixin-sync",
-    "default.json",
-  );
+  return path.join(resolveStateDir(), "agents", "default", "sessions", ".openclaw-weixin-sync", "default.json");
 }
 
 export type SyncBufData = {

@@ -1,15 +1,15 @@
 import type { ChannelAccountSnapshot } from "openclaw/plugin-sdk/channel-contract";
 import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 
-import { getUpdates, classifyFetchError } from "../api/api.js";
-import { MessageItemType, type WeixinMessage } from "../api/types.js";
+import { classifyFetchError, getUpdates } from "../api/api.js";
 import { WeixinConfigManager } from "../api/config-cache.js";
-import { STALE_TOKEN_ERRCODE, pauseSession, getRemainingPauseMs } from "../api/session-guard.js";
+import { getRemainingPauseMs, pauseSession, STALE_TOKEN_ERRCODE } from "../api/session-guard.js";
+import { MessageItemType, type WeixinMessage } from "../api/types.js";
 import { setContextToken } from "../messaging/inbound.js";
 import { processOneMessage } from "../messaging/process-message.js";
 import { getSyncBufFilePath, loadGetUpdatesBuf, saveGetUpdatesBuf } from "../storage/sync-buf.js";
-import { logger } from "../util/logger.js";
 import type { Logger } from "../util/logger.js";
+import { logger } from "../util/logger.js";
 import { redactBody } from "../util/redact.js";
 
 const DEFAULT_LONG_POLL_TIMEOUT_MS = 35_000;
@@ -43,32 +43,20 @@ export type MonitorWeixinOpts = {
  * Runs until abort.
  */
 export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<void> {
-  const {
-    baseUrl,
-    cdnBaseUrl,
-    token,
-    accountId,
-    config,
-    channelRuntime,
-    abortSignal,
-    longPollTimeoutMs,
-    setStatus,
-  } = opts;
+  const { baseUrl, cdnBaseUrl, token, accountId, config, channelRuntime, abortSignal, longPollTimeoutMs, setStatus } =
+    opts;
   const log = opts.runtime?.log ?? (() => {});
   const errLog = opts.runtime?.error ?? ((m: string) => log(m));
   const aLog: Logger = logger.withAccount(accountId);
 
   if (!channelRuntime) {
-    const msg =
-      "channelRuntime missing on monitor opts; gateway must inject ChannelGatewayContext.channelRuntime";
+    const msg = "channelRuntime missing on monitor opts; gateway must inject ChannelGatewayContext.channelRuntime";
     aLog.error(msg);
     throw new Error(msg);
   }
 
   log(`weixin monitor started (${baseUrl}, account=${accountId})`);
-  aLog.info(
-    `Monitor started: baseUrl=${baseUrl} timeoutMs=${longPollTimeoutMs ?? DEFAULT_LONG_POLL_TIMEOUT_MS}`,
-  );
+  aLog.info(`Monitor started: baseUrl=${baseUrl} timeoutMs=${longPollTimeoutMs ?? DEFAULT_LONG_POLL_TIMEOUT_MS}`);
   const syncFilePath = getSyncBufFilePath(accountId);
   aLog.debug(`syncFilePath: ${syncFilePath}`);
 
@@ -84,10 +72,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
   }
 
   const configManager = new WeixinConfigManager({ baseUrl, token }, log);
-  const processInboundMessage = async (
-    full: WeixinMessage,
-    onReplyAdmitted: () => void,
-  ): Promise<void> => {
+  const processInboundMessage = async (full: WeixinMessage, onReplyAdmitted: () => void): Promise<void> => {
     if (abortSignal?.aborted) return;
     aLog.info(
       `inbound message: from=${full.from_user_id} types=${full.item_list?.map((i) => i.type).join(",") ?? "none"}`,
@@ -134,9 +119,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
           void processInboundMessage(full, releaseOnce)
             .catch((err) => {
               errLog(`weixin inbound message failed: ${String(err)}`);
-              aLog.error(
-                `Inbound message failed: ${String(err)}, stack=${(err as Error).stack ?? "none"}`,
-              );
+              aLog.error(`Inbound message failed: ${String(err)}, stack=${(err as Error).stack ?? "none"}`);
             })
             .finally(releaseOnce);
         }),
@@ -153,9 +136,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
 
   while (!abortSignal?.aborted) {
     try {
-      aLog.debug(
-        `getUpdates: get_updates_buf=${getUpdatesBuf.substring(0, 50)}..., timeoutMs=${nextTimeoutMs}`,
-      );
+      aLog.debug(`getUpdates: get_updates_buf=${getUpdatesBuf.substring(0, 50)}..., timeoutMs=${nextTimeoutMs}`);
       const resp = await getUpdates({
         baseUrl,
         token,
@@ -174,11 +155,9 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
         aLog.debug(`Updated next poll timeout: ${nextTimeoutMs}ms`);
       }
       const isApiError =
-        (resp.ret !== undefined && resp.ret !== 0) ||
-        (resp.errcode !== undefined && resp.errcode !== 0);
+        (resp.ret !== undefined && resp.ret !== 0) || (resp.errcode !== undefined && resp.errcode !== 0);
       if (isApiError) {
-        const isStaleToken =
-          resp.errcode === STALE_TOKEN_ERRCODE || resp.ret === STALE_TOKEN_ERRCODE;
+        const isStaleToken = resp.errcode === STALE_TOKEN_ERRCODE || resp.ret === STALE_TOKEN_ERRCODE;
 
         if (isStaleToken) {
           pauseSession(accountId);
@@ -199,12 +178,8 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
           `getUpdates failed: ret=${resp.ret} errcode=${resp.errcode} errmsg=${resp.errmsg} response=${redactBody(JSON.stringify(resp))}`,
         );
         if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-          errLog(
-            `weixin getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`,
-          );
-          aLog.error(
-            `getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`,
-          );
+          errLog(`weixin getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);
+          aLog.error(`getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);
           consecutiveFailures = 0;
           await sleep(BACKOFF_DELAY_MS, abortSignal);
         } else {
@@ -235,14 +210,12 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
       errLog(
         `weixin getUpdates error (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}): ${String(err)} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""}`,
       );
-      aLog.error(`getUpdates error: ${String(err)}, type=${classified.type} code=${classified.code ?? "none"}, stack=${(err as Error).stack}`);
+      aLog.error(
+        `getUpdates error: ${String(err)}, type=${classified.type} code=${classified.code ?? "none"}, stack=${(err as Error).stack}`,
+      );
       if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        errLog(
-          `weixin getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`,
-        );
-        aLog.error(
-          `getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`,
-        );
+        errLog(`weixin getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);
+        aLog.error(`getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);
         consecutiveFailures = 0;
         await sleep(30_000, abortSignal);
       } else {
