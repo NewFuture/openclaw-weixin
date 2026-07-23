@@ -71,7 +71,7 @@ export function assertHostCompatibility(hostVersion: string | undefined): void {
   throw new Error(
     `This version of openclaw-weixin requires OpenClaw >=${SUPPORTED_HOST_MIN}, ` +
     `but found ${hostVersion}. ` +
-    `Please upgrade OpenClaw before installing this community package:\n` +
+    `Please upgrade OpenClaw, then reinstall or update the community package:\n` +
     `  openclaw plugins install npm:openclaw-weixin --force`,
   );
 }
