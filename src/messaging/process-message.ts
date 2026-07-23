@@ -24,7 +24,6 @@ import { isDebugMode } from "./debug-mode.js";
 import { sendWeixinErrorNotice } from "./error-notice.js";
 import { applyWeixinMessageSendingHook, emitWeixinMessageSent } from "./outbound-hooks.js";
 import {
-  setContextToken,
   weixinMessageToMsgContext,
   getContextTokenFromMsgContext,
   isMediaItem,
@@ -38,6 +37,16 @@ import { handleSlashCommand } from "./slash-commands.js";
 
 const MEDIA_OUTBOUND_TEMP_DIR = path.join(resolvePreferredOpenClawTmpDir(), "weixin/media/outbound-temp");
 
+type DispatchReplyOptions = NonNullable<
+  Parameters<PluginRuntime["channel"]["reply"]["dispatchReplyFromConfig"]>[0]["replyOptions"]
+> & {
+  queuedFollowupLifecycle?: {
+    onEnqueued?: () => void;
+    onComplete?: () => void;
+  };
+  onTurnAdopted?: () => void | Promise<void>;
+};
+
 /** Dependencies for processOneMessage, injected by the monitor loop. */
 export type ProcessMessageDeps = {
   accountId: string;
@@ -49,6 +58,7 @@ export type ProcessMessageDeps = {
   typingTicket?: string;
   log: (msg: string) => void;
   errLog: (m: string) => void;
+  onReplyAdmitted?: () => void;
 };
 
 /** Extract text body from item_list (for slash command detection). */
@@ -166,7 +176,7 @@ export async function processOneMessage(
   const ctx = weixinMessageToMsgContext(full, deps.accountId, mediaOpts);
 
   // --- Framework command authorization ---
-  const rawBody = ctx.Body?.trim() ?? "";
+  const rawBody = textBody.trim() || (ctx.Body?.trim() ?? "");
   ctx.CommandBody = rawBody;
 
   const senderId = full.from_user_id ?? "";
@@ -245,7 +255,10 @@ export async function processOneMessage(
     agentId: route.agentId,
   });
   const finalized = deps.channelRuntime.reply.finalizeInboundContext(
-    ctx as Parameters<typeof deps.channelRuntime.reply.finalizeInboundContext>[0],
+    {
+      ...ctx,
+      BodyForAgent: ctx.Body,
+    } as Parameters<typeof deps.channelRuntime.reply.finalizeInboundContext>[0],
   );
 
   logger.info(
@@ -270,9 +283,6 @@ export async function processOneMessage(
   );
 
   const contextToken = getContextTokenFromMsgContext(ctx);
-  if (contextToken) {
-    setContextToken(deps.accountId, full.from_user_id ?? "", contextToken);
-  }
   const runId = randomUUID();
   const replyProgressSender = resolveReplyProgressMessagesEnabled(deps.config)
     ? new WeixinReplyProgressSender({
@@ -446,6 +456,23 @@ export async function processOneMessage(
       },
     });
 
+  let queuedFollowup = false;
+  const dispatchReplyOptions: DispatchReplyOptions = {
+    ...replyOptions,
+    ...(replyProgressSender?.replyOptions ?? {}),
+    // Newer hosts use this marker for active-run admission; older hosts ignore it.
+    queuedFollowupLifecycle: {
+      onEnqueued: () => {
+        queuedFollowup = true;
+        deps.onReplyAdmitted?.();
+      },
+      onComplete: () => void replyProgressSender?.finalize(),
+    },
+    onAgentRunStart: () => deps.onReplyAdmitted?.(),
+    onTurnAdopted: deps.onReplyAdmitted,
+    disableBlockStreaming: true,
+  };
+
   logger.debug(`dispatchReplyFromConfig: starting agentId=${route.agentId ?? "(none)"}`);
   try {
     await deps.channelRuntime.reply.withReplyDispatcher({
@@ -455,11 +482,7 @@ export async function processOneMessage(
           ctx: finalized,
           cfg: deps.config,
           dispatcher,
-          replyOptions: {
-            ...replyOptions,
-            ...(replyProgressSender?.replyOptions ?? {}),
-            disableBlockStreaming: true,
-          },
+          replyOptions: dispatchReplyOptions,
         }),
     });
     logger.debug(`dispatchReplyFromConfig: done agentId=${route.agentId ?? "(none)"}`);
@@ -470,7 +493,7 @@ export async function processOneMessage(
     throw err;
   } finally {
     markDispatchIdle();
-    await replyProgressSender?.finalize();
+    if (!queuedFollowup) await replyProgressSender?.finalize();
 
     logger.info(
       `debug-check: accountId=${deps.accountId} debug=${String(debug)} hasContextToken=${Boolean(contextToken)}`,
