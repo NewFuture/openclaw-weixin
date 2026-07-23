@@ -8,7 +8,7 @@
 
 import { logger } from "./util/logger.js";
 
-export const SUPPORTED_HOST_MIN = "2026.3.22";
+export const SUPPORTED_HOST_MIN = "2026.5.12";
 
 export interface OpenClawVersion {
   year: number;
@@ -71,7 +71,7 @@ export function assertHostCompatibility(hostVersion: string | undefined): void {
   throw new Error(
     `This version of openclaw-weixin requires OpenClaw >=${SUPPORTED_HOST_MIN}, ` +
     `but found ${hostVersion}. ` +
-    `Please upgrade OpenClaw, or install the compatible track for older hosts:\n` +
-    `  npx @tencent-weixin/openclaw-weixin-cli install`,
+    `Please upgrade OpenClaw, then reinstall or update the community package:\n` +
+    `  openclaw plugins install npm:openclaw-weixin --force`,
   );
 }

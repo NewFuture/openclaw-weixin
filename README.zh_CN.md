@@ -1,59 +1,70 @@
-# 微信
+# openclaw-weixin
 
 [English](./README.md)
 
-OpenClaw 的微信渠道插件，支持通过扫码完成登录授权。
+这是 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin)
+的社区维护发行版，为 OpenClaw 提供支持扫码登录的微信渠道。
+
+> 社区 npm 包名、插件 ID 和 channel ID 均为 `openclaw-weixin`。现有的
+> `channels.openclaw-weixin`、
+> `plugins.entries.openclaw-weixin` 和
+> `~/.openclaw/openclaw-weixin/` 数据继续使用原 ID。
 
 ## 兼容性
 
-| 插件版本 | OpenClaw 版本            | npm dist-tag | 状态   |
-|---------|--------------------------|--------------|--------|
-| 2.0.x   | >=2026.3.22              | `latest`     | 活跃   |
-| 1.0.x   | >=2026.1.0 <2026.3.22    | `legacy`     | 维护中 |
+| 要求 | 最低版本 |
+|------|----------|
+| OpenClaw | `2026.5.12` |
+| Node.js | `22` |
 
-> 插件在启动时会检查宿主版本，如果运行的 OpenClaw 版本超出支持范围，插件将拒绝加载。
+插件会在启动时检查 OpenClaw 宿主版本，低于最低版本时拒绝加载。
 
 ## 前提条件
 
-已安装 [OpenClaw](https://docs.openclaw.ai/install)（需要 `openclaw` CLI 可用）。
+已安装 [OpenClaw](https://docs.openclaw.ai/install)，且 `openclaw` CLI 可用。
 
 查看版本：`openclaw --version`
 
-## 一键安装
+## 安装
 
 ```bash
-npx -y @tencent-weixin/openclaw-weixin-cli install
-```
-
-## 手动安装
-
-如果一键安装不适用，可以按以下步骤手动操作：
-
-### 1. 安装插件
-
-```bash
-openclaw plugins install "@tencent-weixin/openclaw-weixin"
-```
-
-### 2. 启用插件
-
-```bash
+openclaw plugins install npm:openclaw-weixin
 openclaw config set plugins.entries.openclaw-weixin.enabled true
-```
-
-### 3. 扫码登录
-
-```bash
 openclaw channels login --channel openclaw-weixin
-```
-
-终端会显示一个二维码，用手机扫码并在手机上确认授权。确认后，登录凭证会自动保存到本地，无需额外操作。
-
-### 4. 重启 gateway
-
-```bash
 openclaw gateway restart
 ```
+
+终端会显示二维码，用手机扫码并确认授权；凭据会自动保存。重启后检查：
+
+```bash
+openclaw plugins list
+openclaw channels status --probe
+```
+
+## 从腾讯官方包原位切换
+
+请从 `@tencent-weixin/openclaw-weixin` 原位切换，**不要先卸载腾讯官方包**。
+新版 OpenClaw 在卸载插件时会删除该插件拥有的 channel 配置。
+
+```bash
+openclaw plugins install npm:openclaw-weixin --force
+openclaw gateway restart
+openclaw plugins list
+openclaw channels status --probe
+```
+
+强制安装会替换拥有同一个内部 `openclaw-weixin` 插件/channel ID 的包。新旧包
+不能同时启用。由于内部 ID 与状态目录未改变，原有 channel 配置和登录凭据通常
+会保留。
+
+## 安装限制
+
+- 此社区 npm 包需通过 CLI 安装；OpenClaw Control UI 不能安装任意 npm、git
+  或本地路径来源的插件。
+- Nix 模式（`OPENCLAW_NIX_MODE=1`）会禁止插件安装、更新、卸载、启用和停用
+  命令；请改动 Nix 配置源后重新构建。
+- OpenClaw 安装插件依赖时会禁用生命周期脚本，因此本包直接携带编译后的
+  `dist/index.js`，无需在用户机器上构建。
 
 ## 添加更多微信账号
 
@@ -317,13 +328,16 @@ openclaw config set session.dmScope per-account-channel-peer
 
 ## 卸载
 
+如果以后可能重装，请先备份 `~/.openclaw/openclaw.json`：新版 OpenClaw
+卸载时会删除插件条目及其拥有的 `channels.openclaw-weixin` 配置。
+
 ```bash
-openclaw plugins uninstall @tencent-weixin/openclaw-weixin
+openclaw plugins uninstall openclaw-weixin
 ```
 
 ## 故障排查
 
-### "requires OpenClaw >=2026.3.22" 报错
+### "requires OpenClaw >=2026.5.12" 报错
 
 你的 OpenClaw 版本太旧，不兼容当前插件版本。检查版本：
 
@@ -331,11 +345,7 @@ openclaw plugins uninstall @tencent-weixin/openclaw-weixin
 openclaw --version
 ```
 
-安装旧版插件线：
-
-```bash
-openclaw plugins install @tencent-weixin/openclaw-weixin@legacy
-```
+请先升级 OpenClaw。社区包不发布旧宿主兼容版本线。
 
 ### Channel 显示 "OK" 但未连接
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import os from "node:os";
+import path from "node:path";
 import { resolveStateDir } from "./state-dir.js";
 
 describe("resolveStateDir", () => {
@@ -28,7 +29,7 @@ describe("resolveStateDir", () => {
   it("falls back to ~/.openclaw when neither env var is set", () => {
     delete process.env.OPENCLAW_STATE_DIR;
     delete process.env.CLAWDBOT_STATE_DIR;
-    const expected = `${os.homedir()}/.openclaw`;
+    const expected = path.join(os.homedir(), ".openclaw");
     expect(resolveStateDir()).toBe(expected);
   });
 

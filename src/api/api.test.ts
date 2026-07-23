@@ -372,7 +372,7 @@ describe("readPackageJsonFromDir", () => {
   it("finds package.json from compiled layout (dist/src/api/)", () => {
     // Reproduces the publish-time layout: source compiles to dist/src/...
     writePkg(tmpRoot, {
-      name: "@tencent-weixin/openclaw-weixin",
+      name: "openclaw-weixin",
       version: "2.4.2",
       ilink_appid: "bot",
     });
@@ -382,7 +382,7 @@ describe("readPackageJsonFromDir", () => {
     const result = readPackageJsonFromDir(startDir);
     expect(result.ilink_appid).toBe("bot");
     expect(result.version).toBe("2.4.2");
-    expect(result.name).toBe("@tencent-weixin/openclaw-weixin");
+    expect(result.name).toBe("openclaw-weixin");
   });
 
   it("finds package.json from dev layout (src/api/)", () => {

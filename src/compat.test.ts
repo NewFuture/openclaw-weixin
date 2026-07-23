@@ -46,15 +46,15 @@ describe("isHostVersionSupported", () => {
   });
 
   it("rejects the day before the minimum", () => {
-    expect(isHostVersionSupported("2026.3.21")).toBe(false);
+    expect(isHostVersionSupported("2026.5.11")).toBe(false);
   });
 
   it("accepts a version above the minimum", () => {
-    expect(isHostVersionSupported("2026.3.30")).toBe(true);
+    expect(isHostVersionSupported("2026.5.13")).toBe(true);
   });
 
   it("accepts a future version", () => {
-    expect(isHostVersionSupported("2026.4.0")).toBe(true);
+    expect(isHostVersionSupported("2026.6.0")).toBe(true);
     expect(isHostVersionSupported("2027.1.1")).toBe(true);
   });
 
@@ -65,7 +65,7 @@ describe("isHostVersionSupported", () => {
 
 describe("assertHostCompatibility", () => {
   it("does not throw for a supported version", () => {
-    expect(() => assertHostCompatibility("2026.3.22")).not.toThrow();
+    expect(() => assertHostCompatibility("2026.5.12")).not.toThrow();
   });
 
   it("does not throw when version is undefined (graceful skip)", () => {
@@ -75,6 +75,12 @@ describe("assertHostCompatibility", () => {
   it("throws for an unsupported version with a helpful message", () => {
     expect(() => assertHostCompatibility("2026.1.5")).toThrowError(
       new RegExp(`This version of openclaw-weixin requires.*${SUPPORTED_HOST_MIN}`),
+    );
+  });
+
+  it("points unsupported hosts to the community package", () => {
+    expect(() => assertHostCompatibility("2026.5.11")).toThrowError(
+      /openclaw plugins install npm:openclaw-weixin --force/,
     );
   });
 });

@@ -1,5 +1,11 @@
 # Contributing
 
+This repository is the community-maintained distribution of
+[Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin).
+Contributions should preserve the `openclaw-weixin` plugin/channel id and its
+existing config and state paths unless a separately planned breaking migration
+is approved.
+
 ## Prerequisites
 
 - Node.js 24 or newer
@@ -28,6 +34,12 @@ package metadata:
 
 ```shell
 npm pack --dry-run --ignore-scripts
+```
+
+The repository's stricter package contract check is:
+
+```shell
+npm run pack:check
 ```
 
 ## Pull requests
