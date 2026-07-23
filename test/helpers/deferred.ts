@@ -1,6 +1,8 @@
+type NoValue = ReturnType<() => void>;
+
 export type Deferred<T = void> = {
   promise: Promise<T>;
-  resolve: (value: T) => void;
+  resolve: (...args: [T] extends [NoValue] ? [] : [value: T]) => void;
   reject: (reason?: unknown) => void;
 };
 
@@ -17,7 +19,7 @@ export function createDeferred<T = void>(): Deferred<T> {
   });
   return {
     promise,
-    resolve: (value: T) => resolvePromise(value),
+    resolve: (...args) => resolvePromise(args[0] as T),
     reject: rejectPromise,
   };
 }
