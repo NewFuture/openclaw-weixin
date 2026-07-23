@@ -1,12 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSendMessageItemWeixin } = vi.hoisted(() => ({
+const { mockLoggerWarn, mockSendMessageItemWeixin } = vi.hoisted(() => ({
+  mockLoggerWarn: vi.fn(),
   mockSendMessageItemWeixin: vi.fn(),
 }));
 
 vi.mock("../util/logger.js", () => ({
   logger: {
-    warn: vi.fn(),
+    warn: mockLoggerWarn,
   },
 }));
 
@@ -22,6 +23,10 @@ describe("WeixinReplyProgressSender", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSendMessageItemWeixin.mockResolvedValue({ messageId: "msg-1" });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("sends tool start and result messages from item lifecycle events", async () => {
@@ -108,5 +113,88 @@ describe("WeixinReplyProgressSender", () => {
         status: "failed",
       },
     });
+  });
+
+  it("uses fallback metadata and normalizes blocked and unknown statuses", async () => {
+    const sender = new WeixinReplyProgressSender({
+      runId: "run-1",
+      to: "user-1",
+      accountId: "account-1",
+      opts: { baseUrl: "https://api.example.com" },
+    });
+
+    sender.replyOptions.onItemEvent({
+      kind: "tool",
+      phase: "end",
+      status: "blocked",
+    });
+    sender.replyOptions.onItemEvent({
+      kind: "tool",
+      name: " ",
+      title: " ",
+      phase: "end",
+    });
+
+    await sender.finalize();
+
+    expect(mockSendMessageItemWeixin).toHaveBeenCalledTimes(2);
+    expect(mockSendMessageItemWeixin.mock.calls[0][0].item).toMatchObject({
+      tool_call_result_item: {
+        tool_name: "tool",
+        tool_call_id: undefined,
+        status: "blocked",
+      },
+    });
+    expect(mockSendMessageItemWeixin.mock.calls[1][0].item).toMatchObject({
+      tool_call_result_item: {
+        tool_name: "tool",
+        tool_call_id: undefined,
+        status: "unknown",
+      },
+    });
+  });
+
+  it("ignores unrelated item events", async () => {
+    const sender = new WeixinReplyProgressSender({
+      runId: "run-1",
+      to: "user-1",
+      accountId: "account-1",
+      opts: { baseUrl: "https://api.example.com" },
+    });
+
+    sender.replyOptions.onItemEvent({ kind: "message", phase: "start" });
+    sender.replyOptions.onItemEvent({ kind: "tool", phase: "update" });
+
+    await sender.finalize();
+
+    expect(mockSendMessageItemWeixin).not.toHaveBeenCalled();
+  });
+
+  it("logs send failures and ignores events after finalization", async () => {
+    mockSendMessageItemWeixin.mockRejectedValueOnce(new Error("send failed"));
+    const sender = new WeixinReplyProgressSender({
+      runId: "run-1",
+      to: "user-1",
+      accountId: "account-1",
+      opts: { baseUrl: "https://api.example.com" },
+    });
+
+    sender.replyOptions.onItemEvent({
+      kind: "tool",
+      name: "read",
+      phase: "start",
+    });
+    await sender.finalize();
+    sender.replyOptions.onItemEvent({
+      kind: "tool",
+      name: "write",
+      phase: "start",
+    });
+    await sender.finalize();
+
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.stringContaining("sendToolCallStartMessage: failed"),
+    );
+    expect(mockSendMessageItemWeixin).toHaveBeenCalledOnce();
   });
 });

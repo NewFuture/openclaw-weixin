@@ -22,6 +22,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
+    "check": "npm run typecheck && npm test && npm run build",
     "prepublishOnly": "npm run typecheck && npm run build"
   },
   "engines": {

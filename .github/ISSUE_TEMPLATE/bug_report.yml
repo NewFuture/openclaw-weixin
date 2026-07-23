@@ -1,0 +1,65 @@
+name: 问题反馈 / Bug Report
+description: 反馈可稳定复现的插件问题
+title: "[问题]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题。提交前请移除凭据、账号标识、二维码和私聊内容等敏感信息。
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 插件版本
+      placeholder: "2.4.6"
+    validations:
+      required: true
+  - type: input
+    id: openclaw-version
+    attributes:
+      label: OpenClaw 版本
+      placeholder: "2026.5.12"
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js 版本
+      placeholder: "22.x 或 24.x"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: 操作系统
+      placeholder: "例如：Windows 11、macOS 15、Ubuntu 24.04"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请提供能够稳定复现问题的最简步骤。
+      placeholder: |
+        1. 配置……
+        2. 执行……
+        3. 观察到……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志
+      description: 粘贴日志前请移除或遮盖所有敏感信息。
+      render: shell
