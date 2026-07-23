@@ -2,11 +2,12 @@
 
 ## Prerequisites
 
-- Node.js 22 or newer
+- Node.js 24 or newer
 - npm
 
-Use the Node.js version in `.nvmrc` when you need to test against the minimum
-supported runtime.
+Use the Node.js version in `.nvmrc` for the recommended development
+environment. The published package remains compatible with Node.js 22, and CI
+validates both Node.js 22 and 24.
 
 ## Development
 
