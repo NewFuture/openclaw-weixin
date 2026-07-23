@@ -1,60 +1,78 @@
-# WeChat
+# openclaw-wechat
 
 [简体中文](./README.zh_CN.md)
 
-OpenClaw's WeChat channel plugin, supporting login authorization via QR code scanning.
+Community-maintained distribution of
+[Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin), providing
+OpenClaw's WeChat channel with QR-code login.
+
+> The npm package is `openclaw-wechat`, but the plugin id and channel id remain
+> `openclaw-weixin` for compatibility. Existing
+> `channels.openclaw-weixin`, `plugins.entries.openclaw-weixin`, and
+> `~/.openclaw/openclaw-weixin/` data continue to use that id.
 
 ## Compatibility
 
-| Plugin Version | OpenClaw Version       | npm dist-tag | Status      |
-|---------------|------------------------|--------------|-------------|
-| 2.0.x         | >=2026.3.22            | `latest`     | Active      |
-| 1.0.x         | >=2026.1.0 <2026.3.22  | `legacy`     | Maintenance |
+| Requirement | Minimum |
+|-------------|---------|
+| OpenClaw | `2026.5.12` |
+| Node.js | `22` |
 
-> The plugin checks the host version at startup and will refuse to load if the
-> running OpenClaw version is outside the supported range.
+The plugin checks the OpenClaw host version at startup and refuses to load on
+older hosts.
 
 ## Prerequisites
 
-[OpenClaw](https://docs.openclaw.ai/install) must be installed (the `openclaw` CLI needs to be available).
+[OpenClaw](https://docs.openclaw.ai/install) must be installed and the
+`openclaw` CLI must be available.
 
 Check your version: `openclaw --version`
 
-## Quick Install
+## Install
 
 ```bash
-npx -y @tencent-weixin/openclaw-weixin-cli install
-```
-
-## Manual Installation
-
-If the quick install doesn't work, follow these steps manually:
-
-### 1. Install the plugin
-
-```bash
-openclaw plugins install "@tencent-weixin/openclaw-weixin"
-```
-
-### 2. Enable the plugin
-
-```bash
+openclaw plugins install npm:openclaw-wechat
 openclaw config set plugins.entries.openclaw-weixin.enabled true
-```
-
-### 3. QR code login
-
-```bash
 openclaw channels login --channel openclaw-weixin
-```
-
-A QR code will appear in the terminal. Scan it with your phone and confirm the authorization. Once confirmed, the login credentials will be saved locally automatically — no further action is needed.
-
-### 4. Restart the gateway
-
-```bash
 openclaw gateway restart
 ```
+
+A QR code appears in the terminal. Scan it with your phone and confirm the
+authorization. Credentials are saved locally. Verify the installation after the
+restart:
+
+```bash
+openclaw plugins list
+openclaw channels status --probe
+```
+
+## Switch from Tencent's package
+
+Switch in place; **do not uninstall the Tencent package first**. Current
+OpenClaw uninstall behavior removes channel configuration owned by the plugin.
+
+```bash
+openclaw plugins install npm:openclaw-wechat --force
+openclaw gateway restart
+openclaw plugins list
+openclaw channels status --probe
+```
+
+The forced install replaces the package that owns the same internal
+`openclaw-weixin` plugin/channel id. The old and community packages must not be
+enabled at the same time. Because the internal id and state paths are unchanged,
+channel configuration and login credentials are normally retained.
+
+## Installation limitations
+
+- Use the CLI for this community npm package. OpenClaw's Control UI does not
+  install arbitrary npm, git, or local-path plugin sources.
+- In Nix mode (`OPENCLAW_NIX_MODE=1`), plugin install, update, uninstall,
+  enable, and disable commands are intentionally disabled. Add the package and
+  config to the Nix source, then rebuild instead.
+- OpenClaw installs plugin dependencies with lifecycle scripts disabled. This
+  package therefore ships its compiled `dist/index.js` runtime and does not
+  build on the user's machine.
 
 ## Adding More WeChat Accounts
 
@@ -321,13 +339,17 @@ All media types (image/voice/file/video) are transferred via CDN using AES-128-E
 
 ## Uninstall
 
+Back up `~/.openclaw/openclaw.json` first if you may want to reinstall: current
+OpenClaw versions remove the plugin entry and owned
+`channels.openclaw-weixin` configuration during uninstall.
+
 ```bash
-openclaw plugins uninstall @tencent-weixin/openclaw-weixin
+openclaw plugins uninstall openclaw-weixin
 ```
 
 ## Troubleshooting
 
-### "requires OpenClaw >=2026.3.22" error
+### "requires OpenClaw >=2026.5.12" error
 
 Your OpenClaw version is too old for this plugin version. Check with:
 
@@ -335,11 +357,8 @@ Your OpenClaw version is too old for this plugin version. Check with:
 openclaw --version
 ```
 
-Install the legacy plugin line instead:
-
-```bash
-openclaw plugins install @tencent-weixin/openclaw-weixin@legacy
-```
+Upgrade OpenClaw before installing this package. The community package does not
+publish a legacy compatibility line.
 
 ### Channel shows "OK" but doesn't connect
 

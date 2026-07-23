@@ -1,21 +1,37 @@
 {
-  "name": "@tencent-weixin/openclaw-weixin",
+  "name": "openclaw-wechat",
   "version": "2.4.6",
-  "description": "OpenClaw Weixin channel",
+  "description": "Community-maintained OpenClaw WeChat channel plugin",
   "license": "MIT",
   "author": "Tencent",
+  "contributors": [
+    "NewFuture and openclaw-wechat contributors"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NewFuture/openclaw-wechat.git"
+  },
+  "homepage": "https://github.com/NewFuture/openclaw-wechat#readme",
+  "bugs": {
+    "url": "https://github.com/NewFuture/openclaw-wechat/issues"
+  },
+  "keywords": [
+    "openclaw",
+    "wechat",
+    "weixin",
+    "channel",
+    "plugin"
+  ],
   "type": "module",
   "files": [
-    "src/",
-    "!src/**/*.test.ts",
-    "!src/**/node_modules/",
     "index.ts",
     "openclaw.plugin.json",
     "dist/",
     "README.md",
     "README.zh_CN.md",
     "CHANGELOG.md",
-    "CHANGELOG.zh_CN.md"
+    "CHANGELOG.zh_CN.md",
+    "LICENSE"
   ],
   "scripts": {
     "test": "vitest run --coverage",
@@ -23,7 +39,9 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
     "check": "npm run typecheck && npm test && npm run build",
-    "prepublishOnly": "npm run typecheck && npm run build"
+    "pack:check": "node scripts/check-package.mjs",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test"
   },
   "engines": {
     "node": ">=22"
@@ -59,10 +77,14 @@
       "order": 75
     },
     "install": {
-      "npmSpec": "@tencent-weixin/openclaw-weixin",
+      "npmSpec": "openclaw-wechat",
       "defaultChoice": "npm",
       "minHostVersion": ">=2026.5.12"
     }
   },
-  "ilink_appid": "bot"
+  "ilink_appid": "bot",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
 }

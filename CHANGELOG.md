@@ -4,6 +4,19 @@
 
 This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
+## [2.4.6] - 2026-07-23
+
+### Changed
+
+- Prepared the first community-maintained npm distribution as
+  `openclaw-wechat`, derived from Tencent's `openclaw-weixin`.
+- Preserved the internal `openclaw-weixin` plugin/channel id, configuration
+  keys, and state paths for in-place migration.
+- Added community repository metadata, package-content checks, and an
+  npm Trusted Publishing workflow.
+- Aligned the runtime compatibility guard and documentation with OpenClaw
+  `>=2026.5.12` and Node.js `>=22`.
+
 ## [2.4.5] - 2026-06-22
 
 ### Added
