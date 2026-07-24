@@ -61,7 +61,7 @@ export function createChannelRuntimeHarness() {
   const channelRuntime = {
     commands: {
       resolveCommandAuthorizedFromAuthorizers:
-        vi.fn<ChannelRuntime["commands"]["resolveCommandAuthorizedFromAuthorizers"]>(),
+        vi.fn<ChannelRuntime["commands"]["resolveCommandAuthorizedFromAuthorizers"]>(() => false),
       shouldComputeCommandAuthorized: vi.fn<ChannelRuntime["commands"]["shouldComputeCommandAuthorized"]>(),
     },
     routing: { resolveAgentRoute },
