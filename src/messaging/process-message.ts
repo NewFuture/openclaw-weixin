@@ -43,11 +43,26 @@ type DispatchReplyOptions = NonNullable<
   onTurnAdopted?: () => void | Promise<void>;
 };
 
+export type WeixinChannelRuntime = {
+  commands: Parameters<typeof resolveSenderCommandAuthorizationWithRuntime>[0]["runtime"];
+  media: Pick<PluginRuntime["channel"]["media"], "saveMediaBuffer">;
+  reply: Pick<
+    PluginRuntime["channel"]["reply"],
+    | "createReplyDispatcherWithTyping"
+    | "dispatchReplyFromConfig"
+    | "finalizeInboundContext"
+    | "resolveHumanDelayConfig"
+    | "withReplyDispatcher"
+  >;
+  routing: Pick<PluginRuntime["channel"]["routing"], "resolveAgentRoute">;
+  session: Pick<PluginRuntime["channel"]["session"], "recordInboundSession" | "resolveStorePath">;
+};
+
 /** Dependencies for processOneMessage, injected by the monitor loop. */
 export type ProcessMessageDeps = {
   accountId: string;
   config: import("openclaw/plugin-sdk/core").OpenClawConfig;
-  channelRuntime: PluginRuntime["channel"];
+  channelRuntime: WeixinChannelRuntime;
   baseUrl: string;
   cdnBaseUrl: string;
   token?: string;
