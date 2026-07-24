@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "openclaw/plugin-sdk/zod";
 
 import { CDN_BASE_URL, DEFAULT_BASE_URL } from "../auth/accounts.js";
 
