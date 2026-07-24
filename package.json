@@ -65,7 +65,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.4",
     "@vitest/coverage-v8": "^4.1.10",
-    "openclaw": "2026.5.12",
+    "openclaw": "2026.6.5",
     "silk-wasm": "^3.7.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
