@@ -56,8 +56,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "qrcode-terminal": "0.12.0",
-    "zod": "^4.3.6"
+    "qrcode-terminal": "0.12.0"
   },
   "peerDependencies": {
     "openclaw": ">=2026.5.12"
