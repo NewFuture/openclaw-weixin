@@ -1,12 +1,11 @@
 import type { ChannelAccountSnapshot } from "openclaw/plugin-sdk/channel-contract";
-import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 
 import { classifyFetchError, getUpdates } from "../api/api.js";
 import { WeixinConfigManager } from "../api/config-cache.js";
 import { getRemainingPauseMs, pauseSession, STALE_TOKEN_ERRCODE } from "../api/session-guard.js";
 import { MessageItemType, type WeixinMessage } from "../api/types.js";
 import { setContextToken } from "../messaging/inbound.js";
-import { processOneMessage } from "../messaging/process-message.js";
+import { processOneMessage, type WeixinChannelRuntime } from "../messaging/process-message.js";
 import { getSyncBufFilePath, loadGetUpdatesBuf, saveGetUpdatesBuf } from "../storage/sync-buf.js";
 import type { Logger } from "../util/logger.js";
 import { logger } from "../util/logger.js";
@@ -31,7 +30,7 @@ export type MonitorWeixinOpts = {
    * Gateway-injected channel runtime surface (reply/routing/session/media/commands/...).
    * Required for inbound message processing; provided by `ChannelGatewayContext.channelRuntime`.
    */
-  channelRuntime: PluginRuntime["channel"];
+  channelRuntime: WeixinChannelRuntime;
   abortSignal?: AbortSignal;
   longPollTimeoutMs?: number;
   /** Gateway status callback — called on each successful poll and inbound message. */
