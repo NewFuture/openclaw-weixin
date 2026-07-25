@@ -8,12 +8,13 @@ is approved.
 
 ## Prerequisites
 
-- Node.js 24 or newer
+- Node.js 24.15.0
 - npm
 
 Use the Node.js version in `.nvmrc` for the recommended development
-environment. The published package remains compatible with Node.js 22, and CI
-validates both Node.js 22 and 24.
+environment. The published package follows OpenClaw's supported Node.js ranges:
+`>=22.22.3 <23`, `>=24.15.0 <25`, or `>=25.9.0`. CI validates the exact
+Node.js 22.22.3 and 24.15.0 lower bounds.
 
 ## Development
 
@@ -45,6 +46,13 @@ by CI:
 
 ```shell
 npm run check
+```
+
+Audit all production and development dependencies at the same severity used by
+CI and releases:
+
+```shell
+npm run audit:deps
 ```
 
 Apply repository formatting with:

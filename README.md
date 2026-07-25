@@ -15,11 +15,11 @@ OpenClaw's WeChat channel with QR-code login.
 
 | Requirement | Minimum |
 |-------------|---------|
-| OpenClaw | `2026.5.12` |
-| Node.js | `22` |
+| OpenClaw | `2026.7.1` |
+| Node.js | `>=22.22.3 <23`, `>=24.15.0 <25`, or `>=25.9.0` |
 
 The plugin checks the OpenClaw host version at startup and refuses to load on
-older hosts.
+older hosts. Node.js 24.15.0 is the recommended runtime.
 
 ## Prerequisites
 
@@ -350,7 +350,7 @@ openclaw plugins uninstall openclaw-weixin
 
 ## Troubleshooting
 
-### "requires OpenClaw >=2026.5.12" error
+### "requires OpenClaw >=2026.7.1" error
 
 Your OpenClaw version is too old for this plugin version. Check with:
 

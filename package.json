@@ -45,6 +45,7 @@
     "check:style": "biome check . --error-on-warnings",
     "check:static": "npm run check:style && npm run typecheck && npm run typecheck:tests",
     "check:fast": "npm run check:static && npm run test:unit",
+    "audit:deps": "npm audit --audit-level=moderate",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
     "check": "npm run check:static && npm run test:coverage && npm run build",
@@ -53,13 +54,13 @@
     "prepublishOnly": "npm run check:static && npm test"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.22.3 <23 || >=24.15.0 <25 || >=25.9.0"
   },
   "dependencies": {
     "qrcode-terminal": "0.12.0"
   },
   "peerDependencies": {
-    "openclaw": ">=2026.5.12"
+    "openclaw": ">=2026.7.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.4",
@@ -69,6 +70,14 @@
     "silk-wasm": "^3.7.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "@hono/node-server": "2.0.10",
+    "brace-expansion": "5.0.8",
+    "fast-uri": "3.1.4",
+    "hono": "4.12.27",
+    "protobufjs": "7.6.5",
+    "tar": "7.5.21"
   },
   "openclaw": {
     "extensions": [
@@ -89,7 +98,7 @@
     "install": {
       "npmSpec": "openclaw-weixin",
       "defaultChoice": "npm",
-      "minHostVersion": ">=2026.5.12"
+      "minHostVersion": ">=2026.7.1"
     }
   },
   "ilink_appid": "bot",

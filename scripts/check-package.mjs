@@ -15,6 +15,13 @@ if (packageJson.name !== "openclaw-weixin") {
 if (packageJson.openclaw?.install?.npmSpec !== packageJson.name) {
   fail("openclaw.install.npmSpec must match the npm package name");
 }
+const expectedHostRange = `>=${packageJson.devDependencies?.openclaw}`;
+if (packageJson.peerDependencies?.openclaw !== expectedHostRange) {
+  fail("peerDependencies.openclaw must match the tested development version");
+}
+if (packageJson.openclaw?.install?.minHostVersion !== expectedHostRange) {
+  fail("openclaw.install.minHostVersion must match the tested development version");
+}
 if (pluginManifest.id !== "openclaw-weixin") {
   fail("the compatibility plugin id must remain openclaw-weixin");
 }

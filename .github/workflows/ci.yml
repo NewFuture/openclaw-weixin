@@ -24,14 +24,17 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            node-version: "22"
+            node-version: "22.22.3"
             pack_check: true
+            dependency_audit: true
           - os: ubuntu-latest
-            node-version: "24"
+            node-version: "24.15.0"
             pack_check: false
+            dependency_audit: false
           - os: windows-latest
-            node-version: "24"
+            node-version: "24.15.0"
             pack_check: false
+            dependency_audit: false
 
     steps:
       - name: Check out repository
@@ -49,6 +52,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Audit dependencies
+        if: matrix.dependency_audit
+        run: npm run audit:deps
 
       - name: Check project
         run: npm run check
