@@ -10,8 +10,8 @@ configured. A maintainer must therefore bootstrap the unscoped package once:
 
 1. Confirm the unscoped `openclaw-weixin` name and version are available and
    that the publishing npm account uses two-factor authentication.
-2. From the exact clean release commit, run `npm ci`, `npm run check`, and
-   `npm run pack:check`.
+2. From the exact clean release commit, run `npm ci`, `npm run audit:deps`,
+   `npm run check`, and `npm run pack:check`.
 3. Inspect the generated package with `npm pack --json --ignore-scripts`, then
    publish the first version manually with `npm publish --access public`.
 4. In the npm package settings, add a GitHub Actions Trusted Publisher for
@@ -34,5 +34,5 @@ After Trusted Publishing is configured:
 3. Create and push the matching tag, for example `v2.4.7`.
 
 `.github/workflows/release.yml` verifies the tag, installs from the lockfile,
-runs type checking, tests, the build, and the package-content check, then
-publishes with npm provenance over GitHub OIDC.
+runs the dependency audit, type checking, tests, the build, and the
+package-content check, then publishes with npm provenance over GitHub OIDC.

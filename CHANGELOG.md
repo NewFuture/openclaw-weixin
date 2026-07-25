@@ -4,6 +4,19 @@
 
 This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
+## [Unreleased]
+
+### Changed
+
+- Raised the minimum supported OpenClaw host to `2026.7.1` and aligned the
+  runtime guard, package metadata, development environment, and CI Node.js
+  floors with that release.
+
+### Security
+
+- Overrode vulnerable transitive development dependencies with patched versions
+  and added a moderate-or-higher dependency audit gate to CI and npm releases.
+
 ## [2.4.6] - 2026-07-23
 
 ### Changed

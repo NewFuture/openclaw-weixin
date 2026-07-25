@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +9,31 @@ import {
   parseOpenClawVersion,
   SUPPORTED_HOST_MIN,
 } from "./compat.js";
+
+interface PackageCompatibility {
+  devDependencies: { openclaw: string };
+  engines: { node: string };
+  openclaw: { install: { minHostVersion: string } };
+  peerDependencies: { openclaw: string };
+}
+
+const packageJson = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as PackageCompatibility;
+
+describe("compatibility metadata", () => {
+  it("matches the runtime host guard", () => {
+    const expectedRange = `>=${SUPPORTED_HOST_MIN}`;
+
+    expect(packageJson.devDependencies.openclaw).toBe(SUPPORTED_HOST_MIN);
+    expect(packageJson.peerDependencies.openclaw).toBe(expectedRange);
+    expect(packageJson.openclaw.install.minHostVersion).toBe(expectedRange);
+  });
+
+  it("matches the OpenClaw Node.js engine range", () => {
+    expect(packageJson.engines.node).toBe(">=22.22.3 <23 || >=24.15.0 <25 || >=25.9.0");
+  });
+});
 
 describe("parseOpenClawVersion", () => {
   it("parses a standard version", () => {
@@ -46,15 +73,15 @@ describe("isHostVersionSupported", () => {
   });
 
   it("rejects the day before the minimum", () => {
-    expect(isHostVersionSupported("2026.5.11")).toBe(false);
+    expect(isHostVersionSupported("2026.6.30")).toBe(false);
   });
 
   it("accepts a version above the minimum", () => {
-    expect(isHostVersionSupported("2026.5.13")).toBe(true);
+    expect(isHostVersionSupported("2026.7.2")).toBe(true);
   });
 
   it("accepts a future version", () => {
-    expect(isHostVersionSupported("2026.6.0")).toBe(true);
+    expect(isHostVersionSupported("2026.8.0")).toBe(true);
     expect(isHostVersionSupported("2027.1.1")).toBe(true);
   });
 
@@ -65,7 +92,7 @@ describe("isHostVersionSupported", () => {
 
 describe("assertHostCompatibility", () => {
   it("does not throw for a supported version", () => {
-    expect(() => assertHostCompatibility("2026.5.12")).not.toThrow();
+    expect(() => assertHostCompatibility("2026.7.1")).not.toThrow();
   });
 
   it("does not throw when version is undefined (graceful skip)", () => {
@@ -79,7 +106,7 @@ describe("assertHostCompatibility", () => {
   });
 
   it("points unsupported hosts to the community package", () => {
-    expect(() => assertHostCompatibility("2026.5.11")).toThrowError(
+    expect(() => assertHostCompatibility("2026.6.30")).toThrowError(
       /openclaw plugins install npm:openclaw-weixin --force/,
     );
   });

@@ -14,10 +14,11 @@
 
 | 要求 | 最低版本 |
 |------|----------|
-| OpenClaw | `2026.5.12` |
-| Node.js | `22` |
+| OpenClaw | `2026.7.1` |
+| Node.js | `>=22.22.3 <23`、`>=24.15.0 <25` 或 `>=25.9.0` |
 
-插件会在启动时检查 OpenClaw 宿主版本，低于最低版本时拒绝加载。
+插件会在启动时检查 OpenClaw 宿主版本，低于最低版本时拒绝加载。推荐使用
+Node.js 24.15.0。
 
 ## 前提条件
 
@@ -337,7 +338,7 @@ openclaw plugins uninstall openclaw-weixin
 
 ## 故障排查
 
-### "requires OpenClaw >=2026.5.12" 报错
+### "requires OpenClaw >=2026.7.1" 报错
 
 你的 OpenClaw 版本太旧，不兼容当前插件版本。检查版本：
 
