@@ -455,6 +455,12 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   });
 
   let queuedFollowup = false;
+  let replyAdmitted = false;
+  const notifyReplyAdmitted = () => {
+    if (replyAdmitted) return;
+    replyAdmitted = true;
+    deps.onReplyAdmitted?.();
+  };
   const dispatchReplyOptions: DispatchReplyOptions = {
     ...replyOptions,
     ...(replyProgressSender?.replyOptions ?? {}),
@@ -462,12 +468,12 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
     queuedFollowupLifecycle: {
       onEnqueued: () => {
         queuedFollowup = true;
-        deps.onReplyAdmitted?.();
+        notifyReplyAdmitted();
       },
       onComplete: () => void replyProgressSender?.finalize(),
     },
-    onAgentRunStart: () => deps.onReplyAdmitted?.(),
-    onTurnAdopted: deps.onReplyAdmitted,
+    onAgentRunStart: notifyReplyAdmitted,
+    onTurnAdopted: notifyReplyAdmitted,
     disableBlockStreaming: true,
   };
 

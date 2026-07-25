@@ -1,5 +1,60 @@
 const DEFAULT_BODY_MAX_LEN = 200;
 const DEFAULT_TOKEN_PREFIX_LEN = 6;
+const SENSITIVE_BODY_KEYS = new Set([
+  "account_id",
+  "accountid",
+  "aes_key",
+  "aeskey",
+  "authorization",
+  "body",
+  "bodyforagent",
+  "bot_token",
+  "client_id",
+  "content",
+  "context_token",
+  "encrypt_query_param",
+  "from",
+  "from_user_id",
+  "full_url",
+  "get_updates_buf",
+  "group_id",
+  "ilink_bot_id",
+  "ilink_user_id",
+  "local_token_list",
+  "mediapath",
+  "mediaurl",
+  "mediaurls",
+  "originatingto",
+  "qrcode",
+  "qrcode_img_content",
+  "run_id",
+  "senderid",
+  "session_id",
+  "text",
+  "thumb_upload_param",
+  "to",
+  "to_user_id",
+  "token",
+  "typing_ticket",
+  "upload_param",
+  "verify_code",
+]);
+
+function redactJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(redactJsonValue);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nested]) => [
+      key,
+      SENSITIVE_BODY_KEYS.has(key.toLowerCase()) ? "<redacted>" : redactJsonValue(nested),
+    ]),
+  );
+}
 
 /**
  * Truncate a string, appending a length indicator when trimmed.
@@ -27,11 +82,13 @@ export function redactToken(token: string | undefined, prefixLen = DEFAULT_TOKEN
  */
 export function redactBody(body: string | undefined, maxLen = DEFAULT_BODY_MAX_LEN): string {
   if (!body) return "(empty)";
-  // Mask values of known sensitive JSON keys: "key":"value" → "key":"<redacted>"
-  const redacted = body.replace(
-    /"(context_token|bot_token|token|authorization|Authorization)"\s*:\s*"[^"]*"/g,
-    '"$1":"<redacted>"',
-  );
+  let redacted: string;
+  try {
+    redacted = JSON.stringify(redactJsonValue(JSON.parse(body)));
+  } catch {
+    const keys = [...SENSITIVE_BODY_KEYS].join("|");
+    redacted = body.replace(new RegExp(`"(${keys})"\\s*:\\s*"[^"]*"`, "gi"), '"$1":"<redacted>"');
+  }
   if (redacted.length <= maxLen) return redacted;
   return `${redacted.slice(0, maxLen)}…(truncated, totalLen=${redacted.length})`;
 }

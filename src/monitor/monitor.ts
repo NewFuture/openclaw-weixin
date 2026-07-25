@@ -9,7 +9,7 @@ import { processOneMessage, type WeixinChannelRuntime } from "../messaging/proce
 import { getSyncBufFilePath, loadGetUpdatesBuf, saveGetUpdatesBuf } from "../storage/sync-buf.js";
 import type { Logger } from "../util/logger.js";
 import { logger } from "../util/logger.js";
-import { redactBody } from "../util/redact.js";
+import { redactBody, redactToken } from "../util/redact.js";
 
 const DEFAULT_LONG_POLL_TIMEOUT_MS = 35_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -74,7 +74,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
   const processInboundMessage = async (full: WeixinMessage, onReplyAdmitted: () => void): Promise<void> => {
     if (abortSignal?.aborted) return;
     aLog.info(
-      `inbound message: from=${full.from_user_id} types=${full.item_list?.map((i) => i.type).join(",") ?? "none"}`,
+      `inbound message: from=${redactToken(full.from_user_id)} types=${full.item_list?.map((i) => i.type).join(",") ?? "none"}`,
     );
 
     const now = Date.now();
@@ -135,7 +135,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
 
   while (!abortSignal?.aborted) {
     try {
-      aLog.debug(`getUpdates: get_updates_buf=${getUpdatesBuf.substring(0, 50)}..., timeoutMs=${nextTimeoutMs}`);
+      aLog.debug(`getUpdates: get_updates_buf_length=${getUpdatesBuf.length}, timeoutMs=${nextTimeoutMs}`);
       const resp = await getUpdates({
         baseUrl,
         token,
@@ -231,15 +231,19 @@ function isPluginApprovalMessage(message: WeixinMessage): boolean {
 }
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(new Error("aborted"));
+  }
+
   return new Promise((resolve, reject) => {
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(t);
-        reject(new Error("aborted"));
-      },
-      { once: true },
-    );
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new Error("aborted"));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
