@@ -1,8 +1,8 @@
-import { createPluginRuntimeMock } from "openclaw/plugin-sdk/channel-test-helpers";
-import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 import { vi } from "vitest";
 
-type ChannelRuntime = PluginRuntime["channel"];
+import type { WeixinChannelRuntime } from "../../src/messaging/process-message.js";
+
+type ChannelRuntime = WeixinChannelRuntime;
 
 const DEFAULT_ROUTE = {
   agentId: "agent-test",
@@ -58,26 +58,30 @@ export function createChannelRuntimeHarness() {
     }
   };
 
-  const runtime = createPluginRuntimeMock({
-    channel: {
-      routing: { resolveAgentRoute },
-      session: {
-        resolveStorePath,
-        recordInboundSession,
-      },
-      media: { saveMediaBuffer },
-      reply: {
-        finalizeInboundContext,
-        resolveHumanDelayConfig,
-        createReplyDispatcherWithTyping,
-        dispatchReplyFromConfig,
-        withReplyDispatcher,
-      },
+  const channelRuntime = {
+    commands: {
+      resolveCommandAuthorizedFromAuthorizers: vi.fn<
+        ChannelRuntime["commands"]["resolveCommandAuthorizedFromAuthorizers"]
+      >(() => false),
+      shouldComputeCommandAuthorized: vi.fn<ChannelRuntime["commands"]["shouldComputeCommandAuthorized"]>(),
     },
-  });
+    routing: { resolveAgentRoute },
+    session: {
+      resolveStorePath,
+      recordInboundSession,
+    },
+    media: { saveMediaBuffer },
+    reply: {
+      finalizeInboundContext,
+      resolveHumanDelayConfig,
+      createReplyDispatcherWithTyping,
+      dispatchReplyFromConfig,
+      withReplyDispatcher,
+    },
+  } satisfies ChannelRuntime;
 
   return {
-    channelRuntime: runtime.channel,
+    channelRuntime,
     mocks: {
       createReplyDispatcherWithTyping,
       dispatchReplyFromConfig,
