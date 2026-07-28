@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { redactToken } from "../util/redact.js";
+
 const mocks = vi.hoisted(() => ({
   apiGetFetch: vi.fn(),
   apiPostFetch: vi.fn(),
@@ -26,16 +28,23 @@ vi.mock("./accounts.js", () => ({
 
 import { startWeixinLoginWithQr, waitForWeixinLogin } from "./login-qr.js";
 
+function loggedText(): string {
+  return [mocks.logger.info, mocks.logger.debug, mocks.logger.warn, mocks.logger.error]
+    .flatMap((fn) => fn.mock.calls.flat())
+    .join("\n");
+}
+
 afterEach(() => {
   vi.clearAllMocks();
 });
 
 describe("QR login lifecycle", () => {
   it("starts a QR session and returns confirmed credentials", async () => {
-    const qrcode = "synthetic-qrcode";
-    const qrcodeUrl = "https://login.example.test/synthetic-qr";
-    const botToken = "synthetic-bot-token";
-    const accountId = "synthetic-bot-account";
+    const qrcode = "synthetic-qrcode-canary";
+    const qrcodeUrl = `https://login.example.test/scan?qrcode=${qrcode}`;
+    const botToken = "synthetic-bot-token-canary";
+    const accountId = "synthetic-bot-account-canary";
+    const userId = "synthetic-user-account-canary";
     const sessionKey = "synthetic-session-key";
     mocks.apiPostFetch.mockResolvedValue(
       JSON.stringify({
@@ -48,6 +57,7 @@ describe("QR login lifecycle", () => {
         status: "confirmed",
         bot_token: botToken,
         ilink_bot_id: accountId,
+        ilink_user_id: userId,
       }),
     );
 
@@ -69,6 +79,7 @@ describe("QR login lifecycle", () => {
       connected: true,
       botToken,
       accountId,
+      userId,
     });
     expect(mocks.apiPostFetch).toHaveBeenCalledWith({
       baseUrl: "https://ilinkai.weixin.qq.com",
@@ -82,5 +93,27 @@ describe("QR login lifecycle", () => {
       timeoutMs: 35_000,
       label: "pollQRStatus",
     });
+    expect(loggedText()).toContain(`ilink_bot_id=${redactToken(accountId)}`);
+    expect(loggedText()).not.toContain(qrcode);
+    expect(loggedText()).not.toContain(qrcodeUrl);
+    expect(loggedText()).not.toContain(botToken);
+    expect(loggedText()).not.toContain(accountId);
+    expect(loggedText()).not.toContain(userId);
+  });
+
+  it("redacts session keys when no login is active", async () => {
+    const sessionKey = "synthetic-session-key-canary";
+
+    await expect(
+      waitForWeixinLogin({
+        sessionKey,
+        apiBaseUrl: "https://ignored.example.test",
+      }),
+    ).resolves.toMatchObject({ connected: false });
+
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      `waitForWeixinLogin: no active login sessionKey=${redactToken(sessionKey)}`,
+    );
+    expect(loggedText()).not.toContain(sessionKey);
   });
 });

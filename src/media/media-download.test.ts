@@ -30,7 +30,7 @@ afterEach(() => {
 
 describe("downloadMediaFromItem", () => {
   it("downloads and stores an encrypted image", async () => {
-    const encryptedQuery = "synthetic-encrypted-query";
+    const encryptedQuery = "synthetic-encrypted-query-canary";
     const aesKey = Buffer.alloc(16).toString("base64");
     const item: MessageItem = {
       type: MessageItemType.IMAGE,
@@ -61,5 +61,8 @@ describe("downloadMediaFromItem", () => {
     );
     expect(saveMedia).toHaveBeenCalledWith(Buffer.from("image"), undefined, "inbound", 100 * 1024 * 1024);
     expect(result).toEqual({ decryptedPicPath: "C:\\synthetic\\image.bin" });
+    const logText = mocks.logger.debug.mock.calls.flat().join("\n");
+    expect(logText).toContain("hasEncryptQuery=true");
+    expect(logText).not.toContain(encryptedQuery);
   });
 });

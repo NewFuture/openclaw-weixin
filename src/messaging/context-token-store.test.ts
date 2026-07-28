@@ -3,6 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { redactToken } from "../util/redact.js";
+
 const mocks = vi.hoisted(() => ({
   logger: {
     info: vi.fn(),
@@ -80,17 +82,42 @@ describe("context-token-store", () => {
     expect(fs.existsSync(accountFilePath("account-b"))).toBe(true);
   });
 
+  it("redacts account and user identifiers in diagnostics", async () => {
+    const accountId = "account-diagnostic-canary";
+    const userId = "user-diagnostic-canary";
+    const store = await loadStore();
+
+    store.setContextToken(accountId, userId, "synthetic-token");
+    expect(store.getContextToken(accountId, userId)).toBe("synthetic-token");
+    store.clearContextTokensForAccount(accountId);
+
+    const logs = loggedText();
+    expect(logs).toContain(redactToken(accountId));
+    expect(logs).toContain(redactToken(userId));
+    expect(logs).not.toContain(accountId);
+    expect(logs).not.toContain(userId);
+  });
+
   it("surfaces malformed persisted state through the logger without restoring data", async () => {
-    const filePath = accountFilePath("account-invalid");
+    const accountId = "account-invalid-canary";
+    const filePath = accountFilePath(accountId);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, "{not-json", "utf-8");
     const store = await loadStore();
 
-    expect(() => store.restoreContextTokens("account-invalid")).not.toThrow();
-    expect(store.getContextToken("account-invalid", "user-a")).toBeUndefined();
+    expect(() => store.restoreContextTokens(accountId)).not.toThrow();
+    expect(store.getContextToken(accountId, "user-a")).toBeUndefined();
     expect(mocks.logger.warn).toHaveBeenCalledWith(expect.stringContaining("restoreContextTokens: failed"));
+    expect(loggedText()).toContain(redactToken(accountId));
+    expect(loggedText()).not.toContain(accountId);
   });
 });
+
+function loggedText(): string {
+  return [mocks.logger.info, mocks.logger.debug, mocks.logger.warn, mocks.logger.error]
+    .flatMap((fn) => fn.mock.calls.flat())
+    .join("\n");
+}
 
 async function loadStore(): Promise<typeof import("./inbound.js")> {
   return import("./inbound.js");

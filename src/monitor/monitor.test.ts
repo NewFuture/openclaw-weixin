@@ -5,7 +5,17 @@ import { createDeferred } from "../../test/helpers/deferred.js";
 import { getText, makeTextMessage } from "../../test/helpers/messages.js";
 import type { GetUpdatesResp, WeixinMessage } from "../api/types.js";
 import type { ProcessMessageDeps } from "../messaging/process-message.js";
+import { redactToken } from "../util/redact.js";
 
+const loggerMocks = vi.hoisted(() => ({
+  account: {
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+  withAccount: vi.fn(),
+}));
 const getUpdatesMock =
   vi.fn<
     (opts: { abortSignal?: AbortSignal; get_updates_buf?: string; timeoutMs?: number }) => Promise<GetUpdatesResp>
@@ -57,12 +67,7 @@ vi.mock("../storage/sync-buf.js", () => ({
 
 vi.mock("../util/logger.js", () => ({
   logger: {
-    withAccount: () => ({
-      info: vi.fn(),
-      debug: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    }),
+    withAccount: loggerMocks.withAccount,
   },
 }));
 
@@ -72,12 +77,14 @@ describe("monitorWeixinProvider", () => {
   beforeEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    loggerMocks.withAccount.mockReturnValue(loggerMocks.account);
     getForUserMock.mockResolvedValue({ typingTicket: "ticket" });
     getRemainingPauseMsMock.mockReturnValue(60 * 60 * 1000);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("orders ordinary admission while approvals bypass an active ordinary turn", async () => {
@@ -220,6 +227,46 @@ describe("monitorWeixinProvider", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("returns immediately when the signal aborts before a retry sleep starts", async () => {
+    vi.useFakeTimers();
+    const abortController = new AbortController();
+    const harness = createChannelRuntimeHarness();
+    getUpdatesMock.mockImplementation(async () => {
+      abortController.abort();
+      return { ret: 1, errmsg: "synthetic failure" };
+    });
+
+    const monitor = startMonitor(abortController, harness.channelRuntime);
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(monitor).resolves.toBeUndefined();
+    expect(getUpdatesMock).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("removes the abort listener after a retry timer completes", async () => {
+    vi.useFakeTimers();
+    const abortController = new AbortController();
+    const addEventListener = vi.spyOn(abortController.signal, "addEventListener");
+    const removeEventListener = vi.spyOn(abortController.signal, "removeEventListener");
+    const harness = createChannelRuntimeHarness();
+    getUpdatesMock.mockResolvedValueOnce({ ret: 1, errmsg: "synthetic failure" }).mockImplementationOnce(async () => {
+      abortController.abort();
+      throw new Error("aborted");
+    });
+
+    const monitor = startMonitor(abortController, harness.channelRuntime);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getUpdatesMock).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(2_000);
+    await expect(monitor).resolves.toBeUndefined();
+
+    expect(addEventListener).toHaveBeenCalledTimes(1);
+    const abortListener = addEventListener.mock.calls[0]?.[1];
+    expect(removeEventListener).toHaveBeenCalledWith("abort", abortListener);
+  });
+
   it("aborts immediately during the thirty-second failure backoff", async () => {
     vi.useFakeTimers();
     const abortController = new AbortController();
@@ -305,6 +352,48 @@ describe("monitorWeixinProvider", () => {
     expect(getUpdatesMock.mock.calls[1]?.[0].timeoutMs).toBe(12_345);
     abortController.abort();
     await expect(monitor).resolves.toBeUndefined();
+  });
+
+  it("redacts inbound users and logs only cursor length", async () => {
+    const abortController = new AbortController();
+    const harness = createChannelRuntimeHarness();
+    const userId = "user-monitor-canary";
+    const cursor = "cursor-monitor-canary";
+    getUpdatesMock
+      .mockResolvedValueOnce({
+        ret: 0,
+        msgs: [makeMonitorMessage("hello", { from_user_id: userId })],
+        get_updates_buf: cursor,
+      })
+      .mockImplementationOnce(
+        async ({ abortSignal }) =>
+          await new Promise<GetUpdatesResp>((_, reject) => {
+            abortSignal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+          }),
+      );
+    processOneMessageMock.mockImplementation(async () => {
+      abortController.abort();
+    });
+
+    const monitor = startMonitor(abortController, harness.channelRuntime);
+    await expect(monitor).resolves.toBeUndefined();
+
+    expect(loggerMocks.account.info).toHaveBeenCalledWith(
+      expect.stringContaining(`inbound message: from=${redactToken(userId)}`),
+    );
+    expect(loggerMocks.account.debug).toHaveBeenCalledWith(
+      expect.stringContaining(`get_updates_buf_length=${cursor.length}`),
+    );
+    const logText = [
+      loggerMocks.account.info,
+      loggerMocks.account.debug,
+      loggerMocks.account.warn,
+      loggerMocks.account.error,
+    ]
+      .flatMap((fn) => fn.mock.calls.flat())
+      .join("\n");
+    expect(logText).not.toContain(userId);
+    expect(logText).not.toContain(cursor);
   });
 
   it("releases the ordinary lane when preprocessing fails", async () => {

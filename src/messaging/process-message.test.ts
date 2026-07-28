@@ -150,11 +150,18 @@ describe("processOneMessage", () => {
     expect(onReplyAdmitted).not.toHaveBeenCalled();
   });
 
-  it("routes, records, dispatches, and reports agent-run admission", async () => {
+  it("routes, records, dispatches, and reports all admission signals exactly once", async () => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();
     harness.mocks.dispatchReplyFromConfig.mockImplementation(async ({ replyOptions }) => {
-      await replyOptions?.onAgentRunStart?.("run-test");
+      const lifecycle = replyOptions as {
+        queuedFollowupLifecycle?: { onEnqueued?: () => void };
+        onAgentRunStart?: (runId: string) => void | Promise<void>;
+        onTurnAdopted?: () => void | Promise<void>;
+      };
+      lifecycle.queuedFollowupLifecycle?.onEnqueued?.();
+      await lifecycle.onAgentRunStart?.("run-test");
+      await lifecycle.onTurnAdopted?.();
       return {
         queuedFinal: false,
         counts: { tool: 0, block: 0, final: 1 },
