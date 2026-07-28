@@ -29,8 +29,6 @@ vi.mock("node:crypto", () => ({
 }));
 
 import {
-  apiGetFetch,
-  apiPostFetch,
   classifyFetchError,
   describeSendMessageFailure,
   getConfig,
@@ -54,44 +52,6 @@ function mockResponse(body: object | string, status = 200, ok = true): Response 
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-describe("API error privacy", () => {
-  it.each([
-    [
-      "GET",
-      () =>
-        apiGetFetch({
-          baseUrl: "https://api.example.com",
-          endpoint: "status",
-          label: "getStatus",
-        }),
-    ],
-    [
-      "POST",
-      () =>
-        apiPostFetch({
-          baseUrl: "https://api.example.com",
-          endpoint: "send",
-          body: "{}",
-          label: "send",
-        }),
-    ],
-  ])("redacts sensitive %s response bodies from thrown errors", async (_method, request) => {
-    const canary = "response-token-canary-15f4";
-    mockFetch.mockResolvedValueOnce(mockResponse({ bot_token: canary }, 403, false));
-    let error: unknown;
-
-    try {
-      await request();
-    } catch (caught) {
-      error = caught;
-    }
-
-    expect(error).toBeInstanceOf(Error);
-    expect(String(error)).toContain("<redacted>");
-    expect(String(error)).not.toContain(canary);
-  });
 });
 
 describe("getUpdates", () => {

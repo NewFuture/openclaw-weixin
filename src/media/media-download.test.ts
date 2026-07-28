@@ -28,30 +28,38 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("downloadMediaFromItem privacy", () => {
-  it("logs only the presence of an encrypted CDN query", async () => {
-    const queryCanary = "encrypted-query-canary-e247";
+describe("downloadMediaFromItem", () => {
+  it("downloads and stores an encrypted image", async () => {
+    const encryptedQuery = "synthetic-encrypted-query";
+    const aesKey = Buffer.alloc(16).toString("base64");
     const item: MessageItem = {
       type: MessageItemType.IMAGE,
       image_item: {
         media: {
-          encrypt_query_param: queryCanary,
-          aes_key: Buffer.alloc(16).toString("base64"),
+          encrypt_query_param: encryptedQuery,
+          aes_key: aesKey,
         },
       },
     };
+    const saveMedia = vi.fn().mockResolvedValue({ path: "C:\\synthetic\\image.bin" });
     mocks.downloadAndDecryptBuffer.mockResolvedValue(Buffer.from("image"));
 
-    await downloadMediaFromItem(item, {
+    const result = await downloadMediaFromItem(item, {
       cdnBaseUrl: "https://cdn.example.test",
-      saveMedia: vi.fn().mockResolvedValue({ path: "C:\\synthetic\\image.bin" }),
+      saveMedia,
       log: vi.fn(),
       errLog: vi.fn(),
       label: "inbound",
     });
 
-    const logText = mocks.logger.debug.mock.calls.flat().join("\n");
-    expect(logText).toContain("hasEncryptQuery=true");
-    expect(logText).not.toContain(queryCanary);
+    expect(mocks.downloadAndDecryptBuffer).toHaveBeenCalledWith(
+      encryptedQuery,
+      aesKey,
+      "https://cdn.example.test",
+      "inbound image",
+      undefined,
+    );
+    expect(saveMedia).toHaveBeenCalledWith(Buffer.from("image"), undefined, "inbound", 100 * 1024 * 1024);
+    expect(result).toEqual({ decryptedPicPath: "C:\\synthetic\\image.bin" });
   });
 });

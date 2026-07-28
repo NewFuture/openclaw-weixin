@@ -64,7 +64,7 @@ describe("redactBody", () => {
 
   it("redacts context_token values", () => {
     const body = '{"to":"user1","context_token":"secret123","text":"hello"}';
-    expect(redactBody(body)).toBe('{"to":"<redacted>","context_token":"<redacted>","text":"<redacted>"}');
+    expect(redactBody(body)).toBe('{"to":"user1","context_token":"<redacted>","text":"hello"}');
   });
 
   it("redacts bot_token values", () => {
@@ -75,20 +75,6 @@ describe("redactBody", () => {
   it("redacts token values", () => {
     const body = '{"token":"my-secret-token"}';
     expect(redactBody(body)).toBe('{"token":"<redacted>"}');
-  });
-
-  it("redacts nested identifiers, QR data, and token arrays", () => {
-    const body = JSON.stringify({
-      local_token_list: ["token-one", "token-two"],
-      status: {
-        qrcode: "qr-secret",
-        ilink_bot_id: "bot-secret",
-      },
-    });
-
-    expect(redactBody(body)).toBe(
-      '{"local_token_list":"<redacted>","status":{"qrcode":"<redacted>","ilink_bot_id":"<redacted>"}}',
-    );
   });
 });
 

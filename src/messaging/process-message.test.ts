@@ -150,18 +150,11 @@ describe("processOneMessage", () => {
     expect(onReplyAdmitted).not.toHaveBeenCalled();
   });
 
-  it("routes, records, dispatches, and reports turn admission exactly once", async () => {
+  it("routes, records, dispatches, and reports agent-run admission", async () => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();
     harness.mocks.dispatchReplyFromConfig.mockImplementation(async ({ replyOptions }) => {
-      const lifecycle = replyOptions as {
-        queuedFollowupLifecycle?: { onEnqueued?: () => void };
-        onAgentRunStart?: (runId: string) => void | Promise<void>;
-        onTurnAdopted?: () => void | Promise<void>;
-      };
-      lifecycle.queuedFollowupLifecycle?.onEnqueued?.();
-      await lifecycle.onAgentRunStart?.("run-test");
-      await lifecycle.onTurnAdopted?.();
+      await replyOptions?.onAgentRunStart?.("run-test");
       return {
         queuedFinal: false,
         counts: { tool: 0, block: 0, final: 1 },
@@ -195,6 +188,31 @@ describe("processOneMessage", () => {
         }),
       }),
     );
+    expect(onReplyAdmitted).toHaveBeenCalledOnce();
+    expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+  });
+
+  it.each(["queued-followup", "adopted-turn"] as const)("reports %s admission", async (admission) => {
+    const harness = createChannelRuntimeHarness();
+    const onReplyAdmitted = vi.fn();
+    harness.mocks.dispatchReplyFromConfig.mockImplementation(async ({ replyOptions }) => {
+      const lifecycle = replyOptions as {
+        queuedFollowupLifecycle?: { onEnqueued?: () => void };
+        onTurnAdopted?: () => void | Promise<void>;
+      };
+      if (admission === "queued-followup") {
+        lifecycle.queuedFollowupLifecycle?.onEnqueued?.();
+      } else {
+        await lifecycle.onTurnAdopted?.();
+      }
+      return {
+        queuedFinal: false,
+        counts: { tool: 0, block: 0, final: 1 },
+      };
+    });
+
+    await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
+
     expect(onReplyAdmitted).toHaveBeenCalledOnce();
     expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
   });

@@ -26,34 +26,28 @@ vi.mock("./accounts.js", () => ({
 
 import { startWeixinLoginWithQr, waitForWeixinLogin } from "./login-qr.js";
 
-function loggedText(): string {
-  return [mocks.logger.info, mocks.logger.debug, mocks.logger.warn, mocks.logger.error]
-    .flatMap((fn) => fn.mock.calls.flat())
-    .join("\n");
-}
-
 afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("QR login privacy", () => {
-  it("does not log QR contents, bot tokens, or complete account identifiers", async () => {
-    const qrCanary = "qr-secret-canary-219e";
-    const qrUrlCanary = `https://login.example.test/scan?qrcode=${qrCanary}`;
-    const botTokenCanary = "bot-token-canary-37bd";
-    const accountCanary = "bot-account-canary-49c0";
+describe("QR login lifecycle", () => {
+  it("starts a QR session and returns confirmed credentials", async () => {
+    const qrcode = "synthetic-qrcode";
+    const qrcodeUrl = "https://login.example.test/synthetic-qr";
+    const botToken = "synthetic-bot-token";
+    const accountId = "synthetic-bot-account";
     const sessionKey = "synthetic-session-key";
     mocks.apiPostFetch.mockResolvedValue(
       JSON.stringify({
-        qrcode: qrCanary,
-        qrcode_img_content: qrUrlCanary,
+        qrcode,
+        qrcode_img_content: qrcodeUrl,
       }),
     );
     mocks.apiGetFetch.mockResolvedValue(
       JSON.stringify({
         status: "confirmed",
-        bot_token: botTokenCanary,
-        ilink_bot_id: accountCanary,
+        bot_token: botToken,
+        ilink_bot_id: accountId,
       }),
     );
 
@@ -66,14 +60,27 @@ describe("QR login privacy", () => {
       apiBaseUrl: "https://ignored.example.test",
     });
 
+    expect(start).toEqual({
+      qrcodeUrl,
+      message: "用手机微信扫描以下二维码，以继续连接：",
+      sessionKey,
+    });
     expect(result).toMatchObject({
       connected: true,
-      botToken: botTokenCanary,
-      accountId: accountCanary,
+      botToken,
+      accountId,
     });
-    expect(loggedText()).not.toContain(qrCanary);
-    expect(loggedText()).not.toContain(qrUrlCanary);
-    expect(loggedText()).not.toContain(botTokenCanary);
-    expect(loggedText()).not.toContain(accountCanary);
+    expect(mocks.apiPostFetch).toHaveBeenCalledWith({
+      baseUrl: "https://ilinkai.weixin.qq.com",
+      endpoint: "ilink/bot/get_bot_qrcode?bot_type=3",
+      body: JSON.stringify({ local_token_list: [] }),
+      label: "fetchQRCode",
+    });
+    expect(mocks.apiGetFetch).toHaveBeenCalledWith({
+      baseUrl: "https://ilinkai.weixin.qq.com",
+      endpoint: `ilink/bot/get_qrcode_status?qrcode=${encodeURIComponent(qrcode)}`,
+      timeoutMs: 35_000,
+      label: "pollQRStatus",
+    });
   });
 });

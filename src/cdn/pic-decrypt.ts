@@ -1,17 +1,6 @@
 import { logger } from "../util/logger.js";
-import { redactUrl } from "../util/redact.js";
 import { decryptAesEcb } from "./aes-ecb.js";
 import { buildCdnDownloadUrl, ENABLE_CDN_URL_FALLBACK } from "./cdn-url.js";
-
-function getErrorCode(err: unknown): string | undefined {
-  if (typeof err !== "object" || err === null) return undefined;
-  const directCode = Reflect.get(err, "code");
-  if (typeof directCode === "string") return directCode;
-  const cause = Reflect.get(err, "cause");
-  if (typeof cause !== "object" || cause === null) return undefined;
-  const causeCode = Reflect.get(cause, "code");
-  return typeof causeCode === "string" ? causeCode : undefined;
-}
 
 /**
  * Download raw bytes from the CDN (no decryption).
@@ -21,15 +10,14 @@ async function fetchCdnBytes(url: string, label: string): Promise<Buffer> {
   try {
     res = await fetch(url);
   } catch (err) {
-    const code = getErrorCode(err);
-    const message = `${label}: CDN fetch failed${code ? ` (${code})` : ""}`;
-    logger.error(`${message} url=${redactUrl(url)}`);
-    throw new Error(message);
+    const cause = (err as NodeJS.ErrnoException).cause ?? (err as NodeJS.ErrnoException).code ?? "(no cause)";
+    logger.error(`${label}: fetch network error url=${url} err=${String(err)} cause=${String(cause)}`);
+    throw err;
   }
   logger.debug(`${label}: response status=${res.status} ok=${res.ok}`);
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    const msg = `${label}: CDN download ${res.status} ${res.statusText} bodyLength=${body.length}`;
+    const body = await res.text().catch(() => "(unreadable)");
+    const msg = `${label}: CDN download ${res.status} ${res.statusText} body=${body}`;
     logger.error(msg);
     throw new Error(msg);
   }
@@ -55,7 +43,7 @@ function parseAesKey(aesKeyBase64: string, label: string): Buffer {
     // hex-encoded key: base64 → hex string → raw bytes
     return Buffer.from(decoded.toString("ascii"), "hex");
   }
-  const msg = `${label}: aes_key must decode to 16 raw bytes or 32-char hex string, got ${decoded.length} bytes`;
+  const msg = `${label}: aes_key must decode to 16 raw bytes or 32-char hex string, got ${decoded.length} bytes (base64="${aesKeyBase64}")`;
   logger.error(msg);
   throw new Error(msg);
 }
@@ -80,7 +68,7 @@ export async function downloadAndDecryptBuffer(
   } else {
     throw new Error(`${label}: fullUrl is required (CDN URL fallback is disabled)`);
   }
-  logger.debug(`${label}: fetching url=${redactUrl(url)}`);
+  logger.debug(`${label}: fetching url=${url}`);
   const encrypted = await fetchCdnBytes(url, label);
   logger.debug(`${label}: downloaded ${encrypted.byteLength} bytes, decrypting`);
   const decrypted = decryptAesEcb(encrypted, key);
@@ -105,6 +93,6 @@ export async function downloadPlainCdnBuffer(
   } else {
     throw new Error(`${label}: fullUrl is required (CDN URL fallback is disabled)`);
   }
-  logger.debug(`${label}: fetching url=${redactUrl(url)}`);
+  logger.debug(`${label}: fetching url=${url}`);
   return fetchCdnBytes(url, label);
 }

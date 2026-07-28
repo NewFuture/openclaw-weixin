@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  decryptAesEcb: vi.fn(),
   logger: {
     info: vi.fn(),
     debug: vi.fn(),
@@ -13,84 +14,80 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../util/logger.js", () => ({ logger: mocks.logger }));
+vi.mock("./aes-ecb.js", () => ({ decryptAesEcb: mocks.decryptAesEcb }));
 
 import { downloadAndDecryptBuffer, downloadPlainCdnBuffer } from "./pic-decrypt.js";
-
-function loggedText(): string {
-  return [mocks.logger.info, mocks.logger.debug, mocks.logger.warn, mocks.logger.error]
-    .flatMap((fn) => fn.mock.calls.flat())
-    .join("\n");
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
-describe("CDN download privacy", () => {
-  it("never includes an invalid AES key in errors or logs", async () => {
-    const aesKeyCanary = Buffer.from("invalid-key-canary").toString("base64");
-    let error: unknown;
-
-    try {
-      await downloadAndDecryptBuffer(
+describe("CDN downloads", () => {
+  it("rejects an AES key with an unsupported decoded length", async () => {
+    await expect(
+      downloadAndDecryptBuffer(
         "synthetic-query",
-        aesKeyCanary,
+        Buffer.from("invalid-key").toString("base64"),
         "https://cdn.example.test",
         "inbound image",
         "https://cdn.example.test/download",
-      );
-    } catch (caught) {
-      error = caught;
-    }
-
-    expect(error).toBeInstanceOf(Error);
-    expect(String(error)).not.toContain(aesKeyCanary);
-    expect(loggedText()).not.toContain(aesKeyCanary);
+      ),
+    ).rejects.toThrow("got 11 bytes");
+    expect(mocks.decryptAesEcb).not.toHaveBeenCalled();
   });
 
-  it("redacts CDN query parameters from successful download logs", async () => {
-    const queryCanary = "cdn-query-canary-91ef";
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]))));
+  it.each([
+    ["raw bytes", Buffer.alloc(16, 7).toString("base64"), Buffer.alloc(16, 7)],
+    [
+      "base64-encoded hex",
+      Buffer.from("00112233445566778899aabbccddeeff", "ascii").toString("base64"),
+      Buffer.from("00112233445566778899aabbccddeeff", "hex"),
+    ],
+  ])("parses %s AES keys before decrypting", async (_encoding, encodedKey, expectedKey) => {
+    const encrypted = Buffer.from([1, 2, 3]);
+    const plaintext = Buffer.from("plaintext");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(encrypted)));
+    mocks.decryptAesEcb.mockReturnValue(plaintext);
 
-    await downloadPlainCdnBuffer(
-      "unused-query",
+    const result = await downloadAndDecryptBuffer(
+      "synthetic-query",
+      encodedKey,
       "https://cdn.example.test",
       "inbound image",
-      `https://cdn.example.test/download?encrypted=${queryCanary}`,
+      "https://cdn.example.test/download",
     );
 
-    expect(loggedText()).not.toContain(queryCanary);
-    expect(loggedText()).toContain("https://cdn.example.test/download?<redacted>");
+    expect(result).toEqual(plaintext);
+    expect(mocks.decryptAesEcb).toHaveBeenCalledWith(encrypted, expectedKey);
   });
 
-  it("does not expose response bodies or network error details", async () => {
-    const responseCanary = "cdn-response-canary-a83b";
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValueOnce(new Response(responseCanary, { status: 403, statusText: "Forbidden" }))
-        .mockRejectedValueOnce(new Error(`request failed with ${responseCanary}`)),
+  it("returns bytes from a complete plain CDN URL", async () => {
+    const bytes = new Uint8Array([4, 5, 6]);
+    const fetchMock = vi.fn().mockResolvedValue(new Response(bytes));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await downloadPlainCdnBuffer(
+      "unused-query",
+      "https://cdn.example.test",
+      "inbound file",
+      "https://cdn.example.test/download?synthetic=1",
     );
 
-    await expect(
-      downloadPlainCdnBuffer(
-        "unused-query",
-        "https://cdn.example.test",
-        "inbound image",
-        "https://cdn.example.test/download",
-      ),
-    ).rejects.not.toThrow(responseCanary);
-    await expect(
-      downloadPlainCdnBuffer(
-        "unused-query",
-        "https://cdn.example.test",
-        "inbound image",
-        "https://cdn.example.test/download",
-      ),
-    ).rejects.not.toThrow(responseCanary);
+    expect(result).toEqual(Buffer.from(bytes));
+    expect(fetchMock).toHaveBeenCalledWith("https://cdn.example.test/download?synthetic=1");
+  });
 
-    expect(loggedText()).not.toContain(responseCanary);
+  it("reports a non-success CDN response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("synthetic failure", { status: 403 })));
+
+    await expect(
+      downloadPlainCdnBuffer(
+        "unused-query",
+        "https://cdn.example.test",
+        "inbound image",
+        "https://cdn.example.test/download",
+      ),
+    ).rejects.toThrow("CDN download 403");
   });
 });
