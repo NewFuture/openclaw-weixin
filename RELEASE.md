@@ -15,7 +15,7 @@ configured. A maintainer must therefore bootstrap the unscoped package once:
 3. Inspect the generated package with `npm pack --json --ignore-scripts`, then
    publish the first version manually with `npm publish --access public`.
 4. In the npm package settings, add a GitHub Actions Trusted Publisher for
-   owner `NewFuture`, repository `openclaw-wechat`, and workflow
+   owner `NewFuture`, repository `openclaw-wexin`, and workflow
    `release.yml`.
 
 The initial community package keeps version `2.4.6`, matching the code and

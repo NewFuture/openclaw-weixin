@@ -19,4 +19,4 @@ Do not include credentials, account identifiers, QR codes, or private message
 content. Repository administrators track confirmed reports in a draft security
 advisory.
 
-[advisory]: https://github.com/NewFuture/openclaw-wechat/security/advisories/new
+[advisory]: https://github.com/NewFuture/openclaw-wexin/security/advisories/new

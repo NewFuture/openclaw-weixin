@@ -5,15 +5,15 @@
   "license": "MIT",
   "author": "Tencent",
   "contributors": [
-    "Contributors to NewFuture/openclaw-wechat"
+    "Contributors to NewFuture/openclaw-wexin"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NewFuture/openclaw-wechat.git"
+    "url": "git+https://github.com/NewFuture/openclaw-wexin.git"
   },
-  "homepage": "https://github.com/NewFuture/openclaw-wechat#readme",
+  "homepage": "https://github.com/NewFuture/openclaw-wexin#readme",
   "bugs": {
-    "url": "https://github.com/NewFuture/openclaw-wechat/issues"
+    "url": "https://github.com/NewFuture/openclaw-wexin/issues"
   },
   "keywords": [
     "openclaw",
