@@ -1,5 +1,5 @@
 {
-  "name": "@newfuture/openclaw-wechat",
+  "name": "openclaw-wechat",
   "version": "2.4.6",
   "description": "Community-maintained OpenClaw WeChat channel plugin",
   "license": "MIT",
@@ -97,7 +97,7 @@
       "order": 75
     },
     "install": {
-      "npmSpec": "@newfuture/openclaw-wechat",
+      "npmSpec": "openclaw-wechat",
       "defaultChoice": "npm",
       "minHostVersion": ">=2026.7.1"
     }

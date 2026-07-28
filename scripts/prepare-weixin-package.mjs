@@ -1,7 +1,7 @@
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, parse, resolve } from "node:path";
 
-const canonicalPackageName = "@newfuture/openclaw-wechat";
+const canonicalPackageName = "openclaw-wechat";
 const mirrorPackageName = "openclaw-weixin";
 const pluginId = "openclaw-weixin";
 const sourceRoot = process.cwd();

@@ -5,8 +5,8 @@
 这是 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin)
 的社区维护发行版，为 OpenClaw 提供支持扫码登录的微信渠道。
 
-> 正式 npm 包名为 `@newfuture/openclaw-wechat`；`openclaw-weixin` 是其无 scope
-> 安装镜像。两个包共用唯一的 `openclaw-weixin` 插件和 channel ID。现有的
+> 正式 npm 包名为 `openclaw-wechat`；`openclaw-weixin` 是其安装镜像。两个包
+> 共用唯一的 `openclaw-weixin` 插件和 channel ID。现有的
 > `channels.openclaw-weixin`、
 > `plugins.entries.openclaw-weixin` 和
 > `~/.openclaw/openclaw-weixin/` 数据继续使用原 ID。
@@ -30,7 +30,7 @@ Node.js 24.15.0。
 ## 安装
 
 ```bash
-openclaw plugins install npm:@newfuture/openclaw-wechat
+openclaw plugins install npm:openclaw-wechat
 openclaw config set plugins.entries.openclaw-weixin.enabled true
 openclaw channels login --channel openclaw-weixin
 openclaw gateway restart
@@ -55,7 +55,7 @@ openclaw channels status --probe
 新版 OpenClaw 在卸载插件时会删除该插件拥有的 channel 配置。
 
 ```bash
-openclaw plugins install npm:@newfuture/openclaw-wechat --force
+openclaw plugins install npm:openclaw-wechat --force
 openclaw gateway restart
 openclaw plugins list
 openclaw channels status --probe

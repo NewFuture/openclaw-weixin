@@ -9,8 +9,8 @@ function fail(message) {
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const pluginManifest = JSON.parse(readFileSync("openclaw.plugin.json", "utf8"));
 
-if (packageJson.name !== "@newfuture/openclaw-wechat") {
-  fail(`expected package name @newfuture/openclaw-wechat, found ${packageJson.name}`);
+if (packageJson.name !== "openclaw-wechat") {
+  fail(`expected package name openclaw-wechat, found ${packageJson.name}`);
 }
 if (packageJson.openclaw?.install?.npmSpec !== packageJson.name) {
   fail("openclaw.install.npmSpec must match the npm package name");

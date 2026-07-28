@@ -1,6 +1,6 @@
 # npm release process
 
-`@newfuture/openclaw-wechat` and its install-compatible `openclaw-weixin` mirror
+`openclaw-wechat` and its install-compatible `openclaw-weixin` mirror
 publish only to the official npm registry. Both packages retain the single internal
 `openclaw-weixin` plugin/channel id. Never commit an npm token or add
 `NODE_AUTH_TOKEN` to the release workflow.
@@ -10,7 +10,7 @@ publish only to the official npm registry. Both packages retain the single inter
 npm normally requires a package to exist before its Trusted Publisher can be
 configured. A maintainer must therefore bootstrap the unscoped package once:
 
-1. Confirm the `@newfuture/openclaw-wechat` and unscoped `openclaw-weixin` names and
+1. Confirm the unscoped `openclaw-wechat` and `openclaw-weixin` names and
    versions are available and that the publishing npm account uses two-factor
    authentication.
 2. From the exact clean release commit, run `npm ci`, `npm run audit:deps`,

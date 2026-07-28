@@ -8,7 +8,7 @@
 
 ### 新增
 
-- 增加正式 npm 包 `@newfuture/openclaw-wechat`，并保留 `openclaw-weixin` 作为
+- 增加正式 npm 包 `openclaw-wechat`，并保留 `openclaw-weixin` 作为
   安装镜像；两个包名使用唯一的内部 `openclaw-weixin` 插件/channel ID，并共用状态目录。
 
 ### 变更
