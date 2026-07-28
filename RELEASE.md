@@ -1,22 +1,26 @@
 # npm release process
 
-`openclaw-weixin` publishes only to the official npm registry. Never commit an
-npm token or add `NODE_AUTH_TOKEN` to the release workflow.
+`@newfuture/openclaw-wechat` and its install-compatible `openclaw-weixin` mirror
+publish only to the official npm registry. Both packages retain the single internal
+`openclaw-weixin` plugin/channel id. Never commit an npm token or add
+`NODE_AUTH_TOKEN` to the release workflow.
 
 ## First publication
 
 npm normally requires a package to exist before its Trusted Publisher can be
 configured. A maintainer must therefore bootstrap the unscoped package once:
 
-1. Confirm the unscoped `openclaw-weixin` name and version are available and
-   that the publishing npm account uses two-factor authentication.
+1. Confirm the `@newfuture/openclaw-wechat` and unscoped `openclaw-weixin` names and
+   versions are available and that the publishing npm account uses two-factor
+   authentication.
 2. From the exact clean release commit, run `npm ci`, `npm run audit:deps`,
    `npm run check`, and `npm run pack:check`.
-3. Inspect the generated package with `npm pack --json --ignore-scripts`, then
-   publish the first version manually with `npm publish --access public`.
-4. In the npm package settings, add a GitHub Actions Trusted Publisher for
-   owner `NewFuture`, repository `openclaw-wexin`, and workflow
-   `release.yml`.
+3. Inspect the generated packages with `npm run pack:check`, then publish the
+   canonical package with `npm publish --access public`. Run
+   `npm run package:weixin` and publish the mirror with
+   `npm publish .release/openclaw-weixin --ignore-scripts --access public`.
+4. In each npm package's settings, add a GitHub Actions Trusted Publisher for
+   owner `NewFuture`, repository `openclaw-wexin`, and workflow `release.yml`.
 
 The initial community package keeps version `2.4.6`, matching the code and
 plugin manifest inherited from the upstream release. If that exact
@@ -35,4 +39,5 @@ After Trusted Publishing is configured:
 
 `.github/workflows/release.yml` verifies the tag, installs from the lockfile,
 runs the dependency audit, type checking, tests, the build, and the
-package-content check, then publishes with npm provenance over GitHub OIDC.
+package-content check, then publishes both package names with npm provenance
+over GitHub OIDC.

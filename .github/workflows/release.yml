@@ -51,5 +51,11 @@ jobs:
       - name: Inspect package contents
         run: npm run pack:check
 
-      - name: Publish with provenance
+      - name: Publish canonical package with provenance
         run: npm publish --provenance --access public --registry=https://registry.npmjs.org
+
+      - name: Prepare mirror package
+        run: npm run package:weixin
+
+      - name: Publish mirror package with provenance
+        run: npm publish .release/openclaw-weixin --ignore-scripts --provenance --access public --registry=https://registry.npmjs.org

@@ -9,8 +9,8 @@ function fail(message) {
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const pluginManifest = JSON.parse(readFileSync("openclaw.plugin.json", "utf8"));
 
-if (packageJson.name !== "openclaw-weixin") {
-  fail(`expected package name openclaw-weixin, found ${packageJson.name}`);
+if (packageJson.name !== "@newfuture/openclaw-wechat") {
+  fail(`expected package name @newfuture/openclaw-wechat, found ${packageJson.name}`);
 }
 if (packageJson.openclaw?.install?.npmSpec !== packageJson.name) {
   fail("openclaw.install.npmSpec must match the npm package name");
@@ -36,31 +36,38 @@ if (pluginManifest.version !== packageJson.version) {
   fail("package.json and openclaw.plugin.json versions must match");
 }
 
-const npmArgs = ["pack", "--dry-run", "--json", "--ignore-scripts"];
 const npmExecPath = process.env.npm_execpath;
 const command = npmExecPath ? process.execPath : process.platform === "win32" ? process.env.ComSpec : "npm";
-const args = npmExecPath
-  ? [npmExecPath, ...npmArgs]
-  : process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm ${npmArgs.join(" ")}`]
-    : npmArgs;
-const packed = spawnSync(command, args, { encoding: "utf8" });
-if (packed.error) {
-  fail(`could not run npm pack: ${packed.error.message}`);
-}
-if (packed.status !== 0) {
-  if (packed.stderr) process.stderr.write(packed.stderr);
-  fail(`npm pack exited with status ${packed.status}`);
+
+function pack(target) {
+  const npmArgs = ["pack", ...(target ? [target] : []), "--dry-run", "--json", "--ignore-scripts"];
+  const args = npmExecPath
+    ? [npmExecPath, ...npmArgs]
+    : process.platform === "win32"
+      ? ["/d", "/s", "/c", `npm ${npmArgs.join(" ")}`]
+      : npmArgs;
+  const packed = spawnSync(command, args, { encoding: "utf8" });
+  if (packed.error) {
+    fail(`could not run npm pack: ${packed.error.message}`);
+  }
+  if (packed.status !== 0) {
+    if (packed.stderr) process.stderr.write(packed.stderr);
+    fail(`npm pack exited with status ${packed.status}`);
+  }
+
+  try {
+    return JSON.parse(packed.stdout)[0];
+  } catch {
+    fail("npm pack did not return valid JSON");
+  }
 }
 
-let report;
-try {
-  report = JSON.parse(packed.stdout);
-} catch {
-  fail("npm pack did not return valid JSON");
+function packageFiles(report) {
+  return new Set(report?.files?.map((file) => file.path.replaceAll("\\", "/")) ?? []);
 }
 
-const files = new Set(report[0]?.files?.map((file) => file.path.replaceAll("\\", "/")) ?? []);
+const report = pack();
+const files = packageFiles(report);
 for (const required of ["package.json", "LICENSE", "README.md", "openclaw.plugin.json", "index.ts", "dist/index.js"]) {
   if (!files.has(required)) {
     fail(`missing required file ${required}`);
@@ -80,4 +87,36 @@ for (const file of files) {
   }
 }
 
-console.log(`Package check passed: ${report[0].name}@${report[0].version}, ${files.size} files`);
+const mirrorRoot = ".release/openclaw-weixin";
+const prepared = spawnSync(process.execPath, ["scripts/prepare-weixin-package.mjs", mirrorRoot], {
+  encoding: "utf8",
+});
+if (prepared.error || prepared.status !== 0) {
+  if (prepared.stderr) process.stderr.write(prepared.stderr);
+  fail("could not prepare openclaw-weixin mirror package");
+}
+
+const mirrorPackageJson = JSON.parse(readFileSync(`${mirrorRoot}/package.json`, "utf8"));
+const mirrorPluginManifest = JSON.parse(readFileSync(`${mirrorRoot}/openclaw.plugin.json`, "utf8"));
+if (mirrorPackageJson.name !== "openclaw-weixin") {
+  fail(`expected mirror package name openclaw-weixin, found ${mirrorPackageJson.name}`);
+}
+if (mirrorPackageJson.openclaw?.install?.npmSpec !== mirrorPackageJson.name) {
+  fail("mirror openclaw.install.npmSpec must match the mirror package name");
+}
+if (mirrorPluginManifest.id !== "openclaw-weixin") {
+  fail("the mirror package must retain the openclaw-weixin plugin id");
+}
+
+const mirrorReport = pack(mirrorRoot);
+const mirrorFiles = packageFiles(mirrorReport);
+if (mirrorReport.version !== report.version) {
+  fail(`mirror version ${mirrorReport.version} does not match canonical version ${report.version}`);
+}
+if (files.size !== mirrorFiles.size || [...files].some((file) => !mirrorFiles.has(file))) {
+  fail("mirror package file list does not match the canonical package");
+}
+
+console.log(
+  `Package check passed: ${report.name}@${report.version} and ${mirrorReport.name}@${mirrorReport.version}, ${files.size} files each`,
+);

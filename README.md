@@ -1,4 +1,4 @@
-# openclaw-weixin
+# openclaw-wechat
 
 [简体中文](./README.zh_CN.md)
 
@@ -6,8 +6,9 @@ Community-maintained distribution of
 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin), providing
 OpenClaw's WeChat channel with QR-code login.
 
-> The community npm package, plugin id, and channel id are all
-> `openclaw-weixin`. Existing
+> The canonical npm package is `@newfuture/openclaw-wechat`;
+> `openclaw-weixin` is its unscoped install-compatible mirror. Both packages use
+> the single `openclaw-weixin` plugin and channel id. Existing
 > `channels.openclaw-weixin`, `plugins.entries.openclaw-weixin`, and
 > `~/.openclaw/openclaw-weixin/` data continue to use that id.
 
@@ -31,10 +32,17 @@ Check your version: `openclaw --version`
 ## Install
 
 ```bash
-openclaw plugins install npm:openclaw-weixin
+openclaw plugins install npm:@newfuture/openclaw-wechat
 openclaw config set plugins.entries.openclaw-weixin.enabled true
 openclaw channels login --channel openclaw-weixin
 openclaw gateway restart
+```
+
+The mirror name installs the same plugin and uses the same configuration and
+state:
+
+```bash
+openclaw plugins install npm:openclaw-weixin
 ```
 
 A QR code appears in the terminal. Scan it with your phone and confirm the
@@ -53,7 +61,7 @@ Tencent package first**. Current OpenClaw uninstall behavior removes channel
 configuration owned by the plugin.
 
 ```bash
-openclaw plugins install npm:openclaw-weixin --force
+openclaw plugins install npm:@newfuture/openclaw-wechat --force
 openclaw gateway restart
 openclaw plugins list
 openclaw channels status --probe
