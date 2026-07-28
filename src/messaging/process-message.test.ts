@@ -127,26 +127,30 @@ describe("processOneMessage", () => {
 
   it("stops before authorization when a slash command handles the message", async () => {
     const harness = createChannelRuntimeHarness();
+    const onReplyAdmitted = vi.fn();
     mocks.handleSlashCommand.mockResolvedValue({ handled: true });
 
-    await processOneMessage(makeTextMessage("/echo hello"), makeDeps(harness.channelRuntime));
+    await processOneMessage(makeTextMessage("/echo hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
 
     expect(mocks.resolveSenderAuthorization).not.toHaveBeenCalled();
     expect(harness.mocks.resolveAgentRoute).not.toHaveBeenCalled();
+    expect(onReplyAdmitted).not.toHaveBeenCalled();
   });
 
   it("drops unauthorized direct messages before routing", async () => {
     const harness = createChannelRuntimeHarness();
+    const onReplyAdmitted = vi.fn();
     mocks.directDmOutcome.mockReturnValue("unauthorized");
 
-    await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime));
+    await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
 
     expect(mocks.resolveSenderAuthorization).toHaveBeenCalledOnce();
     expect(harness.mocks.resolveAgentRoute).not.toHaveBeenCalled();
     expect(harness.mocks.recordInboundSession).not.toHaveBeenCalled();
+    expect(onReplyAdmitted).not.toHaveBeenCalled();
   });
 
-  it("routes, records, dispatches, and reports turn admission", async () => {
+  it("routes, records, dispatches, and reports agent-run admission", async () => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();
     harness.mocks.dispatchReplyFromConfig.mockImplementation(async ({ replyOptions }) => {
@@ -185,6 +189,44 @@ describe("processOneMessage", () => {
       }),
     );
     expect(onReplyAdmitted).toHaveBeenCalledOnce();
+    expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+  });
+
+  it.each(["queued-followup", "adopted-turn"] as const)("reports %s admission", async (admission) => {
+    const harness = createChannelRuntimeHarness();
+    const onReplyAdmitted = vi.fn();
+    harness.mocks.dispatchReplyFromConfig.mockImplementation(async ({ replyOptions }) => {
+      const lifecycle = replyOptions as {
+        queuedFollowupLifecycle?: { onEnqueued?: () => void };
+        onTurnAdopted?: () => void | Promise<void>;
+      };
+      if (admission === "queued-followup") {
+        lifecycle.queuedFollowupLifecycle?.onEnqueued?.();
+      } else {
+        await lifecycle.onTurnAdopted?.();
+      }
+      return {
+        queuedFinal: false,
+        counts: { tool: 0, block: 0, final: 1 },
+      };
+    });
+
+    await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
+
+    expect(onReplyAdmitted).toHaveBeenCalledOnce();
+    expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+  });
+
+  it("marks dispatch idle and leaves admission unreleased when dispatch setup fails", async () => {
+    const harness = createChannelRuntimeHarness();
+    const onReplyAdmitted = vi.fn();
+    harness.mocks.dispatchReplyFromConfig.mockRejectedValue(new Error("synthetic dispatch failure"));
+
+    await expect(
+      processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted)),
+    ).rejects.toThrow("synthetic dispatch failure");
+
+    expect(onReplyAdmitted).not.toHaveBeenCalled();
     expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
   });
 
