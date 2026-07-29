@@ -68,7 +68,20 @@ function packageFiles(report) {
 
 const report = pack();
 const files = packageFiles(report);
-for (const required of ["package.json", "LICENSE", "README.md", "openclaw.plugin.json", "index.ts", "dist/index.js"]) {
+for (const required of [
+  "package.json",
+  "LICENSE",
+  "README.md",
+  "README.zh_CN.md",
+  "openclaw.plugin.json",
+  "index.ts",
+  "dist/index.js",
+  "docs/architecture.md",
+  "docs/guide.md",
+  "docs/guide.zh_CN.md",
+  "docs/backend-api.md",
+  "docs/backend-api.zh_CN.md",
+]) {
   if (!files.has(required)) {
     fail(`missing required file ${required}`);
   }

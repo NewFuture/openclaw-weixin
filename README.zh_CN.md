@@ -3,363 +3,98 @@
 [English](./README.md)
 
 这是 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin)
-的社区维护发行版，为 OpenClaw 提供支持扫码登录的微信渠道。
+的社区维护发行版，用于连接 OpenClaw 与微信，并提供更好的使用体验。
 
-> 正式 npm 包名为 `openclaw-wechat`；`openclaw-weixin` 是其安装镜像。两个包
-> 共用唯一的 `openclaw-weixin` 插件和 channel ID。现有的
-> `channels.openclaw-weixin`、
-> `plugins.entries.openclaw-weixin` 和
-> `~/.openclaw/openclaw-weixin/` 数据继续使用原 ID。
+## 安装或替换
 
-## 兼容性
+需要 [OpenClaw](https://docs.openclaw.ai/install) `>=2026.7.1`。请使用运行
+OpenClaw 的同一用户，并在同一环境中执行。
 
-| 要求 | 最低版本 |
-|------|----------|
-| OpenClaw | `2026.7.1` |
-| Node.js | `>=22.22.3 <23`、`>=24.15.0 <25` 或 `>=25.9.0` |
-
-插件会在启动时检查 OpenClaw 宿主版本，低于最低版本时拒绝加载。推荐使用
-Node.js 24.15.0。
-
-## 前提条件
-
-已安装 [OpenClaw](https://docs.openclaw.ai/install)，且 `openclaw` CLI 可用。
-
-查看版本：`openclaw --version`
-
-## 安装
+**命令行——一行安装或替换：**
 
 ```bash
-openclaw plugins install npm:openclaw-wechat
-openclaw config set plugins.entries.openclaw-weixin.enabled true
+openclaw plugins install npm:openclaw-weixin --force
+```
+
+<details>
+<summary>替换腾讯官方插件？先看这里</summary>
+
+> **警告：**不要先卸载 `@tencent-weixin/openclaw-weixin` 或重新扫码。直接执行
+> 上面的命令；原位替换通常会保留现有配置和登录状态。
+
+</details>
+
+<details>
+<summary>绑定微信账号</summary>
+
+如需将微信账号绑定到当前 OpenClaw，请启用插件并开始扫码绑定：
+
+```bash
+openclaw plugins enable openclaw-weixin
 openclaw channels login --channel openclaw-weixin
-openclaw gateway restart
 ```
 
-也可以使用镜像名安装；其插件、配置和状态与主包完全相同：
+登录命令会在终端显示二维码。
 
-```bash
-openclaw plugins install npm:openclaw-weixin
-```
+</details>
 
-终端会显示二维码，用手机扫码并确认授权；凭据会自动保存。重启后检查：
+<details>
+<summary>重载并检查</summary>
+
+确保正在运行的 Gateway 已重载插件。必要时重启承载 OpenClaw 的服务、容器或
+Pod，然后执行：
 
 ```bash
 openclaw plugins list
 openclaw channels status --probe
 ```
 
-## 从腾讯官方包原位切换
+插件无加载错误且目标账号探测成功即完成；若显示未登录，请执行上面的登录命令。
 
-请从 `@tencent-weixin/openclaw-weixin` 原位切换，**不要先卸载腾讯官方包**。
-新版 OpenClaw 在卸载插件时会删除该插件拥有的 channel 配置。
+</details>
 
-```bash
-openclaw plugins install npm:openclaw-wechat --force
-openclaw gateway restart
-openclaw plugins list
-openclaw channels status --probe
+### 通过 Agent 安装
+
+OpenClaw `>=2026.7.2-beta.1` 时，如果已设置 `commands.plugins: true`，并且你是
+owner/admin，直接发送：
+
+```text
+/plugins install npm:openclaw-weixin --force
 ```
 
-强制安装会替换拥有同一个内部 `openclaw-weixin` 插件/channel ID 的包。新旧包
-不能同时启用。由于内部 ID 与状态目录未改变，原有 channel 配置和登录凭据通常
-会保留。
+然后按上面的**重载并检查**操作。
 
-## 安装限制
+<details>
+<summary>Shell Agent 提示词</summary>
 
-- 此社区 npm 包需通过 CLI 安装；OpenClaw Control UI 不能安装任意 npm、git
-  或本地路径来源的插件。
-- Nix 模式（`OPENCLAW_NIX_MODE=1`）会禁止插件安装、更新、卸载、启用和停用
-  命令；请改动 Nix 配置源后重新构建。
-- OpenClaw 安装插件依赖时会禁用生命周期脚本，因此本包直接携带编译后的
-  `dist/index.js`，无需在用户机器上构建。
+```text
+确认 OpenClaw 不低于 2026.7.1；如果 `~/.openclaw` 存在，先在本地备份。我确认
+信任 npm 来源 `openclaw-weixin`。不要读取或输出凭据，执行
+`openclaw plugins install npm:openclaw-weixin --force`，不要先卸载。仅在
+`openclaw plugins list` 显示已停用时启用插件。如果 Gateway 需要重载，只告诉我
+具体服务、容器或 Pod，不要自行重启。我重载后，执行
+`openclaw channels status --probe` 并报告脱敏结果；若未登录，提示我手动扫码，
+不要由你执行登录命令。
+```
 
-## 添加更多微信账号
+</details>
+
+## 多账号
+
+再次执行登录命令即可绑定其他微信账号：
 
 ```bash
 openclaw channels login --channel openclaw-weixin
 ```
 
-每次扫码登录都会创建一个新的账号条目，支持多个微信号同时在线。
-
-## 多账号上下文隔离
-
-默认情况下，私聊可能共用同一会话桶。**多个微信号同时登录**时，建议按「账号 + 渠道 + 对端」隔离：
+多个账号同时登录时，建议按「账号 + 渠道 + 对端」隔离上下文：
 
 ```bash
 openclaw config set session.dmScope per-account-channel-peer
 ```
 
-## 自定义 BotAgent（可选）
-
-每条出站请求会带一个自我声明的 `bot_agent` 字段——类似 HTTP `User-Agent`——用于
-后台日志归因和监控聚合。**默认值为 `OpenClaw`**。声明自己的应用名能让你的流量
-在后台日志中更容易识别。
-
-在 `openclaw.json` 中加一行即可：
-
-```json
-{
-  "channels": {
-    "openclaw-weixin": {
-      "botAgent": "MyBot/1.2.0"
-    }
-  }
-}
-```
-
-**格式规范**（UA 风格）：
-
-- 一个或多个 `Name/Version` token，空格分隔
-- 每个 token 可选地跟一个 ` (comment)`
-- 仅允许 ASCII 字符；总长 ≤ 256 字节
-- 不合规的 token 在清洗时静默丢弃；如果最终为空，回退到 `OpenClaw`
-
-可直接使用的示例：
-
-- `MyBot/1.2.0`
-- `MyBot/1.2.0 (region=cn;env=prod)`
-- `MyBot/1.2.0 LangChain/0.3.5`
-- `MyBot/1.2.0-rc.1+build.5`
-
-**注意**：`bot_agent` 仅用于观测，**不参与鉴权或路由**。当前本插件实例下所有
-已注册的 agent 共享同一个 `botAgent` 声明；如有需要按 agent 单独标识的场景，
-可在后续版本扩展配置。
-
-## 后端 API 协议
-
-本插件通过 HTTP JSON API 与后端网关通信。二次开发者若需对接自有后端，需实现以下接口。
-
-所有接口均为 `POST`，请求和响应均为 JSON。通用请求头：
-
-| Header | 说明 |
-|--------|------|
-| `Content-Type` | `application/json` |
-| `AuthorizationType` | 固定值 `ilink_bot_token` |
-| `Authorization` | `Bearer <token>`（登录后获取） |
-| `X-WECHAT-UIN` | 随机 uint32 的 base64 编码 |
-
-### 接口列表
-
-| 接口 | 路径 | 说明 |
-|------|------|------|
-| getUpdates | `getupdates` | 长轮询获取新消息 |
-| sendMessage | `sendmessage` | 发送消息（文本/图片/视频/文件） |
-| getUploadUrl | `getuploadurl` | 获取 CDN 上传预签名 URL |
-| getConfig | `getconfig` | 获取账号配置（typing ticket 等） |
-| sendTyping | `sendtyping` | 发送/取消输入状态指示 |
-
-### getUpdates
-
-长轮询接口。服务端在有新消息或超时后返回。
-
-**请求体：**
-
-```json
-{
-  "get_updates_buf": ""
-}
-```
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `get_updates_buf` | `string` | 上次响应返回的同步游标，首次请求传空字符串 |
-
-**响应体：**
-
-```json
-{
-  "ret": 0,
-  "msgs": [...],
-  "get_updates_buf": "<新游标>",
-  "longpolling_timeout_ms": 35000
-}
-```
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `ret` | `number` | 返回码，`0` = 成功 |
-| `errcode` | `number?` | 错误码（如 `-14` = 会话超时） |
-| `errmsg` | `string?` | 错误描述 |
-| `msgs` | `WeixinMessage[]` | 消息列表（结构见下方） |
-| `get_updates_buf` | `string` | 新的同步游标，下次请求时回传 |
-| `longpolling_timeout_ms` | `number?` | 服务端建议的下次长轮询超时（ms） |
-
-### sendMessage
-
-发送一条消息给用户。
-
-**请求体：**
-
-```json
-{
-  "msg": {
-    "to_user_id": "<目标用户 ID>",
-    "context_token": "<会话上下文令牌>",
-    "item_list": [
-      {
-        "type": 1,
-        "text_item": { "text": "你好" }
-      }
-    ]
-  }
-}
-```
-
-### getUploadUrl
-
-获取 CDN 上传预签名参数。上传文件前需先调用此接口获取 `upload_param` 和 `thumb_upload_param`。
-
-**请求体：**
-
-```json
-{
-  "filekey": "<文件标识>",
-  "media_type": 1,
-  "to_user_id": "<目标用户 ID>",
-  "rawsize": 12345,
-  "rawfilemd5": "<明文 MD5>",
-  "filesize": 12352,
-  "thumb_rawsize": 1024,
-  "thumb_rawfilemd5": "<缩略图明文 MD5>",
-  "thumb_filesize": 1040
-}
-```
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `media_type` | `number` | `1` = IMAGE, `2` = VIDEO, `3` = FILE |
-| `rawsize` | `number` | 原文件明文大小 |
-| `rawfilemd5` | `string` | 原文件明文 MD5 |
-| `filesize` | `number` | AES-128-ECB 加密后的密文大小 |
-| `thumb_rawsize` | `number?` | 缩略图明文大小（IMAGE/VIDEO 时必填） |
-| `thumb_rawfilemd5` | `string?` | 缩略图明文 MD5（IMAGE/VIDEO 时必填） |
-| `thumb_filesize` | `number?` | 缩略图密文大小（IMAGE/VIDEO 时必填） |
-
-**响应体：**
-
-```json
-{
-  "upload_param": "<原图上传加密参数>",
-  "thumb_upload_param": "<缩略图上传加密参数>"
-}
-```
-
-### getConfig
-
-获取账号配置，包括 typing ticket。
-
-**请求体：**
-
-```json
-{
-  "ilink_user_id": "<用户 ID>",
-  "context_token": "<可选，会话上下文令牌>"
-}
-```
-
-**响应体：**
-
-```json
-{
-  "ret": 0,
-  "typing_ticket": "<base64 编码的 typing ticket>"
-}
-```
-
-### sendTyping
-
-发送或取消输入状态指示。
-
-**请求体：**
-
-```json
-{
-  "ilink_user_id": "<用户 ID>",
-  "typing_ticket": "<从 getConfig 获取>",
-  "status": 1
-}
-```
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `status` | `number` | `1` = 正在输入，`2` = 取消输入 |
-
-### 消息结构
-
-#### WeixinMessage
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `seq` | `number?` | 消息序列号 |
-| `message_id` | `number?` | 消息唯一 ID |
-| `from_user_id` | `string?` | 发送者 ID |
-| `to_user_id` | `string?` | 接收者 ID |
-| `create_time_ms` | `number?` | 创建时间戳（ms） |
-| `session_id` | `string?` | 会话 ID |
-| `message_type` | `number?` | `1` = USER, `2` = BOT |
-| `message_state` | `number?` | `0` = NEW, `1` = GENERATING, `2` = FINISH |
-| `item_list` | `MessageItem[]?` | 消息内容列表 |
-| `context_token` | `string?` | 会话上下文令牌，回复时需回传 |
-
-#### MessageItem
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `type` | `number` | `1` TEXT, `2` IMAGE, `3` VOICE, `4` FILE, `5` VIDEO |
-| `text_item` | `{ text: string }?` | 文本内容 |
-| `image_item` | `ImageItem?` | 图片（含 CDN 引用和 AES 密钥） |
-| `voice_item` | `VoiceItem?` | 语音（SILK 编码） |
-| `file_item` | `FileItem?` | 文件附件 |
-| `video_item` | `VideoItem?` | 视频 |
-| `ref_msg` | `RefMessage?` | 引用消息 |
-
-#### CDN 媒体引用 (CDNMedia)
-
-所有媒体类型（图片/语音/文件/视频）通过 CDN 传输，使用 AES-128-ECB 加密：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `encrypt_query_param` | `string?` | CDN 下载/上传的加密参数 |
-| `aes_key` | `string?` | base64 编码的 AES-128 密钥 |
-
-### CDN 上传流程
-
-1. 计算文件明文大小、MD5，以及 AES-128-ECB 加密后的密文大小
-2. 如需缩略图（图片/视频），同样计算缩略图的明文和密文参数
-3. 调用 `getUploadUrl` 获取 `upload_param`（和 `thumb_upload_param`）
-4. 使用 AES-128-ECB 加密文件内容，PUT 上传到 CDN URL
-5. 缩略图同理加密并上传
-6. 使用返回的 `encrypt_query_param` 构造 `CDNMedia` 引用，放入 `MessageItem` 发送
-
-> 完整的类型定义见 [`src/api/types.ts`](src/api/types.ts)，API 调用实现见 [`src/api/api.ts`](src/api/api.ts)。
-
-## 卸载
-
-如果以后可能重装，请先备份 `~/.openclaw/openclaw.json`：新版 OpenClaw
-卸载时会删除插件条目及其拥有的 `channels.openclaw-weixin` 配置。
-
-```bash
-openclaw plugins uninstall openclaw-weixin
-```
-
-## 故障排查
-
-### "requires OpenClaw >=2026.7.1" 报错
-
-你的 OpenClaw 版本太旧，不兼容当前插件版本。检查版本：
-
-```bash
-openclaw --version
-```
-
-请先升级 OpenClaw。社区包不发布旧宿主兼容版本线。
-
-### Channel 显示 "OK" 但未连接
-
-确保 `~/.openclaw/openclaw.json` 中 `plugins.entries.openclaw-weixin.enabled` 为 `true`：
-
-```bash
-openclaw config set plugins.entries.openclaw-weixin.enabled true
-openclaw gateway restart
-```
+## 文档
+
+- [详细指南](docs/guide.zh_CN.md)：安装行为、BotAgent、卸载和故障排查
+- [后端 API 协议](docs/backend-api.zh_CN.md)
+- [架构说明](docs/architecture.md)

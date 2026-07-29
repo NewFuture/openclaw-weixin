@@ -17,6 +17,10 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 - Raised the minimum supported OpenClaw host to `2026.7.1` and aligned the
   runtime guard, package metadata, development environment, and CI Node.js
   floors with that release.
+- Unified plugin installation and in-place Tencent-package replacement around
+  one `--force` command, with separate account setup, reload verification, and
+  agent guidance; moved detailed usage and protocol reference into the packaged
+  `docs/` directory.
 
 ### Security
 

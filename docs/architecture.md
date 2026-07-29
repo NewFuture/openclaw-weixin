@@ -6,7 +6,7 @@ and outbound media transfer. OpenClaw owns routing, sessions, command
 authorization, reply generation, hooks, and the unified media store.
 
 The wire-level endpoint and message shapes are documented in the
-[backend API protocol](../README.md#backend-api-protocol).
+[backend API protocol](./backend-api.md).
 
 ## Component map
 

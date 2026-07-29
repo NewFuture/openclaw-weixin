@@ -27,6 +27,7 @@
     "index.ts",
     "openclaw.plugin.json",
     "dist/",
+    "docs/",
     "README.md",
     "README.zh_CN.md",
     "CHANGELOG.md",
