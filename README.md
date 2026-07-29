@@ -67,10 +67,11 @@ QR scan to you:
 
 ```text
 Install or replace `openclaw-weixin` in place while preserving the existing
-configuration and login state. Confirm OpenClaw is at least 2026.7.1. Back up
-`~/.openclaw` locally if it exists. I approve the npm source
-`openclaw-weixin`. Without reading or printing credentials, run
-`openclaw plugins install npm:openclaw-weixin --force`; never uninstall first.
+configuration and login state. Confirm OpenClaw is at least 2026.7.1. Do not
+copy the OpenClaw state directory or read, print, or modify workspace,
+credential, or account-state files. I approve the npm source `openclaw-weixin`.
+Run `openclaw plugins install npm:openclaw-weixin --force`; never uninstall
+first.
 Enable it only if `openclaw plugins list` shows it disabled. If the Gateway
 needs a reload, tell me the exact service, container, or pod; do not restart it.
 After I reload it, run `openclaw channels status --probe` and report a redacted
