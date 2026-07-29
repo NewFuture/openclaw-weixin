@@ -66,17 +66,15 @@ installs or replaces the plugin in place, while leaving any Gateway restart or
 QR scan to you:
 
 ```text
-Install or replace `openclaw-weixin` in place while preserving the existing
-configuration and login state. Confirm OpenClaw is at least 2026.7.1. Do not
-copy the OpenClaw state directory or read, print, or modify workspace,
-credential, or account-state files. I approve the npm source `openclaw-weixin`.
-Run `openclaw plugins install npm:openclaw-weixin --force`; never uninstall
-first.
-Enable it only if `openclaw plugins list` shows it disabled. If the Gateway
-needs a reload, tell me the exact service, container, or pod; do not restart it.
-After I reload it, run `openclaw channels status --probe` and report a redacted
-result. If not logged in, tell me to run the QR login command manually; do not
-run it yourself.
+Install or replace `openclaw-weixin` in place without changing its existing
+configuration or login state. Verify `openclaw --version` is at least 2026.7.1.
+I trust the npm source `openclaw-weixin`. Run
+`openclaw plugins install npm:openclaw-weixin --force`; do not uninstall first
+or inspect or copy workspace, credential, or account-state files. Enable the
+plugin only if `openclaw plugins list` shows it disabled. Do not restart the
+Gateway or start QR login. Tell me what to reload; after I reload it, run
+`openclaw channels status --probe` and report only redacted results. If not
+logged in, ask me to scan manually.
 ```
 
 ## Multiple Accounts

@@ -70,14 +70,12 @@ owner/admin，直接发送：
 Gateway 重启和扫码操作仍由你完成：
 
 ```text
-请在保留现有配置和登录状态的前提下，为当前 OpenClaw 安装或原位替换
-`openclaw-weixin` 插件。确认 OpenClaw 不低于 2026.7.1。不要复制 OpenClaw
-状态目录，也不要读取、输出或修改工作区、凭据及账号状态文件。我确认信任 npm 来源
-`openclaw-weixin`。执行 `openclaw plugins install npm:openclaw-weixin --force`，
-不要先卸载。仅在 `openclaw plugins list` 显示已停用时启用插件。如果 Gateway
-需要重载，只告诉我具体服务、容器或 Pod，不要自行重启。我重载后，执行
-`openclaw channels status --probe` 并报告脱敏结果；若未登录，提示我手动扫码，
-不要由你执行登录命令。
+请在不改变现有配置和登录状态的前提下，安装或原位替换 `openclaw-weixin`。先确认
+`openclaw --version` 不低于 2026.7.1。我信任 npm 来源 `openclaw-weixin`。执行
+`openclaw plugins install npm:openclaw-weixin --force`；不要先卸载，也不要查看
+或复制工作区、凭据及账号状态文件。仅在 `openclaw plugins list` 显示已停用时
+启用插件。不要重启 Gateway 或发起扫码登录；告诉我需要重载什么。待我重载后，执行
+`openclaw channels status --probe`，只报告脱敏结果；若未登录，提示我手动扫码。
 ```
 
 ## 多账号
