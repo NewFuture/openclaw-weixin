@@ -61,9 +61,9 @@ Then follow **Reload and check** above.
 
 ### Shell Agent Prompt
 
-You can also tell an agent with Shell access to
-check compatibility, back up state, install or replace in place, and leave any
-Gateway restart or QR scan to you:
+Copy and send this prompt directly to an agent with Shell access. It safely
+installs or replaces the plugin in place, while leaving any Gateway restart or
+QR scan to you:
 
 ```text
 Confirm OpenClaw is at least 2026.7.1. Back up `~/.openclaw` locally if it

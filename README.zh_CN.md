@@ -64,10 +64,10 @@ owner/admin，直接发送：
 
 然后按上面的**重载并检查**操作。
 
-#### Shell Agent 提示词
+### Shell Agent 提示词
 
-当 `/plugins` 不可用时，将下面的提示词发送给有 Shell 权限的 Agent。它会检查
-兼容性、备份状态、原位安装或替换插件，并将 Gateway 重启和扫码操作交给你：
+将下面的提示词直接发送给有 Shell 权限的 Agent，即可安全安装或原位替换插件；
+Gateway 重启和扫码操作仍由你完成：
 
 ```text
 确认 OpenClaw 不低于 2026.7.1；如果 `~/.openclaw` 存在，先在本地备份。我确认
