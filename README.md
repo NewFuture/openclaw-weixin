@@ -68,8 +68,11 @@ an owner/admin, send:
 
 Then follow **Reload and check** above.
 
-<details>
-<summary>Shell Agent prompt</summary>
+#### Shell Agent Prompt
+
+Use this when `/plugins` is unavailable. It tells an agent with Shell access to
+check compatibility, back up state, install or replace in place, and leave any
+Gateway restart or QR scan to you:
 
 ```text
 Confirm OpenClaw is at least 2026.7.1. Back up `~/.openclaw` locally if it
@@ -81,8 +84,6 @@ not restart it. After I reload it, run `openclaw channels status --probe` and
 report a redacted result. If not logged in, tell me to run the QR login command
 manually; do not run it yourself.
 ```
-
-</details>
 
 ## Multiple Accounts
 
