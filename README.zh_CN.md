@@ -1,4 +1,4 @@
-# openclaw-wechat
+# openclaw-weixin
 
 [English](./README.md)
 

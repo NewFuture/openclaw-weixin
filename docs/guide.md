@@ -6,16 +6,14 @@
 
 ### Package Names and State
 
-The canonical npm package is `openclaw-wechat`; `openclaw-weixin` is its
-install-compatible mirror used by the
-[install command](../README.md#install-or-replace). Both packages use the single
-`openclaw-weixin` plugin/channel id and the same
+The npm package, plugin id, and channel id are all `openclaw-weixin`. The
+[install command](../README.md#install-or-replace) preserves the existing
 `channels.openclaw-weixin`, `plugins.entries.openclaw-weixin`, and
 `~/.openclaw/openclaw-weixin/` state paths.
 
 `--force` confirms the npm source and allows OpenClaw to replace a plugin with
-the same internal id. Back up the OpenClaw state directory (`~/.openclaw` by
-default) first if you need a rollback.
+the same internal id. OpenClaw rotates backups of its config automatically; do
+not copy the entire state directory for this replacement.
 
 ### Limitations
 

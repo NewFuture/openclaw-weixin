@@ -6,14 +6,13 @@
 
 ### 包名与状态兼容性
 
-正式 npm 包名为 `openclaw-wechat`；README 中的
-[安装命令](../README.zh_CN.md#安装或替换)使用与其安装兼容的
-`openclaw-weixin` 镜像。两个包共用唯一的 `openclaw-weixin` 插件/channel ID，
-以及 `channels.openclaw-weixin`、`plugins.entries.openclaw-weixin` 和
+npm 包、插件 ID 和 channel ID 均为 `openclaw-weixin`。README 中的
+[安装命令](../README.zh_CN.md#安装或替换)会保留
+`channels.openclaw-weixin`、`plugins.entries.openclaw-weixin` 和
 `~/.openclaw/openclaw-weixin/` 状态路径。
 
 `--force` 表示确认信任此 npm 来源，并允许 OpenClaw 替换内部 ID 相同的插件。
-如需回滚，请先备份 OpenClaw 状态目录（默认为 `~/.openclaw`）。
+OpenClaw 会自动轮换配置备份；此次替换无需复制整个状态目录。
 
 ### 安装限制
 

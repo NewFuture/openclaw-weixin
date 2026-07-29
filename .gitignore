@@ -6,7 +6,6 @@ dist/
 .env.*
 *.tsbuildinfo
 coverage/
-.release/
 openclaw/
 pnpm-lock.yaml
 pnpm-workspace.yaml

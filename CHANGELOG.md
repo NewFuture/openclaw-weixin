@@ -6,14 +6,10 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
-### Added
-
-- Added `openclaw-wechat` as the canonical npm package and retained
-  `openclaw-weixin` as its install-compatible mirror; both package names use the single internal
-  `openclaw-weixin` plugin/channel id and shared state paths.
-
 ### Changed
 
+- Standardized the repository, npm package, plugin, and channel name on
+  `openclaw-weixin`, and simplified releases to publish one package.
 - Raised the minimum supported OpenClaw host to `2026.7.1` and aligned the
   runtime guard, package metadata, development environment, and CI Node.js
   floors with that release.

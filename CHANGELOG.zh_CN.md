@@ -6,13 +6,10 @@
 
 ## [未发布]
 
-### 新增
-
-- 增加正式 npm 包 `openclaw-wechat`，并保留 `openclaw-weixin` 作为
-  安装镜像；两个包名使用唯一的内部 `openclaw-weixin` 插件/channel ID，并共用状态目录。
-
 ### 变更
 
+- 将仓库、npm 包、插件和 channel 名称统一为 `openclaw-weixin`，并简化为仅发布
+  一个包。
 - 将最低支持的 OpenClaw 宿主提升至 `2026.7.1`，并使运行时检查、包元数据、
   开发环境及 CI 的 Node.js 最低版本与该版本保持一致。
 - 将插件安装与腾讯官方包原位替换统一为同一条 `--force` 命令，并单独说明账号
