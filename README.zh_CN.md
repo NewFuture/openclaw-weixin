@@ -70,9 +70,10 @@ owner/admin，直接发送：
 Gateway 重启和扫码操作仍由你完成：
 
 ```text
-确认 OpenClaw 不低于 2026.7.1；如果 `~/.openclaw` 存在，先在本地备份。我确认
-信任 npm 来源 `openclaw-weixin`。不要读取或输出凭据，执行
-`openclaw plugins install npm:openclaw-weixin --force`，不要先卸载。仅在
+请在保留现有配置和登录状态的前提下，为当前 OpenClaw 安装或原位替换
+`openclaw-weixin` 插件。确认 OpenClaw 不低于 2026.7.1；如果 `~/.openclaw`
+存在，先在本地备份。我确认信任 npm 来源 `openclaw-weixin`。不要读取或输出凭据，
+执行 `openclaw plugins install npm:openclaw-weixin --force`，不要先卸载。仅在
 `openclaw plugins list` 显示已停用时启用插件。如果 Gateway 需要重载，只告诉我
 具体服务、容器或 Pod，不要自行重启。我重载后，执行
 `openclaw channels status --probe` 并报告脱敏结果；若未登录，提示我手动扫码，
