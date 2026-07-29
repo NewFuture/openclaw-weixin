@@ -5,31 +5,23 @@
 Community-maintained distribution of
 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin) that
 connects OpenClaw with WeChat for a better messaging experience.
+Requires [OpenClaw](https://docs.openclaw.ai/install) `>=2026.7.1`.
 
 ## Install or Replace
 
-Requires [OpenClaw](https://docs.openclaw.ai/install) `>=2026.7.1`. Run in the
-same user and environment as OpenClaw.
 
-**CLI — one-command install or replacement:**
+### CLI — one-command install or replacement
+
+> Run in the same user and environment as OpenClaw. Do not uninstall `@tencent-weixin/openclaw-weixin`.
 
 ```bash
 openclaw plugins install npm:openclaw-weixin --force
 ```
 
 <details>
-<summary>Replacing Tencent's package? Read this first</summary>
-
-> **Warning:** Do not uninstall `@tencent-weixin/openclaw-weixin` or scan a new
-> QR code first. Run the command above directly; in-place replacement normally
-> keeps the existing configuration and login.
-
-</details>
-
-<details>
 <summary>Bind a WeChat account</summary>
 
-To bind a WeChat account to this OpenClaw instance, enable the plugin and start
+To bind a WeChat account to this OpenClaw instance without use wechat before, enable the plugin and start
 the QR flow:
 
 ```bash
@@ -37,7 +29,7 @@ openclaw plugins enable openclaw-weixin
 openclaw channels login --channel openclaw-weixin
 ```
 
-The login command displays a QR code in the terminal.
+The login command displays a QR code in the terminal or web.
 
 </details>
 
@@ -57,10 +49,9 @@ the probe. If the probe reports no login, use the login command above.
 
 </details>
 
-### Install Through an Agent
+### Install Through an Agent via messages
 
-On OpenClaw `>=2026.7.2-beta.1`, if `commands.plugins: true` is set and you are
-an owner/admin, send:
+> if `commands.plugins: true` is set and you are an owner/admin, send this command to the chat:
 
 ```text
 /plugins install npm:openclaw-weixin --force
@@ -68,9 +59,9 @@ an owner/admin, send:
 
 Then follow **Reload and check** above.
 
-#### Shell Agent Prompt
+### Shell Agent Prompt
 
-Use this when `/plugins` is unavailable. It tells an agent with Shell access to
+You can also tell an agent with Shell access to
 check compatibility, back up state, install or replace in place, and leave any
 Gateway restart or QR scan to you:
 
