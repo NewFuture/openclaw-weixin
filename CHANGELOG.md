@@ -6,10 +6,16 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-31
+
 ### Changed
 
+- Set the community package and plugin version to `3.0.0` for the first release
+  after consolidating on the single `openclaw-weixin` identity.
 - Standardized the repository, npm package, plugin, and channel name on
   `openclaw-weixin`, and simplified releases to publish one package.
+- Standardized the MIT license text while preserving Tencent's copyright and
+  the community modification notice.
 - Made Chinese the primary README and moved the English version to
   `README_EN.md`, while retaining `README.zh_CN.md` as a compatibility link.
 - Raised the minimum supported OpenClaw host to `2026.7.1` and aligned the
