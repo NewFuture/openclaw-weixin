@@ -66,16 +66,19 @@ owner/admin，直接发送：
 
 ### Shell Agent 提示词
 
-将下面的提示词直接发送给有 Shell 权限的 Agent，即可安全安装或原位替换插件；
-Gateway 重启和扫码操作仍由你完成：
+将下面的提示词直接发送给有 Shell 权限的 Agent，用于安全安装或原位替换插件。
+安装期间，启用了配置重载的受管 Gateway 可能自动重启；否则由你按 Agent 的提示重载，
+扫码仍由你完成：
 
 ```text
 请在不改变现有配置和登录状态的前提下，安装或原位替换 `openclaw-weixin`。先确认
 `openclaw --version` 不低于 2026.7.1。我信任 npm 来源 `openclaw-weixin`。执行
 `openclaw plugins install npm:openclaw-weixin --force`；不要先卸载，也不要查看
 或复制工作区、凭据及账号状态文件。仅在 `openclaw plugins list` 显示已停用时
-启用插件。不要重启 Gateway 或发起扫码登录；告诉我需要重载什么。待我重载后，执行
-`openclaw channels status --probe`，只报告脱敏结果；若未登录，提示我手动扫码。
+启用插件。不要主动重启 Gateway 或发起扫码登录；安装可能使启用了配置重载的受管
+Gateway 自动重启。若已自动重启，执行 `openclaw channels status --probe`；否则只
+告诉我需重载的实际 Gateway、服务、容器或 Pod，待我确认重载后再探测。只报告脱敏
+结果；若未登录，提示我手动扫码。
 ```
 
 ## 多账号

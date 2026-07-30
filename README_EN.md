@@ -21,7 +21,7 @@ openclaw plugins install npm:openclaw-weixin --force
 <details>
 <summary>Bind a WeChat account</summary>
 
-To bind a WeChat account to this OpenClaw instance without use wechat before, enable the plugin and start
+To bind a WeChat account to this OpenClaw instance, enable the plugin and start
 the QR flow:
 
 ```bash
@@ -63,8 +63,9 @@ Then follow **Reload and check** above.
 ### Shell Agent Prompt
 
 Copy and send this prompt directly to an agent with Shell access. It safely
-installs or replaces the plugin in place, while leaving any Gateway restart or
-QR scan to you:
+installs or replaces the plugin in place. During installation, a managed Gateway
+with config reload enabled may restart automatically; otherwise, reload it when
+the agent asks. You still handle any QR scan:
 
 ```text
 Install or replace `openclaw-weixin` in place without changing its existing
@@ -73,9 +74,11 @@ I trust the npm source `openclaw-weixin`. Run
 `openclaw plugins install npm:openclaw-weixin --force`; do not uninstall first
 or inspect or copy workspace, credential, or account-state files. Enable the
 plugin only if `openclaw plugins list` shows it disabled. Do not restart the
-Gateway or start QR login. Tell me what to reload; after I reload it, run
-`openclaw channels status --probe` and report only redacted results. If not
-logged in, ask me to scan manually.
+Gateway yourself or start QR login. Installation may automatically restart a
+managed Gateway with config reload enabled. If it does, run
+`openclaw channels status --probe`; otherwise, tell me which Gateway, service,
+container, or pod to reload and wait for my confirmation before probing. Report
+only redacted results. If not logged in, ask me to scan manually.
 ```
 
 ## Multiple Accounts
