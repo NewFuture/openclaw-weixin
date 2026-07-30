@@ -213,6 +213,12 @@ jobs:
             exit 1
           fi
 
+          repository_visibility="$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.visibility')"
+          if [[ "$repository_visibility" != "public" ]]; then
+            echo "::error::Repository must be public before creating ${RELEASE_TAG} for npm provenance."
+            exit 1
+          fi
+
           if [[ -z "$PREVIOUS_VERSION" ]]; then
             echo "::error::Cannot determine the previous repository release version."
             exit 1

@@ -5,12 +5,13 @@ npm token or add `NODE_AUTH_TOKEN` to the release workflow.
 
 ## Release prerequisites
 
-1. Confirm the target version is not already published to npm.
-2. Confirm the npm package has a GitHub Actions Trusted Publisher for owner
+1. Make the GitHub repository public so npm can verify the package provenance.
+2. Confirm the target version is not already published to npm.
+3. Confirm the npm package has a GitHub Actions Trusted Publisher for owner
    `NewFuture`, repository `openclaw-weixin`, and workflow `release.yml`.
-3. From the exact clean release commit, run `npm ci`, `npm run check:versions`,
+4. From the exact clean release commit, run `npm ci`, `npm run check:versions`,
    `npm run audit:deps`, `npm run check`, and `npm run pack:check`.
-4. Confirm `package.json`, `package-lock.json`, `openclaw.plugin.json`, and both
+5. Confirm `package.json`, `package-lock.json`, `openclaw.plugin.json`, and both
    changelogs use the same release version.
 
 ## Trusted releases
