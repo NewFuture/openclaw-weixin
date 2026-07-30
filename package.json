@@ -33,7 +33,8 @@
     "README.zh_CN.md",
     "CHANGELOG.md",
     "CHANGELOG.zh_CN.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "test": "npm run test:coverage",

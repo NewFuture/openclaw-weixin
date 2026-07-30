@@ -71,6 +71,7 @@ const files = packageFiles(report);
 for (const required of [
   "package.json",
   "LICENSE",
+  "NOTICE",
   "README.md",
   "README_EN.md",
   "README.zh_CN.md",
