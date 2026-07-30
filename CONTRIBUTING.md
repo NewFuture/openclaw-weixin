@@ -77,7 +77,7 @@ npm run pack:check
 ## Pull requests
 
 - Keep changes focused and include tests for behavior changes.
-- Update `README.md` and `README.zh_CN.md` for user-facing documentation.
+- Update `README.md` and `README_EN.md` for user-facing documentation.
 - Update both changelogs when a change affects users.
 - Remove credentials, account identifiers, QR codes, and private message
   content from tests, logs, screenshots, and issue descriptions.

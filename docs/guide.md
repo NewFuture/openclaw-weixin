@@ -1,13 +1,13 @@
 # Detailed Guide
 
-[Back to README](../README.md) | [简体中文](./guide.zh_CN.md)
+[Back to README](../README_EN.md) | [简体中文](./guide.zh_CN.md)
 
 ## Installation Details
 
 ### Package Names and State
 
 The npm package, plugin id, and channel id are all `openclaw-weixin`. The
-[install command](../README.md#install-or-replace) preserves the existing
+[install command](../README_EN.md#install-or-replace) preserves the existing
 `channels.openclaw-weixin`, `plugins.entries.openclaw-weixin`, and
 `~/.openclaw/openclaw-weixin/` state paths.
 
@@ -70,7 +70,7 @@ added in a future version if needed.
 
 > [!WARNING]
 > Do not uninstall when replacing Tencent's package. Use the
-> [install command](../README.md#install-or-replace) instead.
+> [install command](../README_EN.md#install-or-replace) instead.
 
 Back up `~/.openclaw/openclaw.json` first if you may want to reinstall: current
 OpenClaw versions remove the plugin entry and owned

@@ -10,6 +10,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 - Standardized the repository, npm package, plugin, and channel name on
   `openclaw-weixin`, and simplified releases to publish one package.
+- Made Chinese the primary README and moved the English version to
+  `README_EN.md`.
 - Raised the minimum supported OpenClaw host to `2026.7.1` and aligned the
   runtime guard, package metadata, development environment, and CI Node.js
   floors with that release.

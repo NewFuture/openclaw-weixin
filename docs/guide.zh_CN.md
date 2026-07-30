@@ -1,13 +1,13 @@
 # 详细指南
 
-[返回 README](../README.zh_CN.md) | [English](./guide.md)
+[返回 README](../README.md) | [English](./guide.md)
 
 ## 安装说明
 
 ### 包名与状态兼容性
 
 npm 包、插件 ID 和 channel ID 均为 `openclaw-weixin`。README 中的
-[安装命令](../README.zh_CN.md#安装或替换)会保留
+[安装命令](../README.md#安装或替换)会保留
 `channels.openclaw-weixin`、`plugins.entries.openclaw-weixin` 和
 `~/.openclaw/openclaw-weixin/` 状态路径。
 
@@ -63,7 +63,7 @@ OpenClaw 会自动轮换配置备份；此次替换无需复制整个状态目�
 
 > [!WARNING]
 > 替换腾讯版时不要卸载，请使用 README 中的
-> [安装命令](../README.zh_CN.md#安装或替换)原位替换。
+> [安装命令](../README.md#安装或替换)原位替换。
 
 如果以后可能重装，请先备份 `~/.openclaw/openclaw.json`：新版 OpenClaw
 卸载时会删除插件条目及其拥有的 `channels.openclaw-weixin` 配置。

@@ -72,7 +72,7 @@ for (const required of [
   "package.json",
   "LICENSE",
   "README.md",
-  "README.zh_CN.md",
+  "README_EN.md",
   "openclaw.plugin.json",
   "index.ts",
   "dist/index.js",
