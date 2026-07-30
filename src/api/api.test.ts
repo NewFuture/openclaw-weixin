@@ -4,8 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock logger
-vi.mock("../util/logger.js", () => ({
+const loggerMocks = vi.hoisted(() => ({
   logger: {
     info: vi.fn(),
     debug: vi.fn(),
@@ -13,6 +12,8 @@ vi.mock("../util/logger.js", () => ({
     error: vi.fn(),
   },
 }));
+
+vi.mock("../util/logger.js", () => loggerMocks);
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -29,6 +30,8 @@ vi.mock("node:crypto", () => ({
 }));
 
 import {
+  apiGetFetch,
+  apiPostFetch,
   classifyFetchError,
   describeSendMessageFailure,
   getConfig,
@@ -54,13 +57,51 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe("API fetch logging", () => {
+  it.each([
+    [
+      "GET",
+      () =>
+        apiGetFetch({
+          baseUrl: "https://api.example.com",
+          endpoint: "synthetic",
+          label: "syntheticGet",
+          logBodies: false,
+        }),
+    ],
+    [
+      "POST",
+      () =>
+        apiPostFetch({
+          baseUrl: "https://api.example.com",
+          endpoint: "synthetic",
+          body: JSON.stringify({ local_token_list: ["synthetic-local-token-canary"] }),
+          label: "syntheticPost",
+          logBodies: false,
+        }),
+    ],
+  ])("can omit %s request and response bodies from diagnostics", async (_method, request) => {
+    const responseBody = "synthetic-response-body-canary";
+    mockFetch.mockResolvedValueOnce(mockResponse(responseBody));
+
+    await expect(request()).resolves.toBe(responseBody);
+
+    const logText = loggerMocks.logger.debug.mock.calls.flat().join("\n");
+    expect(logText).toContain("(omitted,len=");
+    expect(logText).not.toContain("synthetic-local-token-canary");
+    expect(logText).not.toContain(responseBody);
+  });
+});
+
 describe("getUpdates", () => {
   it("returns parsed response on success", async () => {
-    const resp = { ret: 0, msgs: [{ seq: 1 }], get_updates_buf: "buf" };
+    const requestCursor = "request-cursor-canary";
+    const responseCursor = "response-cursor-canary";
+    const resp = { ret: 0, msgs: [{ seq: 1 }], get_updates_buf: responseCursor };
     mockFetch.mockResolvedValueOnce(mockResponse(resp));
     const result = await getUpdates({
       baseUrl: "https://api.example.com",
-      get_updates_buf: "old-buf",
+      get_updates_buf: requestCursor,
       token: "tok",
     });
     expect(result.ret).toBe(0);
@@ -69,6 +110,9 @@ describe("getUpdates", () => {
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toContain("ilink/bot/getupdates");
     expect(opts.method).toBe("POST");
+    const logText = loggerMocks.logger.debug.mock.calls.flat().join("\n");
+    expect(logText).not.toContain(requestCursor);
+    expect(logText).not.toContain(responseCursor);
   });
 
   it("throws on non-ok response", async () => {
@@ -227,13 +271,21 @@ describe("describeSendMessageFailure", () => {
 
 describe("getConfig", () => {
   it("returns parsed response", async () => {
-    const resp = { ret: 0, typing_ticket: "ticket" };
+    const userId = "user-config-request-canary";
+    const contextToken = "context-config-request-canary";
+    const typingTicket = "typing-ticket-response-canary";
+    const resp = { ret: 0, typing_ticket: typingTicket };
     mockFetch.mockResolvedValueOnce(mockResponse(resp));
     const result = await getConfig({
       baseUrl: "https://api.example.com/",
-      ilinkUserId: "user1",
+      ilinkUserId: userId,
+      contextToken,
     });
-    expect(result.typing_ticket).toBe("ticket");
+    expect(result.typing_ticket).toBe(typingTicket);
+    const logText = loggerMocks.logger.debug.mock.calls.flat().join("\n");
+    expect(logText).not.toContain(userId);
+    expect(logText).not.toContain(contextToken);
+    expect(logText).not.toContain(typingTicket);
   });
 
   it("throws on non-ok response", async () => {

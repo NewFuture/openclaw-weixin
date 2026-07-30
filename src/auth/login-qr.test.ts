@@ -86,12 +86,14 @@ describe("QR login lifecycle", () => {
       endpoint: "ilink/bot/get_bot_qrcode?bot_type=3",
       body: JSON.stringify({ local_token_list: [] }),
       label: "fetchQRCode",
+      logBodies: false,
     });
     expect(mocks.apiGetFetch).toHaveBeenCalledWith({
       baseUrl: "https://ilinkai.weixin.qq.com",
       endpoint: `ilink/bot/get_qrcode_status?qrcode=${encodeURIComponent(qrcode)}`,
       timeoutMs: 35_000,
       label: "pollQRStatus",
+      logBodies: false,
     });
     expect(loggedText()).toContain(`ilink_bot_id=${redactToken(accountId)}`);
     expect(loggedText()).not.toContain(qrcode);

@@ -214,7 +214,29 @@ describe("monitorWeixinProvider", () => {
     vi.useFakeTimers();
     const abortController = new AbortController();
     const harness = createChannelRuntimeHarness();
-    getUpdatesMock.mockResolvedValue({ ret: 1, errmsg: "synthetic failure" });
+    const cursor = "failed-cursor-canary";
+    getUpdatesMock.mockResolvedValue({ ret: 1, errmsg: "synthetic failure", get_updates_buf: cursor });
+
+    const monitor = startMonitor(abortController, harness.channelRuntime);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getUpdatesMock).toHaveBeenCalledOnce();
+    expect(loggerMocks.account.error).toHaveBeenCalledWith(
+      expect.stringContaining(`get_updates_buf_length=${cursor.length}`),
+    );
+    expect(loggerMocks.account.error.mock.calls.flat().join("\n")).not.toContain(cursor);
+
+    abortController.abort();
+
+    await expect(monitor).resolves.toBeUndefined();
+    expect(getUpdatesMock).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("resolves when aborted during a rejected-poll retry delay", async () => {
+    vi.useFakeTimers();
+    const abortController = new AbortController();
+    const harness = createChannelRuntimeHarness();
+    getUpdatesMock.mockRejectedValue(new Error("synthetic network failure"));
 
     const monitor = startMonitor(abortController, harness.channelRuntime);
     await vi.advanceTimersByTimeAsync(0);
@@ -298,6 +320,10 @@ describe("monitorWeixinProvider", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(pauseSessionMock).toHaveBeenCalledWith("acc-monitor");
     expect(getRemainingPauseMsMock).toHaveBeenCalledWith("acc-monitor");
+    expect(loggerMocks.account.error).toHaveBeenCalledWith(
+      expect.stringContaining(`token for ${redactToken("acc-monitor")} is stale`),
+    );
+    expect(loggerMocks.account.error.mock.calls.flat().join("\n")).not.toContain("acc-monitor");
 
     abortController.abort();
 
@@ -354,11 +380,13 @@ describe("monitorWeixinProvider", () => {
     await expect(monitor).resolves.toBeUndefined();
   });
 
-  it("redacts inbound users and logs only cursor length", async () => {
+  it("redacts account and inbound user identifiers and logs only cursor length", async () => {
     const abortController = new AbortController();
     const harness = createChannelRuntimeHarness();
+    const accountId = "account-monitor-canary";
     const userId = "user-monitor-canary";
     const cursor = "cursor-monitor-canary";
+    const runtimeLog = vi.fn();
     getUpdatesMock
       .mockResolvedValueOnce({
         ret: 0,
@@ -375,16 +403,27 @@ describe("monitorWeixinProvider", () => {
       abortController.abort();
     });
 
-    const monitor = startMonitor(abortController, harness.channelRuntime);
+    const monitor = monitorWeixinProvider({
+      baseUrl: "https://example.test",
+      cdnBaseUrl: "https://cdn.example.test",
+      accountId,
+      config: {},
+      channelRuntime: harness.channelRuntime,
+      abortSignal: abortController.signal,
+      runtime: { log: runtimeLog, error: vi.fn() },
+    });
     await expect(monitor).resolves.toBeUndefined();
 
+    expect(loggerMocks.withAccount).toHaveBeenCalledWith(redactToken(accountId));
     expect(loggerMocks.account.info).toHaveBeenCalledWith(
       expect.stringContaining(`inbound message: from=${redactToken(userId)}`),
     );
     expect(loggerMocks.account.debug).toHaveBeenCalledWith(
       expect.stringContaining(`get_updates_buf_length=${cursor.length}`),
     );
+    expect(loggerMocks.account.debug).toHaveBeenCalledWith("syncFilePath: configured");
     const logText = [
+      runtimeLog,
       loggerMocks.account.info,
       loggerMocks.account.debug,
       loggerMocks.account.warn,
@@ -392,6 +431,7 @@ describe("monitorWeixinProvider", () => {
     ]
       .flatMap((fn) => fn.mock.calls.flat())
       .join("\n");
+    expect(logText).not.toContain(accountId);
     expect(logText).not.toContain(userId);
     expect(logText).not.toContain(cursor);
   });

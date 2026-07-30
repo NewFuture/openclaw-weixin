@@ -1,3 +1,4 @@
+import { redactToken } from "../util/redact.js";
 import { getConfig } from "./api.js";
 
 /** Subset of getConfig fields that we actually need; add new fields here as needed. */
@@ -49,11 +50,11 @@ export class WeixinConfigManager {
             nextFetchAt: now + Math.random() * CONFIG_CACHE_TTL_MS,
             retryDelayMs: CONFIG_CACHE_INITIAL_RETRY_MS,
           });
-          this.log(`[weixin] config ${entry?.everSucceeded ? "refreshed" : "cached"} for ${userId}`);
+          this.log(`[weixin] config ${entry?.everSucceeded ? "refreshed" : "cached"} for ${redactToken(userId)}`);
           fetchOk = true;
         }
       } catch (err) {
-        this.log(`[weixin] getConfig failed for ${userId} (ignored): ${String(err)}`);
+        this.log(`[weixin] getConfig failed for ${redactToken(userId)} (ignored): ${String(err)}`);
       }
       if (!fetchOk) {
         const prevDelay = entry?.retryDelayMs ?? CONFIG_CACHE_INITIAL_RETRY_MS;

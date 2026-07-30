@@ -309,6 +309,7 @@ export async function apiGetFetch(params: {
   endpoint: string;
   timeoutMs?: number;
   label: string;
+  logBodies?: boolean;
 }): Promise<string> {
   const base = ensureTrailingSlash(params.baseUrl);
   const url = new URL(params.endpoint, base);
@@ -326,7 +327,9 @@ export async function apiGetFetch(params: {
     });
     if (t !== undefined) clearTimeout(t);
     const rawText = await res.text();
-    logger.debug(`${params.label} status=${res.status} raw=${redactBody(rawText)}`);
+    logger.debug(
+      `${params.label} status=${res.status} raw=${params.logBodies === false ? `(omitted,len=${rawText.length})` : redactBody(rawText)}`,
+    );
     if (!res.ok) {
       throw new Error(`${params.label} ${res.status}: ${rawText}`);
     }
@@ -386,11 +389,14 @@ export async function apiPostFetch(params: {
   timeoutMs?: number;
   label: string;
   abortSignal?: AbortSignal;
+  logBodies?: boolean;
 }): Promise<string> {
   const base = ensureTrailingSlash(params.baseUrl);
   const url = new URL(params.endpoint, base);
   const hdrs = buildHeaders({ token: params.token });
-  logger.debug(`POST ${redactUrl(url.toString())} body=${redactBody(params.body)}`);
+  logger.debug(
+    `POST ${redactUrl(url.toString())} body=${params.logBodies === false ? `(omitted,len=${params.body.length})` : redactBody(params.body)}`,
+  );
 
   const controller = params.timeoutMs !== undefined ? new AbortController() : undefined;
   const t =
@@ -410,7 +416,9 @@ export async function apiPostFetch(params: {
     });
     if (t !== undefined) clearTimeout(t);
     const rawText = await res.text();
-    logger.debug(`${params.label} status=${res.status} raw=${redactBody(rawText)}`);
+    logger.debug(
+      `${params.label} status=${res.status} raw=${params.logBodies === false ? `(omitted,len=${rawText.length})` : redactBody(rawText)}`,
+    );
     if (!res.ok) {
       throw new Error(`${params.label} ${res.status}: ${rawText}`);
     }
@@ -458,6 +466,7 @@ export async function getUpdates(
       timeoutMs: timeout,
       label: "getUpdates",
       abortSignal: params.abortSignal,
+      logBodies: false,
     });
     const resp: GetUpdatesResp = JSON.parse(rawText);
     return resp;
@@ -556,6 +565,7 @@ export async function getConfig(
     token: params.token,
     timeoutMs: params.timeoutMs ?? DEFAULT_CONFIG_TIMEOUT_MS,
     label: "getConfig",
+    logBodies: false,
   });
   const resp: GetConfigResp = JSON.parse(rawText);
   return resp;

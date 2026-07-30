@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { redactToken } from "../util/redact.js";
+
 const { mockGetConfig } = vi.hoisted(() => ({
   mockGetConfig: vi.fn(),
 }));
@@ -25,11 +27,13 @@ describe("WeixinConfigManager", () => {
   it("fetches and caches config on first getForUser call", async () => {
     mockGetConfig.mockResolvedValueOnce({ ret: 0, typing_ticket: "ticket-1" });
     const logFn = vi.fn();
+    const userId = "user-config-success-canary";
     const mgr = new WeixinConfigManager({ baseUrl: "https://api.com", token: "tok" }, logFn);
-    const config = await mgr.getForUser("user1", "ctx");
+    const config = await mgr.getForUser(userId, "ctx");
     expect(config.typingTicket).toBe("ticket-1");
     expect(mockGetConfig).toHaveBeenCalledOnce();
-    expect(logFn).toHaveBeenCalled();
+    expect(logFn).toHaveBeenCalledWith(expect.stringContaining(redactToken(userId)));
+    expect(logFn.mock.calls.flat().join("\n")).not.toContain(userId);
   });
 
   it("returns cached config on subsequent calls within TTL", async () => {
@@ -43,9 +47,13 @@ describe("WeixinConfigManager", () => {
 
   it("returns default config when getConfig fails", async () => {
     mockGetConfig.mockRejectedValueOnce(new Error("network error"));
-    const mgr = new WeixinConfigManager({ baseUrl: "https://api.com" }, vi.fn());
-    const config = await mgr.getForUser("user1");
+    const logFn = vi.fn();
+    const userId = "user-config-failure-canary";
+    const mgr = new WeixinConfigManager({ baseUrl: "https://api.com" }, logFn);
+    const config = await mgr.getForUser(userId);
     expect(config.typingTicket).toBe("");
+    expect(logFn).toHaveBeenCalledWith(expect.stringContaining(redactToken(userId)));
+    expect(logFn.mock.calls.flat().join("\n")).not.toContain(userId);
   });
 
   it("returns default config when ret is not 0", async () => {

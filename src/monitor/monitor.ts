@@ -9,7 +9,7 @@ import { processOneMessage, type WeixinChannelRuntime } from "../messaging/proce
 import { getSyncBufFilePath, loadGetUpdatesBuf, saveGetUpdatesBuf } from "../storage/sync-buf.js";
 import type { Logger } from "../util/logger.js";
 import { logger } from "../util/logger.js";
-import { redactBody, redactToken } from "../util/redact.js";
+import { redactToken } from "../util/redact.js";
 
 const DEFAULT_LONG_POLL_TIMEOUT_MS = 35_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -46,7 +46,8 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
     opts;
   const log = opts.runtime?.log ?? (() => {});
   const errLog = opts.runtime?.error ?? ((m: string) => log(m));
-  const aLog: Logger = logger.withAccount(accountId);
+  const redactedAccountId = redactToken(accountId);
+  const aLog: Logger = logger.withAccount(redactedAccountId);
 
   if (!channelRuntime) {
     const msg = "channelRuntime missing on monitor opts; gateway must inject ChannelGatewayContext.channelRuntime";
@@ -54,10 +55,10 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
     throw new Error(msg);
   }
 
-  log(`weixin monitor started (${baseUrl}, account=${accountId})`);
+  log(`weixin monitor started (${baseUrl}, account=${redactedAccountId})`);
   aLog.info(`Monitor started: baseUrl=${baseUrl} timeoutMs=${longPollTimeoutMs ?? DEFAULT_LONG_POLL_TIMEOUT_MS}`);
   const syncFilePath = getSyncBufFilePath(accountId);
-  aLog.debug(`syncFilePath: ${syncFilePath}`);
+  aLog.debug(`syncFilePath: configured`);
 
   const previousGetUpdatesBuf = loadGetUpdatesBuf(syncFilePath);
   let getUpdatesBuf = previousGetUpdatesBuf ?? "";
@@ -162,7 +163,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
           pauseSession(accountId);
           const pauseMs = getRemainingPauseMs(accountId);
           aLog.error(
-            `getUpdates: token for ${accountId} is stale, pausing all requests for ${Math.ceil(pauseMs / 60_000)} min`,
+            `getUpdates: token for ${redactedAccountId} is stale, pausing all requests for ${Math.ceil(pauseMs / 60_000)} min`,
           );
           consecutiveFailures = 0;
           await sleep(pauseMs, abortSignal);
@@ -174,7 +175,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
           `weixin getUpdates failed: ret=${resp.ret} errcode=${resp.errcode} errmsg=${resp.errmsg ?? ""} (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES})`,
         );
         aLog.error(
-          `getUpdates failed: ret=${resp.ret} errcode=${resp.errcode} errmsg=${resp.errmsg} response=${redactBody(JSON.stringify(resp))}`,
+          `getUpdates failed: ret=${resp.ret} errcode=${resp.errcode} errmsg=${resp.errmsg} msgs=${resp.msgs?.length ?? 0} get_updates_buf_length=${resp.get_updates_buf?.length ?? 0}`,
         );
         if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
           errLog(`weixin getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);
@@ -232,13 +233,14 @@ function isPluginApprovalMessage(message: WeixinMessage): boolean {
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) {
-    return Promise.reject(new Error("aborted"));
+    return Promise.resolve();
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const onAbort = () => {
       clearTimeout(timer);
-      reject(new Error("aborted"));
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
     };
     const timer = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);

@@ -101,6 +101,7 @@ async function fetchQRCode(apiBaseUrl: string, botType: string): Promise<QRCodeR
     endpoint: `ilink/bot/get_bot_qrcode?bot_type=${encodeURIComponent(botType)}`,
     body: JSON.stringify({ local_token_list: localTokenList }),
     label: "fetchQRCode",
+    logBodies: false,
   });
   return JSON.parse(rawText) as QRCodeResponse;
 }
@@ -137,6 +138,7 @@ async function pollQRStatus(apiBaseUrl: string, qrcode: string, verifyCode?: str
       endpoint,
       timeoutMs: QR_LONG_POLL_TIMEOUT_MS,
       label: "pollQRStatus",
+      logBodies: false,
     });
     logger.debug(`pollQRStatus: responseLength=${rawText.length}`);
     return JSON.parse(rawText) as StatusResponse;
