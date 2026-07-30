@@ -4,8 +4,10 @@
 [简体中文](./backend-api.zh_CN.md)
 
 This document covers every Weixin backend endpoint used by the plugin for QR
-login, lifecycle notifications, messaging, and media. A compatible custom
-backend must implement all of them.
+login, lifecycle notifications, messaging, and media. The two QR login requests
+always use Tencent's fixed service. A backend selected by the account's
+post-login `baseurl` must implement the lifecycle, messaging, and media
+endpoints.
 
 QR creation and all post-login endpoints use `POST`; QR status polling uses
 `GET`. All requests include:
@@ -18,9 +20,9 @@ QR creation and all post-login endpoints use `POST`; QR status polling uses
 
 `POST` requests additionally include `Content-Type: application/json`,
 `AuthorizationType: ilink_bot_token`, and a random base64-encoded
-`X-WECHAT-UIN`. Authenticated post-login requests also include the bot token in
-`Authorization`; QR status `GET` requests do not include these `POST`-specific
-headers.
+`X-WECHAT-UIN`. Authenticated post-login requests also include
+`Authorization: Bearer <bot-token>`; QR status `GET` requests do not include
+these `POST`-specific headers.
 
 Authenticated post-login `POST` bodies include `base_info`; QR creation does
 not. The message examples below omit it for readability.
@@ -50,6 +52,9 @@ are documented in the [detailed guide](./guide.md#custom-botagent-optional).
 | `POST` | `/ilink/bot/getuploadurl` | Get CDN upload pre-signed parameters |
 | `POST` | `/ilink/bot/getconfig` | Get account config (typing ticket, etc.) |
 | `POST` | `/ilink/bot/sendtyping` | Send/cancel typing status |
+
+The first two rows describe the fixed QR login service. They are not sent to the
+account's post-login `baseurl`.
 
 ## QR Login and Lifecycle
 

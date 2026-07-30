@@ -29,7 +29,7 @@ openclaw plugins enable openclaw-weixin
 openclaw channels login --channel openclaw-weixin
 ```
 
-The login command displays a QR code in the terminal or web.
+The login command displays a QR code in the terminal.
 
 </details>
 

@@ -2,8 +2,9 @@
 
 [返回详细指南](./guide.zh_CN.md) | [English](./backend-api.md)
 
-本文档覆盖插件用于扫码登录、生命周期通知、消息和媒体的全部微信后端接口。
-对接自有后端时需要实现这些接口。
+本文档覆盖插件用于扫码登录、生命周期通知、消息和媒体的全部微信后端接口。两个扫码
+登录请求始终使用腾讯固定服务；账号登录后 `baseurl` 指定的后端需要实现生命周期、
+消息和媒体接口。
 
 二维码创建和登录后的接口使用 `POST`；二维码状态轮询使用 `GET`。所有 API
 请求均携带：
@@ -16,8 +17,9 @@
 
 `POST` 请求还会携带 `Content-Type: application/json`、
 `AuthorizationType: ilink_bot_token` 和随机 uint32 的 base64 编码
-`X-WECHAT-UIN`。登录后的鉴权请求还会通过 `Authorization` 携带 bot token；
-二维码状态 `GET` 请求不携带这些 `POST` 专用请求头。
+`X-WECHAT-UIN`。登录后的鉴权请求还会携带
+`Authorization: Bearer <bot-token>`；二维码状态 `GET` 请求不携带这些 `POST`
+专用请求头。
 
 登录后的 `POST` 请求体包含 `base_info`，二维码创建请求则不包含。下方消息示例
 为简洁起见将其省略。
@@ -47,6 +49,8 @@
 | `POST` | `/ilink/bot/getuploadurl` | 获取 CDN 上传预签名参数 |
 | `POST` | `/ilink/bot/getconfig` | 获取账号配置（typing ticket 等） |
 | `POST` | `/ilink/bot/sendtyping` | 发送或取消输入状态 |
+
+前两行描述固定的扫码登录服务，不会发送到账号登录后的 `baseurl`。
 
 ## 扫码登录与生命周期
 
