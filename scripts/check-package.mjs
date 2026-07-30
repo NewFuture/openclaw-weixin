@@ -73,6 +73,7 @@ for (const required of [
   "LICENSE",
   "README.md",
   "README_EN.md",
+  "README.zh_CN.md",
   "openclaw.plugin.json",
   "index.ts",
   "dist/index.js",

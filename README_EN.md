@@ -51,7 +51,8 @@ the probe. If the probe reports no login, use the login command above.
 
 ### Install Through an Agent via messages
 
-> if `commands.plugins: true` is set and you are an owner/admin, send this command to the chat:
+On OpenClaw `>=2026.7.2-beta.1`, if `commands.plugins: true` is set and you are
+an owner/admin, send this command to the chat:
 
 ```text
 /plugins install npm:openclaw-weixin --force
