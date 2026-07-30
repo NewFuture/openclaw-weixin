@@ -11,12 +11,88 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  release-metadata:
+    name: Release metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    outputs:
+      previous_release_version: ${{ steps.release.outputs.previous_release_version }}
+      release_tag: ${{ steps.release.outputs.tag }}
+      release_version: ${{ steps.release.outputs.version }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+
+      - name: Validate release metadata
+        run: npm run check:versions
+
+      - name: Detect release version change
+        id: release
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+
+          version="$(node -p "require('./package.json').version")"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+          previous_release_version=""
+          while IFS= read -r commit; do
+            if ! git cat-file -e "${commit}:package.json" 2>/dev/null; then
+              continue
+            fi
+            candidate="$(
+              git show "${commit}:package.json" |
+                node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version"
+            )"
+            if [[ "$candidate" != "$version" ]]; then
+              previous_release_version="$candidate"
+              break
+            fi
+          done < <(git rev-list --first-parent --skip=1 HEAD)
+          echo "previous_release_version=${previous_release_version}" >> "$GITHUB_OUTPUT"
+
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            echo "No comparison commit is available; skipping release detection."
+            exit 0
+          fi
+
+          if ! git cat-file -e "${BASE_SHA}:package.json"; then
+            echo "::error::Cannot read package.json from comparison commit ${BASE_SHA}."
+            exit 1
+          fi
+
+          previous_version="$(
+            git show "${BASE_SHA}:package.json" |
+              node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version"
+          )"
+          if [[ "$version" == "$previous_version" ]]; then
+            echo "Package version remains ${version}; no version-transition check is needed."
+            exit 0
+          fi
+
+          RELEASE_PREVIOUS_VERSION="$previous_version" npm run check:versions
+          echo "Package version increased from ${previous_version} to ${version}."
+
   validate:
     name: ${{ matrix.os }} / Node.js ${{ matrix.node-version }}
+    needs: release-metadata
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -63,3 +139,146 @@ jobs:
       - name: Inspect package contents
         if: matrix.pack_check
         run: npm run pack:check
+
+  tag-release:
+    name: Reconcile release tag
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - release-metadata
+      - validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: release-reconcile-${{ needs.release-metadata.outputs.release_tag }}
+      cancel-in-progress: false
+    permissions:
+      actions: write
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          registry-url: https://registry.npmjs.org
+
+      - name: Reconcile release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_VERSION: ${{ needs.release-metadata.outputs.previous_release_version }}
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
+          RELEASE_VERSION: ${{ needs.release-metadata.outputs.release_version }}
+        run: |
+          set -euo pipefail
+
+          tag_commit="$(git rev-list -n 1 "refs/tags/${RELEASE_TAG}" 2>/dev/null || true)"
+          if [[ -n "$tag_commit" ]]; then
+            tag_version="$(
+              git show "${RELEASE_TAG}:package.json" |
+                node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version"
+            )"
+            if [[ "$tag_version" != "$RELEASE_VERSION" ]]; then
+              echo "::error::${RELEASE_TAG} contains package version ${tag_version}, not ${RELEASE_VERSION}."
+              exit 1
+            fi
+            echo "${RELEASE_TAG} already points to release commit ${tag_commit}."
+          fi
+
+          registry_error="$(mktemp)"
+          trap 'rm -f "$registry_error"' EXIT
+          if published_version="$(
+            npm view "openclaw-weixin@${RELEASE_VERSION}" version \
+              --registry=https://registry.npmjs.org 2>"$registry_error"
+          )"; then
+            if [[ "$published_version" != "$RELEASE_VERSION" ]]; then
+              echo "::error::npm returned unexpected version ${published_version} for ${RELEASE_VERSION}."
+              exit 1
+            fi
+            if [[ -z "$tag_commit" ]]; then
+              echo "::error::openclaw-weixin@${RELEASE_VERSION} is published, but ${RELEASE_TAG} is missing."
+              exit 1
+            fi
+            echo "openclaw-weixin@${RELEASE_VERSION} is already published."
+            exit 0
+          fi
+          if ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not determine whether openclaw-weixin@${RELEASE_VERSION} is published."
+            exit 1
+          fi
+
+          if [[ -z "$PREVIOUS_VERSION" ]]; then
+            echo "::error::Cannot determine the previous repository release version."
+            exit 1
+          fi
+          deadline=$((SECONDS + 1200))
+          while true; do
+            : > "$registry_error"
+            if published_previous="$(
+              npm view "openclaw-weixin@${PREVIOUS_VERSION}" version \
+                --registry=https://registry.npmjs.org 2>"$registry_error"
+            )"; then
+              if [[ "$published_previous" != "$PREVIOUS_VERSION" ]]; then
+                echo "::error::npm returned unexpected version ${published_previous} for ${PREVIOUS_VERSION}."
+                exit 1
+              fi
+              break
+            fi
+            if ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+              cat "$registry_error" >&2
+              echo "::error::Could not determine whether openclaw-weixin@${PREVIOUS_VERSION} is published."
+              exit 1
+            fi
+            if (( SECONDS >= deadline )); then
+              echo "::error::Timed out waiting for openclaw-weixin@${PREVIOUS_VERSION} to be published."
+              exit 1
+            fi
+            echo "Waiting for openclaw-weixin@${PREVIOUS_VERSION} before releasing ${RELEASE_VERSION}."
+            sleep 15
+          done
+
+          : > "$registry_error"
+          if ! latest_version="$(
+            npm view "openclaw-weixin@latest" version \
+              --registry=https://registry.npmjs.org 2>"$registry_error"
+          )"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not read the npm latest version."
+            exit 1
+          fi
+          RELEASE_PREVIOUS_VERSION="$latest_version" npm run check:versions
+
+          if [[ -z "$tag_commit" ]]; then
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/tags/${RELEASE_TAG}" \
+              -f sha="$GITHUB_SHA"
+            tag_commit="$GITHUB_SHA"
+          fi
+
+          active_runs="$(
+            gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --commit "$tag_commit" \
+              --limit 20 --json status --jq '[.[] | select(.status != "completed")] | length'
+          )"
+          if [[ "$active_runs" != "0" ]]; then
+            echo "A release workflow is already queued or running for ${RELEASE_TAG}."
+            exit 0
+          fi
+
+          successful_runs="$(
+            gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --commit "$tag_commit" \
+              --limit 20 --json conclusion,status \
+              --jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length'
+          )"
+          if [[ "$successful_runs" != "0" ]]; then
+            echo "::error::A successful release run exists, but npm does not contain openclaw-weixin@${RELEASE_VERSION}."
+            exit 1
+          fi
+
+          # GITHUB_TOKEN-created tags do not recursively trigger push workflows.
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$RELEASE_TAG"

@@ -17,6 +17,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 - Standardized the MIT license text and packaged an informational `NOTICE`
   preserving Tencent's upstream attribution and the community modification
   notice.
+- Added a release metadata gate and idempotent release reconciliation after
+  successful `main` CI, with automatic tagging and ordered npm publication.
 - Made Chinese the primary README and moved the English version to
   `README_EN.md`, while retaining `README.zh_CN.md` as a compatibility link.
 - Raised the minimum supported OpenClaw host to `2026.7.1` and aligned the

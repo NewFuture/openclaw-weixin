@@ -4,13 +4,14 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: npm-publish-${{ github.ref }}
+  group: npm-publish
   cancel-in-progress: false
 
 jobs:
@@ -33,11 +34,16 @@ jobs:
           cache-dependency-path: package-lock.json
           registry-url: https://registry.npmjs.org
 
-      - name: Verify tag matches package version
+      - name: Verify release metadata
         env:
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          node -e "const expected = 'v' + require('./package.json').version; if (process.env.RELEASE_TAG !== expected) { console.error('Expected tag ' + expected + ', got ' + process.env.RELEASE_TAG); process.exit(1); }"
+          if [ "$RELEASE_REF_TYPE" != "tag" ]; then
+            echo "::error::Release workflow must run from a tag, not ${RELEASE_REF_TYPE} ${RELEASE_TAG}."
+            exit 1
+          fi
+          npm run check:versions
 
       - name: Install dependencies
         run: npm ci
@@ -51,5 +57,19 @@ jobs:
       - name: Inspect package contents
         run: npm run pack:check
 
+      - name: Verify npm release order
+        run: |
+          registry_error="$(mktemp)"
+          trap 'rm -f "$registry_error"' EXIT
+          if ! latest_version="$(
+            npm view "openclaw-weixin@latest" version \
+              --registry=https://registry.npmjs.org 2>"$registry_error"
+          )"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not read the npm latest version."
+            exit 1
+          fi
+          RELEASE_PREVIOUS_VERSION="$latest_version" npm run check:versions
+
       - name: Publish package with provenance
-        run: npm publish --provenance --access public --registry=https://registry.npmjs.org
+        run: npm publish --ignore-scripts --provenance --access public --registry=https://registry.npmjs.org
