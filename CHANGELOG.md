@@ -6,6 +6,12 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Added
+
+- Exec approval prompts now expose separate copy-friendly `/approve` code blocks:
+  forwarded prompts append each allowed short-ID action, while direct prompts
+  split each command under `Other options` into its own block.
+
 ### Changed
 
 - Standardized the repository, npm package, plugin, and channel name on

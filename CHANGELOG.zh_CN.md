@@ -6,6 +6,12 @@
 
 ## [未发布]
 
+### 新增
+
+- exec 审批提示现在会分别展示便于复制的 `/approve` 代码块：转发提示会按 OpenClaw
+  允许的决策附加各个短 ID 操作，直接提示则会将 `Other options` 下的每条命令拆成
+  独立代码块。
+
 ### 变更
 
 - 将仓库、npm 包、插件和 channel 名称统一为 `openclaw-weixin`，并简化为仅发布
