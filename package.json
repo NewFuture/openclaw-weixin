@@ -1,6 +1,6 @@
 {
   "name": "openclaw-weixin",
-  "version": "2.4.6",
+  "version": "3.0.0",
   "description": "Community-maintained OpenClaw WeChat channel plugin",
   "license": "MIT",
   "author": "Tencent",
@@ -32,8 +32,10 @@
     "README_EN.md",
     "README.zh_CN.md",
     "CHANGELOG.md",
+    "CHANGELOG_EN.md",
     "CHANGELOG.zh_CN.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "test": "npm run test:coverage",
@@ -45,7 +47,8 @@
     "format": "biome check . --write",
     "format:check": "biome format .",
     "check:style": "biome check . --error-on-warnings",
-    "check:static": "npm run check:style && npm run typecheck && npm run typecheck:tests",
+    "check:versions": "node scripts/check-versions.mjs",
+    "check:static": "npm run check:versions && npm run check:style && npm run typecheck && npm run typecheck:tests",
     "check:fast": "npm run check:static && npm run test:unit",
     "audit:deps": "npm audit --audit-level=moderate",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",

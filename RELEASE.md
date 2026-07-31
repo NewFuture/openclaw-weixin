@@ -3,36 +3,50 @@
 `openclaw-weixin` publishes only to the official npm registry. Never commit an
 npm token or add `NODE_AUTH_TOKEN` to the release workflow.
 
-## First publication
+## Release prerequisites
 
-npm normally requires a package to exist before its Trusted Publisher can be
-configured. A maintainer must therefore bootstrap the unscoped package once:
-
-1. Confirm the unscoped `openclaw-weixin` name and version are available and
-   that the publishing npm account uses two-factor authentication.
-2. From the exact clean release commit, run `npm ci`, `npm run audit:deps`, and
-   `npm run check`.
-3. Inspect the package with `npm run pack:check`, then publish it with
-   `npm publish --access public`.
-4. In the npm package settings, add a GitHub Actions Trusted Publisher for
-   owner `NewFuture`, repository `openclaw-weixin`, and workflow `release.yml`.
-
-The initial community package keeps version `2.4.6`, matching the code and
-plugin manifest inherited from the upstream release. If that exact
-`openclaw-weixin@2.4.6` version already exists, stop and update
-`package.json`, `package-lock.json`, `openclaw.plugin.json`, and both
-changelogs together before publishing.
+1. Make the GitHub repository public so npm can verify the package provenance.
+2. Confirm the target version is not already published to npm.
+3. Confirm the npm package has a GitHub Actions Trusted Publisher for owner
+   `NewFuture`, repository `openclaw-weixin`, and workflow `release.yml`.
+4. From the exact clean release commit, run `npm ci`, `npm run check:versions`,
+   `npm run audit:deps`, `npm run check`, and `npm run pack:check`.
+5. Confirm `package.json`, `package-lock.json`, `openclaw.plugin.json`,
+   `CHANGELOG.md`, and `CHANGELOG_EN.md` use the same release version.
+6. Merge release pull requests with a squash or merge commit. Rebase merge is
+   rejected because its intermediate version-bump commit is not the final tree
+   validated on `main`.
 
 ## Trusted releases
 
 After Trusted Publishing is configured:
 
-1. Update the package and plugin manifest versions together and update both
-   changelogs.
-2. Merge a clean release commit whose checks pass.
-3. Create and push the matching tag, for example `v2.4.7`.
+1. Update `package.json`, both version fields in `package-lock.json`, and
+   `openclaw.plugin.json`, then move both changelogs' unreleased entries into the
+   same dated release section. Chinese remains the default in `CHANGELOG.md`;
+   English is maintained in `CHANGELOG_EN.md`.
+2. Open a pull request. CI rejects mismatched metadata, missing bilingual
+   changelog releases, unstable versions, and version downgrades.
+3. Squash-merge or merge the clean release commit. After every required Linux
+   and Windows check passes on `main`, CI creates the missing matching tag, for
+   example `v3.0.0`, and dispatches its npm release.
 
 `.github/workflows/release.yml` verifies the tag, installs from the lockfile,
 runs the dependency audit, type checking, tests, the build, and the
 package-content check, then publishes `openclaw-weixin` with npm provenance
-over GitHub OIDC.
+over GitHub OIDC. CI explicitly dispatches that workflow at its newly created
+tag because tags created with `GITHUB_TOKEN` do not recursively trigger
+tag-push workflows. A maintainer can rerun a failed release by manually
+dispatching `release.yml` from the existing release tag; branch dispatches are
+rejected. Every `main` push retains its own run and reconciles the tag, npm
+registry, and release-run state, so an interrupted tag or dispatch step is
+recoverable without moving an existing tag or republishing a version. Only CI
+running on the first-parent commit that introduced the version may create its
+missing tag. Later same-version runs can reconcile an existing tag, but cannot
+invent one; after satisfying a blocked prerequisite such as repository
+visibility, rerun the original release commit's workflow. If npm already
+contains a version whose tag is missing, automation fails instead of creating a
+tag that could misrepresent the published artifact's source.
+Consecutive releases wait for the preceding repository version to appear on
+npm, and npm publication is globally serialized with a final check that the
+new version is greater than the current `latest` version.

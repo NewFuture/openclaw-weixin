@@ -1,9 +1,17 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
+import { checkVersionFiles } from "./check-versions.mjs";
+
 function fail(message) {
   console.error(`Package check failed: ${message}`);
   process.exit(1);
+}
+
+try {
+  checkVersionFiles();
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
@@ -32,10 +40,6 @@ if (
 ) {
   fail("the compatibility channel id must remain openclaw-weixin");
 }
-if (pluginManifest.version !== packageJson.version) {
-  fail("package.json and openclaw.plugin.json versions must match");
-}
-
 const npmExecPath = process.env.npm_execpath;
 const command = npmExecPath ? process.execPath : process.platform === "win32" ? process.env.ComSpec : "npm";
 
@@ -71,9 +75,13 @@ const files = packageFiles(report);
 for (const required of [
   "package.json",
   "LICENSE",
+  "NOTICE",
   "README.md",
   "README_EN.md",
   "README.zh_CN.md",
+  "CHANGELOG.md",
+  "CHANGELOG_EN.md",
+  "CHANGELOG.zh_CN.md",
   "openclaw.plugin.json",
   "index.ts",
   "dist/index.js",
