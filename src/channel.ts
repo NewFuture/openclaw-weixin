@@ -19,6 +19,10 @@ import type { WeixinQrStartResult, WeixinQrWaitResult } from "./auth/login-qr.js
 import { DEFAULT_ILINK_BOT_TYPE, displayQRCode, startWeixinLoginWithQr, waitForWeixinLogin } from "./auth/login-qr.js";
 import { downloadRemoteImageToTemp } from "./cdn/upload.js";
 import {
+  appendWeixinExecApprovalQuickReplies,
+  splitWeixinExecApprovalOtherOptions,
+} from "./messaging/approval-quick-replies.js";
+import {
   clearContextTokensForAccount,
   findAccountIdsByContextToken,
   getContextToken,
@@ -220,6 +224,10 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
   outbound: {
     deliveryMode: "direct",
     textChunkLimit: 4000,
+    normalizePayload: ({ payload }) => splitWeixinExecApprovalOtherOptions(payload),
+    beforeDeliverPayload: ({ payload, hint }) => {
+      appendWeixinExecApprovalQuickReplies({ payload, hint });
+    },
     sendText: async (ctx) => {
       const accountId = ctx.accountId || resolveOutboundAccountId(ctx.cfg, ctx.to);
       const result = await sendWeixinOutbound({
