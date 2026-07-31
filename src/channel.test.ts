@@ -136,6 +136,18 @@ function requireSendText() {
   return sendText;
 }
 
+function requireBeforeDeliverPayload() {
+  const beforeDeliverPayload = weixinPlugin.outbound?.beforeDeliverPayload;
+  if (!beforeDeliverPayload) throw new Error("Weixin beforeDeliverPayload adapter is missing");
+  return beforeDeliverPayload;
+}
+
+function requireNormalizePayload() {
+  const normalizePayload = weixinPlugin.outbound?.normalizePayload;
+  if (!normalizePayload) throw new Error("Weixin normalizePayload adapter is missing");
+  return normalizePayload;
+}
+
 function requireStartAccount(): StartAccount {
   const startAccount = weixinPlugin.gateway?.startAccount;
   if (!startAccount) throw new Error("Weixin startAccount adapter is missing");
@@ -259,6 +271,98 @@ describe("weixinPlugin outbound account resolution", () => {
 
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     expect(result).toEqual({ channel: "openclaw-weixin", messageId: "" });
+  });
+});
+
+describe("weixinPlugin approval forwarding", () => {
+  it("adds copy-friendly commands to forwarded exec approvals", async () => {
+    const payload = {
+      text: "🔒 Exec approval required\nID: approval-full-id",
+      channelData: {
+        execApproval: {
+          approvalId: "approval-full-id",
+          approvalSlug: "approval",
+          approvalKind: "exec",
+          allowedDecisions: ["allow-once", "deny"],
+          state: "pending",
+        },
+      },
+    };
+
+    await requireBeforeDeliverPayload()({
+      cfg,
+      target: {
+        channel: "openclaw-weixin",
+        to: recipient,
+        accountId: "account-a",
+      },
+      payload,
+      hint: {
+        kind: "approval-pending",
+        approvalKind: "exec",
+      },
+    });
+
+    expect(payload.text).toContain("/approve approval allow-once");
+    expect(payload.text).toContain("/approve approval deny");
+    expect(payload.text).not.toContain("allow-always");
+  });
+
+  it("splits direct approval alternatives into separate copyable blocks", () => {
+    const approvalText = [
+      "Approval required.",
+      "Run:",
+      "```txt\n/approve approval allow-once\n```",
+      "Pending command:",
+      '```sh\necho "safe"\n```',
+      "Other options:",
+      "```txt\n/approve approval allow-always\n/approve approval deny\n```",
+      "Host: gateway\nFull id: `approval-full-id`",
+    ].join("\n\n");
+    const payload = {
+      text: approvalText,
+      channelData: {
+        execApproval: {
+          approvalId: "approval-full-id",
+          approvalSlug: "approval",
+          approvalKind: "exec",
+          allowedDecisions: ["allow-once", "allow-always", "deny"],
+        },
+      },
+    };
+
+    const normalized = requireNormalizePayload()({ payload, cfg });
+
+    expect(normalized?.text).toBe(
+      [
+        "Approval required.",
+        "",
+        "Run:",
+        "",
+        "```txt",
+        "/approve approval allow-once",
+        "```",
+        "",
+        "Pending command:",
+        "",
+        "```sh",
+        'echo "safe"',
+        "```",
+        "",
+        "Other options:",
+        "",
+        "```txt",
+        "/approve approval allow-always",
+        "```",
+        "",
+        "```txt",
+        "/approve approval deny",
+        "```",
+        "",
+        "Host: gateway",
+        "Full id: `approval-full-id`",
+      ].join("\n"),
+    );
   });
 });
 

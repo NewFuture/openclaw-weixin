@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { assertReleaseTag, assertVersionIncrease, checkVersionMetadata } from "./check-versions.mjs";
+import {
+  assertReleaseTag,
+  assertVersionIncrease,
+  checkVersionMetadata,
+  findReleaseTransition,
+} from "./check-versions.mjs";
 
 function validMetadata() {
   return {
@@ -10,8 +15,8 @@ function validMetadata() {
       packages: { "": { version: "3.0.0" } },
     },
     pluginManifest: { version: "3.0.0" },
-    changelog: "## [Unreleased]\n\n## [3.0.0] - 2026-07-31\n",
     chineseChangelog: "## [未发布]\n\n## [3.0.0] - 2026-07-31\n",
+    englishChangelog: "## [Unreleased]\n\n## [3.0.0] - 2026-07-31\n",
   };
 }
 
@@ -46,7 +51,7 @@ describe("checkVersionMetadata", () => {
 
   it("requires matching bilingual changelog releases", () => {
     const metadata = validMetadata();
-    metadata.chineseChangelog = "## [未发布]\n\n## [3.0.0] - 2026-08-01\n";
+    metadata.englishChangelog = "## [Unreleased]\n\n## [3.0.0] - 2026-08-01\n";
     expect(() => checkVersionMetadata(metadata)).toThrow(
       "changelog release dates do not match for 3.0.0: 2026-07-31 and 2026-08-01",
     );
@@ -62,6 +67,22 @@ describe("checkVersionMetadata", () => {
 });
 
 describe("release version transition", () => {
+  it("pins a release to the first commit that introduced its version", () => {
+    expect(
+      findReleaseTransition(
+        [
+          { commit: "same-version-fix", version: "3.0.0" },
+          { commit: "release-transition", version: "3.0.0" },
+          { commit: "previous-release", version: "2.4.6" },
+        ],
+        "3.0.0",
+      ),
+    ).toEqual({
+      previousVersion: "2.4.6",
+      releaseCommit: "release-transition",
+    });
+  });
+
   it("requires the release version to increase", () => {
     expect(() => assertVersionIncrease("2.4.6", "3.0.0")).not.toThrow();
     expect(() => assertVersionIncrease("3.0.0", "3.0.0")).toThrow(

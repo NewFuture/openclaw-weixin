@@ -23,7 +23,7 @@ function findReleaseDate(changelog, label, version) {
   return match[1];
 }
 
-export function checkVersionMetadata({ packageJson, packageLock, pluginManifest, changelog, chineseChangelog }) {
+export function checkVersionMetadata({ packageJson, packageLock, pluginManifest, chineseChangelog, englishChangelog }) {
   const version = packageJson?.version;
   parseStableVersion(version, "package.json");
 
@@ -37,10 +37,10 @@ export function checkVersionMetadata({ packageJson, packageLock, pluginManifest,
     }
   }
 
-  const releaseDate = findReleaseDate(changelog, "CHANGELOG.md", version);
-  const chineseReleaseDate = findReleaseDate(chineseChangelog, "CHANGELOG.zh_CN.md", version);
-  if (chineseReleaseDate !== releaseDate) {
-    throw new Error(`changelog release dates do not match for ${version}: ${releaseDate} and ${chineseReleaseDate}`);
+  const releaseDate = findReleaseDate(chineseChangelog, "CHANGELOG.md", version);
+  const englishReleaseDate = findReleaseDate(englishChangelog, "CHANGELOG_EN.md", version);
+  if (englishReleaseDate !== releaseDate) {
+    throw new Error(`changelog release dates do not match for ${version}: ${releaseDate} and ${englishReleaseDate}`);
   }
 
   return { releaseDate, tag: `v${version}`, version };
@@ -65,6 +65,31 @@ export function assertReleaseTag(tag, version) {
   }
 }
 
+export function findReleaseTransition(history, version) {
+  parseStableVersion(version, "package.json");
+  let releaseCommit;
+
+  for (const entry of history) {
+    if (!entry || typeof entry.commit !== "string" || entry.commit.length === 0) {
+      throw new Error("release history entries must contain a commit");
+    }
+    parseStableVersion(entry.version, `package.json at ${entry.commit}`);
+
+    if (entry.version === version) {
+      releaseCommit = entry.commit;
+      continue;
+    }
+    if (releaseCommit) {
+      return { previousVersion: entry.version, releaseCommit };
+    }
+  }
+
+  if (!releaseCommit) {
+    throw new Error(`release history does not contain version ${version}`);
+  }
+  throw new Error(`release history does not contain a version before ${version}`);
+}
+
 function readJson(rootDirectory, filename) {
   return JSON.parse(readFileSync(resolve(rootDirectory, filename), "utf8"));
 }
@@ -74,8 +99,8 @@ export function checkVersionFiles(rootDirectory = process.cwd()) {
     packageJson: readJson(rootDirectory, "package.json"),
     packageLock: readJson(rootDirectory, "package-lock.json"),
     pluginManifest: readJson(rootDirectory, "openclaw.plugin.json"),
-    changelog: readFileSync(resolve(rootDirectory, "CHANGELOG.md"), "utf8"),
-    chineseChangelog: readFileSync(resolve(rootDirectory, "CHANGELOG.zh_CN.md"), "utf8"),
+    chineseChangelog: readFileSync(resolve(rootDirectory, "CHANGELOG.md"), "utf8"),
+    englishChangelog: readFileSync(resolve(rootDirectory, "CHANGELOG_EN.md"), "utf8"),
   });
 }
 

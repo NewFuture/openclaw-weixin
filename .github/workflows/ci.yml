@@ -22,6 +22,7 @@ jobs:
 
     outputs:
       previous_release_version: ${{ steps.release.outputs.previous_release_version }}
+      release_commit: ${{ steps.release.outputs.release_commit }}
       release_tag: ${{ steps.release.outputs.tag }}
       release_version: ${{ steps.release.outputs.version }}
 
@@ -40,33 +41,17 @@ jobs:
       - name: Validate release metadata
         run: npm run check:versions
 
-      - name: Detect release version change
+      - name: Resolve release transition
         id: release
+        run: node scripts/resolve-release-transition.mjs
+
+      - name: Detect release version change
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
-
-          version="$(node -p "require('./package.json').version")"
-          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-
-          previous_release_version=""
-          while IFS= read -r commit; do
-            if ! git cat-file -e "${commit}:package.json" 2>/dev/null; then
-              continue
-            fi
-            candidate="$(
-              git show "${commit}:package.json" |
-                node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version"
-            )"
-            if [[ "$candidate" != "$version" ]]; then
-              previous_release_version="$candidate"
-              break
-            fi
-          done < <(git rev-list --first-parent --skip=1 HEAD)
-          echo "previous_release_version=${previous_release_version}" >> "$GITHUB_OUTPUT"
 
           if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
             echo "No comparison commit is available; skipping release detection."
@@ -82,13 +67,13 @@ jobs:
             git show "${BASE_SHA}:package.json" |
               node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version"
           )"
-          if [[ "$version" == "$previous_version" ]]; then
-            echo "Package version remains ${version}; no version-transition check is needed."
+          if [[ "$RELEASE_VERSION" == "$previous_version" ]]; then
+            echo "Package version remains ${RELEASE_VERSION}; no version-transition check is needed."
             exit 0
           fi
 
           RELEASE_PREVIOUS_VERSION="$previous_version" npm run check:versions
-          echo "Package version increased from ${previous_version} to ${version}."
+          echo "Package version increased from ${previous_version} to ${RELEASE_VERSION}."
 
   validate:
     name: ${{ matrix.os }} / Node.js ${{ matrix.node-version }}
@@ -172,6 +157,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PREVIOUS_VERSION: ${{ needs.release-metadata.outputs.previous_release_version }}
+          RELEASE_COMMIT: ${{ needs.release-metadata.outputs.release_commit }}
           RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
           RELEASE_VERSION: ${{ needs.release-metadata.outputs.release_version }}
         run: |
@@ -179,6 +165,10 @@ jobs:
 
           tag_commit="$(git rev-list -n 1 "refs/tags/${RELEASE_TAG}" 2>/dev/null || true)"
           if [[ -n "$tag_commit" ]]; then
+            if [[ "$tag_commit" != "$RELEASE_COMMIT" ]]; then
+              echo "::error::${RELEASE_TAG} points to ${tag_commit}, not release commit ${RELEASE_COMMIT}."
+              exit 1
+            fi
             tag_version="$(
               git show "${RELEASE_TAG}:package.json" |
                 node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version"
@@ -188,6 +178,10 @@ jobs:
               exit 1
             fi
             echo "${RELEASE_TAG} already points to release commit ${tag_commit}."
+          elif [[ "$RELEASE_COMMIT" != "$GITHUB_SHA" ]]; then
+            echo "::error::Missing ${RELEASE_TAG} can only be created by CI for release commit ${RELEASE_COMMIT}."
+            echo "::error::Rerun that commit's main workflow; do not tag a later same-version commit."
+            exit 1
           fi
 
           registry_error="$(mktemp)"
@@ -263,8 +257,8 @@ jobs:
           if [[ -z "$tag_commit" ]]; then
             gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
               -f ref="refs/tags/${RELEASE_TAG}" \
-              -f sha="$GITHUB_SHA"
-            tag_commit="$GITHUB_SHA"
+              -f sha="$RELEASE_COMMIT"
+            tag_commit="$RELEASE_COMMIT"
           fi
 
           active_runs="$(
