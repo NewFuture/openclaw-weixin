@@ -16,6 +16,22 @@ try {
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const pluginManifest = JSON.parse(readFileSync("openclaw.plugin.json", "utf8"));
+const HOST_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+
+function parseHostVersion(version, label) {
+  if (typeof version !== "string" || !HOST_VERSION.test(version)) {
+    fail(`${label} must use a stable YYYY.M.D version, found ${JSON.stringify(version)}`);
+  }
+  return version.split(".").map(Number);
+}
+
+function compareHostVersions(left, right) {
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] < right[index]) return -1;
+    if (left[index] > right[index]) return 1;
+  }
+  return 0;
+}
 
 if (packageJson.name !== "openclaw-weixin") {
   fail(`expected package name openclaw-weixin, found ${packageJson.name}`);
@@ -23,12 +39,18 @@ if (packageJson.name !== "openclaw-weixin") {
 if (packageJson.openclaw?.install?.npmSpec !== packageJson.name) {
   fail("openclaw.install.npmSpec must match the npm package name");
 }
-const expectedHostRange = `>=${packageJson.devDependencies?.openclaw}`;
-if (packageJson.peerDependencies?.openclaw !== expectedHostRange) {
-  fail("peerDependencies.openclaw must match the tested development version");
+const hostRange = packageJson.peerDependencies?.openclaw;
+const hostRangeMatch = typeof hostRange === "string" ? /^>=(.+)$/.exec(hostRange) : null;
+if (!hostRangeMatch) {
+  fail("peerDependencies.openclaw must declare a minimum host version");
 }
-if (packageJson.openclaw?.install?.minHostVersion !== expectedHostRange) {
-  fail("openclaw.install.minHostVersion must match the tested development version");
+const minimumHostVersion = parseHostVersion(hostRangeMatch[1], "peerDependencies.openclaw");
+if (packageJson.openclaw?.install?.minHostVersion !== hostRange) {
+  fail("openclaw.install.minHostVersion must match peerDependencies.openclaw");
+}
+const developmentHostVersion = parseHostVersion(packageJson.devDependencies?.openclaw, "devDependencies.openclaw");
+if (compareHostVersions(developmentHostVersion, minimumHostVersion) < 0) {
+  fail("devDependencies.openclaw must not be older than the minimum supported host");
 }
 if (pluginManifest.id !== "openclaw-weixin") {
   fail("the compatibility plugin id must remain openclaw-weixin");
@@ -81,7 +103,6 @@ for (const required of [
   "README.zh_CN.md",
   "CHANGELOG.md",
   "CHANGELOG_EN.md",
-  "CHANGELOG.zh_CN.md",
   "openclaw.plugin.json",
   "index.ts",
   "dist/index.js",

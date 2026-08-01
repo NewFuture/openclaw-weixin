@@ -76,7 +76,7 @@ jobs:
           echo "Package version increased from ${previous_version} to ${RELEASE_VERSION}."
 
   validate:
-    name: ${{ matrix.os }} / Node.js ${{ matrix.node-version }}
+    name: ${{ matrix.os }} / Node.js ${{ matrix.node-version }} / OpenClaw ${{ matrix.openclaw_version }}
     needs: release-metadata
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -86,14 +86,23 @@ jobs:
         include:
           - os: ubuntu-latest
             node-version: "22.22.3"
+            openclaw_version: "2026.7.1"
             pack_check: true
             dependency_audit: true
           - os: ubuntu-latest
+            node-version: "22.22.3"
+            openclaw_version: "2026.6.1"
+            minimum_host: true
+            pack_check: false
+            dependency_audit: false
+          - os: ubuntu-latest
             node-version: "24.15.0"
+            openclaw_version: "2026.7.1"
             pack_check: false
             dependency_audit: false
           - os: windows-latest
             node-version: "24.15.0"
+            openclaw_version: "2026.7.1"
             pack_check: false
             dependency_audit: false
 
@@ -113,6 +122,17 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Use minimum supported OpenClaw
+        if: matrix.minimum_host == true
+        shell: bash
+        env:
+          OPENCLAW_VERSION: ${{ matrix.openclaw_version }}
+        run: |
+          set -euo pipefail
+          npm install --no-save --package-lock=false --ignore-scripts \
+            "openclaw@${OPENCLAW_VERSION}"
+          node -e 'const fs=require("node:fs"); const actual=JSON.parse(fs.readFileSync("node_modules/openclaw/package.json","utf8")).version; if(actual!==process.env.OPENCLAW_VERSION) throw new Error("expected OpenClaw "+process.env.OPENCLAW_VERSION+", found "+actual); console.log("Testing OpenClaw "+actual);'
 
       - name: Audit dependencies
         if: matrix.dependency_audit
