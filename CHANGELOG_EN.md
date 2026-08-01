@@ -6,6 +6,12 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- Bound npm publishing to the protected `npm-publish` environment, requiring a
+  repository administrator's approval after automated validation and granting
+  OIDC publish permission only to the approved job.
+
 ## [3.0.0] - 2026-07-31
 
 ### Added

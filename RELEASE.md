@@ -7,13 +7,16 @@ npm token or add `NODE_AUTH_TOKEN` to the release workflow.
 
 1. Make the GitHub repository public so npm can verify the package provenance.
 2. Confirm the target version is not already published to npm.
-3. Confirm the npm package has a GitHub Actions Trusted Publisher for owner
-   `NewFuture`, repository `openclaw-weixin`, and workflow `release.yml`.
-4. From the exact clean release commit, run `npm ci`, `npm run check:versions`,
+3. Confirm the protected GitHub environment `npm-publish` requires approval from
+   a repository administrator.
+4. Confirm the npm package has a GitHub Actions Trusted Publisher for owner
+   `NewFuture`, repository `openclaw-weixin`, workflow `release.yml`, and
+   environment `npm-publish`. The environment name is case-sensitive.
+5. From the exact clean release commit, run `npm ci`, `npm run check:versions`,
    `npm run audit:deps`, `npm run check`, and `npm run pack:check`.
-5. Confirm `package.json`, `package-lock.json`, `openclaw.plugin.json`,
+6. Confirm `package.json`, `package-lock.json`, `openclaw.plugin.json`,
    `CHANGELOG.md`, and `CHANGELOG_EN.md` use the same release version.
-6. Merge release pull requests with a squash or merge commit. Rebase merge is
+7. Merge release pull requests with a squash or merge commit. Rebase merge is
    rejected because its intermediate version-bump commit is not the final tree
    validated on `main`.
 
@@ -33,20 +36,25 @@ After Trusted Publishing is configured:
 
 `.github/workflows/release.yml` verifies the tag, installs from the lockfile,
 runs the dependency audit, type checking, tests, the build, and the
-package-content check, then publishes `openclaw-weixin` with npm provenance
-over GitHub OIDC. CI explicitly dispatches that workflow at its newly created
-tag because tags created with `GITHUB_TOKEN` do not recursively trigger
-tag-push workflows. A maintainer can rerun a failed release by manually
-dispatching `release.yml` from the existing release tag; branch dispatches are
-rejected. Every `main` push retains its own run and reconciles the tag, npm
-registry, and release-run state, so an interrupted tag or dispatch step is
-recoverable without moving an existing tag or republishing a version. Only CI
-running on the first-parent commit that introduced the version may create its
-missing tag. Later same-version runs can reconcile an existing tag, but cannot
-invent one; after satisfying a blocked prerequisite such as repository
-visibility, rerun the original release commit's workflow. If npm already
-contains a version whose tag is missing, automation fails instead of creating a
-tag that could misrepresent the published artifact's source.
+package-content check before requesting approval for the protected
+`npm-publish` environment. After approval, a separate job rebuilds and
+rechecks the package, then publishes `openclaw-weixin` with npm provenance over
+GitHub OIDC. The OIDC permission is granted only to this approved publish job.
+
+CI explicitly dispatches the workflow at its newly created tag because tags
+created with `GITHUB_TOKEN` do not recursively trigger tag-push workflows. A
+maintainer can rerun a failed release by manually dispatching `release.yml`
+from the existing release tag; branch dispatches are rejected, and every
+publish attempt requires environment approval. Every `main` push retains its
+own run and reconciles the tag, npm registry, and release-run state, so an
+interrupted tag or dispatch step is recoverable without moving an existing tag
+or republishing a version. Only CI running on the first-parent commit that
+introduced the version may create its missing tag. Later same-version runs can
+reconcile an existing tag, but cannot invent one; after satisfying a blocked
+prerequisite such as repository visibility, rerun the original release
+commit's workflow. If npm already contains a version whose tag is missing,
+automation fails instead of creating a tag that could misrepresent the
+published artifact's source.
 Consecutive releases wait for the preceding repository version to appear on
 npm, and npm publication is globally serialized with a final check that the
 new version is greater than the current `latest` version.
