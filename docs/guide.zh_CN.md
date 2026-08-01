@@ -74,7 +74,7 @@ openclaw plugins uninstall openclaw-weixin
 
 ## 故障排查
 
-### "requires OpenClaw >=2026.7.1" 报错
+### "requires OpenClaw >=2026.6.1" 报错
 
 你的 OpenClaw 版本太旧，不兼容当前插件版本。检查版本：
 

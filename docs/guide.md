@@ -82,7 +82,7 @@ openclaw plugins uninstall openclaw-weixin
 
 ## Troubleshooting
 
-### "requires OpenClaw >=2026.7.1" error
+### "requires OpenClaw >=2026.6.1" error
 
 Your OpenClaw version is too old for this plugin version. Check with:
 

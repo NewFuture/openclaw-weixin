@@ -33,7 +33,6 @@
     "README.zh_CN.md",
     "CHANGELOG.md",
     "CHANGELOG_EN.md",
-    "CHANGELOG.zh_CN.md",
     "LICENSE",
     "NOTICE"
   ],
@@ -65,7 +64,7 @@
     "qrcode-terminal": "0.12.0"
   },
   "peerDependencies": {
-    "openclaw": ">=2026.7.1"
+    "openclaw": ">=2026.6.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.4",
@@ -103,7 +102,7 @@
     "install": {
       "npmSpec": "openclaw-weixin",
       "defaultChoice": "npm",
-      "minHostVersion": ">=2026.7.1"
+      "minHostVersion": ">=2026.6.1"
     }
   },
   "ilink_appid": "bot",
