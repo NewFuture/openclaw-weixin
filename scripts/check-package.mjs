@@ -48,10 +48,7 @@ const minimumHostVersion = parseHostVersion(hostRangeMatch[1], "peerDependencies
 if (packageJson.openclaw?.install?.minHostVersion !== hostRange) {
   fail("openclaw.install.minHostVersion must match peerDependencies.openclaw");
 }
-const developmentHostVersion = parseHostVersion(
-  packageJson.devDependencies?.openclaw,
-  "devDependencies.openclaw",
-);
+const developmentHostVersion = parseHostVersion(packageJson.devDependencies?.openclaw, "devDependencies.openclaw");
 if (compareHostVersions(developmentHostVersion, minimumHostVersion) < 0) {
   fail("devDependencies.openclaw must not be older than the minimum supported host");
 }
