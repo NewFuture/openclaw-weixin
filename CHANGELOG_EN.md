@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-08-02
+
 ### Changed
 
 - Bound npm publishing to the protected `npm-publish` environment, requiring a
