@@ -250,11 +250,13 @@ jobs:
           transition_output="$(mktemp)"
           trap 'rm -f "$transition_output"' EXIT
           GITHUB_OUTPUT="$transition_output" node scripts/resolve-release-transition.mjs
+          previous_release_version="$(grep '^previous_release_version=' "$transition_output" | cut -d= -f2)"
           release_commit="$(grep '^release_commit=' "$transition_output" | cut -d= -f2)"
           if [[ "$release_commit" != "$GITHUB_SHA" ]]; then
             echo "::error::Tag ${RELEASE_TAG} resolves release commit ${release_commit}, but this run is on ${GITHUB_SHA}. Only the CI coordinator may trigger a release publish; do not push tags manually."
             exit 1
           fi
+          echo "PREVIOUS_RELEASE_VERSION=${previous_release_version}" >> "$GITHUB_ENV"
 
       - name: Configure GitHub Packages lookup
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -295,6 +297,11 @@ jobs:
             npm view "${GITHUB_PACKAGE_NAME}@latest" version \
               --registry="$GITHUB_PACKAGE_REGISTRY" 2>"$registry_error"
           )"; then
+            if [[ "$latest_version" != "$PREVIOUS_RELEASE_VERSION" ]]; then
+              echo "::error::GitHub Packages latest is ${latest_version}, but the previous repository release is ${PREVIOUS_RELEASE_VERSION}."
+              echo "::error::Publish or reconcile ${GITHUB_PACKAGE_NAME}@${PREVIOUS_RELEASE_VERSION} before ${target_version}."
+              exit 1
+            fi
             RELEASE_PREVIOUS_VERSION="$latest_version" npm run check:versions
           elif ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
             cat "$registry_error" >&2

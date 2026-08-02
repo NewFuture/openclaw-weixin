@@ -33,6 +33,8 @@ describe("release workflow contract", () => {
     expect(githubPackageJob).not.toContain("contents: write");
     expect(githubPackageJob).toContain(`GITHUB_PACKAGE_NAME: "${GITHUB_PACKAGE_NAME}"`);
     expect(githubPackageJob).toContain(`GITHUB_PACKAGE_REGISTRY: ${GITHUB_PACKAGE_REGISTRY}`);
+    expect(githubPackageJob).toContain(`echo "PREVIOUS_RELEASE_VERSION=\${previous_release_version}" >> "$GITHUB_ENV"`);
+    expect(githubPackageJob).toContain('if [[ "$latest_version" != "$PREVIOUS_RELEASE_VERSION" ]]');
     expect(githubPackageJob).toContain("node scripts/prepare-github-package.mjs");
     expect(githubPackageJob).toContain('cd "$package_root/package"');
     expect(githubPackageJob).toContain("npm pack --dry-run --ignore-scripts");

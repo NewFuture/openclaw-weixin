@@ -64,15 +64,18 @@ from the existing release tag; branch dispatches are rejected, and every
 new npmjs publish attempt requires environment approval. Each package registry
 is checked independently, so an existing version is skipped while a missing
 GitHub Packages mirror or GitHub Release is reconciled without republishing.
-Every `main` push retains its own run and reconciles the tag, npmjs registry,
-and release-run state, so an interrupted tag or dispatch step is recoverable
-without moving an existing tag or republishing a version. Only CI running on
-the first-parent commit that introduced the version may create its missing tag.
-Later same-version runs can reconcile an existing tag, but cannot invent one;
-after satisfying a blocked prerequisite such as repository visibility, rerun
-the original release commit's workflow. If npmjs already contains a version
-whose tag is missing, automation fails instead of creating a tag that could
-misrepresent the published artifact's source.
+Before npmjs publication, later `main` pushes can reconcile an interrupted tag
+or workflow dispatch. Once npmjs contains the version, the `main` coordinator
+considers that release dispatched; failures in the downstream GitHub Packages
+or GitHub Release jobs must be recovered by rerunning `release.yml` from the
+existing tag. Only CI running on the first-parent commit that introduced the
+version may create its missing tag. Later same-version runs can reconcile an
+existing tag, but cannot invent one; after satisfying a blocked prerequisite
+such as repository visibility, rerun the original release commit's workflow.
+If npmjs already contains a version whose tag is missing, automation fails
+instead of creating a tag that could misrepresent the published artifact's
+source.
 Consecutive releases wait for the preceding repository version to appear on
-npmjs, and publication is globally serialized with a final order check against
-each registry's current `latest` version.
+npmjs. Once the GitHub Packages mirror is non-empty, it must also contain the
+immediately preceding repository release as `latest` before the next mirror
+version can publish; an empty mirror may bootstrap from the current release.
