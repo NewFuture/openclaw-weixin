@@ -1,4 +1,4 @@
-name: Publish GitHub and npm release
+name: Publish coordinated release
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 20
 
     outputs:
-      npm_published: ${{ steps.npm-status.outputs.published }}
+      npmjs_published: ${{ steps.npmjs-status.outputs.published }}
 
     steps:
       - name: Check out repository
@@ -69,8 +69,8 @@ jobs:
       - name: Inspect package contents
         run: npm run pack:check
 
-      - name: Verify npm release order
-        id: npm-status
+      - name: Verify npmjs release order
+        id: npmjs-status
         run: |
           set -euo pipefail
           target_version="$(node -p "require('./package.json').version")"
@@ -107,9 +107,9 @@ jobs:
           echo "published=false" >> "$GITHUB_OUTPUT"
 
   publish:
-    name: Approve and publish to npm
+    name: Approve and publish to npmjs
     needs: validate
-    if: needs.validate.outputs.npm_published != 'true'
+    if: needs.validate.outputs.npmjs_published != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -163,8 +163,8 @@ jobs:
       - name: Inspect package contents
         run: npm run pack:check
 
-      - name: Verify npm release order
-        id: npm-status
+      - name: Verify npmjs release order
+        id: npmjs-status
         run: |
           set -euo pipefail
           target_version="$(node -p "require('./package.json').version")"
@@ -201,11 +201,11 @@ jobs:
           echo "published=false" >> "$GITHUB_OUTPUT"
 
       - name: Publish package with provenance
-        if: steps.npm-status.outputs.published != 'true'
+        if: steps.npmjs-status.outputs.published != 'true'
         run: npm publish --ignore-scripts --provenance --access public --registry=https://registry.npmjs.org
 
-  github-release:
-    name: Publish GitHub release
+  github-package:
+    name: Publish to GitHub Packages
     needs:
       - validate
       - publish
@@ -214,6 +214,162 @@ jobs:
         always()
         && needs.validate.result == 'success'
         && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    env:
+      GITHUB_PACKAGE_NAME: "@newfuture/openclaw-weixin"
+      GITHUB_PACKAGE_REGISTRY: https://npm.pkg.github.com
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+
+      - name: Verify release metadata
+        env:
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ "$RELEASE_REF_TYPE" != "tag" ]; then
+            echo "::error::Release workflow must run from a tag, not ${RELEASE_REF_TYPE} ${RELEASE_TAG}."
+            exit 1
+          fi
+          npm run check:versions
+          transition_output="$(mktemp)"
+          trap 'rm -f "$transition_output"' EXIT
+          GITHUB_OUTPUT="$transition_output" node scripts/resolve-release-transition.mjs
+          release_commit="$(grep '^release_commit=' "$transition_output" | cut -d= -f2)"
+          if [[ "$release_commit" != "$GITHUB_SHA" ]]; then
+            echo "::error::Tag ${RELEASE_TAG} resolves release commit ${release_commit}, but this run is on ${GITHUB_SHA}. Only the CI coordinator may trigger a release publish; do not push tags manually."
+            exit 1
+          fi
+
+      - name: Configure GitHub Packages lookup
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          registry-url: https://npm.pkg.github.com
+          scope: "@newfuture"
+
+      - name: Check GitHub Packages release order
+        id: github-status
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          target_version="$(node -p "require('./package.json').version")"
+          registry_error="$(mktemp)"
+          trap 'rm -f "$registry_error"' EXIT
+          if published_version="$(
+            npm view "${GITHUB_PACKAGE_NAME}@${target_version}" version \
+              --registry="$GITHUB_PACKAGE_REGISTRY" 2>"$registry_error"
+          )"; then
+            if [[ "$published_version" != "$target_version" ]]; then
+              echo "::error::GitHub Packages returned unexpected version ${published_version} for ${target_version}."
+              exit 1
+            fi
+            echo "${GITHUB_PACKAGE_NAME}@${target_version} is already published."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not determine whether ${GITHUB_PACKAGE_NAME}@${target_version} is published."
+            exit 1
+          fi
+
+          : > "$registry_error"
+          if latest_version="$(
+            npm view "${GITHUB_PACKAGE_NAME}@latest" version \
+              --registry="$GITHUB_PACKAGE_REGISTRY" 2>"$registry_error"
+          )"; then
+            RELEASE_PREVIOUS_VERSION="$latest_version" npm run check:versions
+          elif ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not read the latest GitHub Packages version."
+            exit 1
+          else
+            echo "${GITHUB_PACKAGE_NAME} has no existing GitHub Packages versions."
+          fi
+          echo "published=false" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js for build
+        if: steps.github-status.outputs.published != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        if: steps.github-status.outputs.published != 'true'
+        run: npm ci
+
+      - name: Build package
+        if: steps.github-status.outputs.published != 'true'
+        run: npm run build
+
+      - name: Inspect package contents
+        if: steps.github-status.outputs.published != 'true'
+        run: npm run pack:check
+
+      - name: Prepare GitHub Packages artifact
+        if: steps.github-status.outputs.published != 'true'
+        run: |
+          set -euo pipefail
+          package_tarball="$(
+            npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP" --json |
+              node -p "JSON.parse(require('fs').readFileSync(0, 'utf8'))[0].filename"
+          )"
+          package_root="$RUNNER_TEMP/github-package"
+          mkdir -p "$package_root"
+          tar -xzf "$RUNNER_TEMP/$package_tarball" -C "$package_root"
+          node scripts/prepare-github-package.mjs "$package_root/package"
+          (
+            cd "$package_root/package"
+            npm pack --dry-run --ignore-scripts --json >/dev/null
+          )
+
+      - name: Configure GitHub Packages registry
+        if: steps.github-status.outputs.published != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          registry-url: https://npm.pkg.github.com
+          scope: "@newfuture"
+
+      - name: Publish GitHub package
+        if: steps.github-status.outputs.published != 'true'
+        working-directory: ${{ runner.temp }}/github-package/package
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: npm publish --ignore-scripts --registry=https://npm.pkg.github.com
+
+  github-release:
+    name: Publish GitHub release
+    needs:
+      - validate
+      - publish
+      - github-package
+    if: >-
+      ${{
+        always()
+        && needs.validate.result == 'success'
+        && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+        && needs.github-package.result == 'success'
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

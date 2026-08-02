@@ -11,9 +11,10 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 - Bound npm publishing to the protected `npm-publish` environment, requiring a
   repository administrator's approval after automated validation and granting
   OIDC publish permission only to the approved job.
-- Made the same workflow create a GitHub Release from the bilingual changelogs
-  after npm succeeds; retries skip an existing npm version and reconcile the
-  GitHub Release.
+- Made the same workflow mirror each npmjs release to GitHub Packages as
+  `@newfuture/openclaw-weixin`, then create a GitHub Release from the bilingual
+  changelogs; retries skip existing package versions and reconcile missing
+  destinations.
 - Expanded the minimum supported OpenClaw host to `2026.6.1`, retained
   `2026.7.1` as the normal development baseline, and added a full minimum-host
   CI build and test.
