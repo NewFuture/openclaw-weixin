@@ -14,9 +14,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 - Made the same workflow mirror each npmjs release to GitHub Packages as
   `@newfuture/openclaw-weixin`, then create a GitHub Release from the bilingual
   changelogs; retries skip existing package versions and reconcile missing
-  destinations, while later mirror versions wait for the preceding repository
-  release to reach GitHub Packages. An empty registry can bootstrap only when
-  the preceding release predates the mirror job.
+  destinations; publication remains blocked, including when the registry is
+  empty, until the preceding repository release reaches GitHub Packages.
 - Expanded the minimum supported OpenClaw host to `2026.6.1`, retained
   `2026.7.1` as the normal development baseline, and added a full minimum-host
   CI build and test.

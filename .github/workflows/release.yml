@@ -308,21 +308,8 @@ jobs:
             echo "::error::Could not read the latest GitHub Packages version."
             exit 1
           else
-            previous_release_tag="v${PREVIOUS_RELEASE_VERSION}"
-            : > "$registry_error"
-            if ! previous_release_workflow="$(
-              git show "${previous_release_tag}:.github/workflows/release.yml" 2>"$registry_error"
-            )"; then
-              cat "$registry_error" >&2
-              echo "::error::Could not inspect ${previous_release_tag} before bootstrapping GitHub Packages."
-              exit 1
-            fi
-            if grep -q '^  github-package:' <<< "$previous_release_workflow"; then
-              echo "::error::GitHub Packages is empty, but ${previous_release_tag} was expected to publish the mirror."
-              echo "::error::Rerun release.yml from ${previous_release_tag} before ${target_version}."
-              exit 1
-            fi
-            echo "${GITHUB_PACKAGE_NAME} is empty; bootstrapping after legacy release ${previous_release_tag}."
+            echo "::error::GitHub Packages is empty; publish ${GITHUB_PACKAGE_NAME}@${PREVIOUS_RELEASE_VERSION} before ${target_version}."
+            exit 1
           fi
           echo "published=false" >> "$GITHUB_OUTPUT"
 
