@@ -78,4 +78,6 @@ source.
 Consecutive releases wait for the preceding repository version to appear on
 npmjs. Once the GitHub Packages mirror is non-empty, it must also contain the
 immediately preceding repository release as `latest` before the next mirror
-version can publish; an empty mirror may bootstrap from the current release.
+version can publish. An empty mirror may bootstrap only when the preceding
+release tag predates the GitHub Packages job; otherwise automation requires
+rerunning that preceding tag before publishing a later mirror version.
