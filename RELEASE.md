@@ -1,12 +1,14 @@
-# npm release process
+# GitHub and npm release process
 
-`openclaw-weixin` publishes only to the official npm registry. Never commit an
-npm token or add `NODE_AUTH_TOKEN` to the release workflow.
+`openclaw-weixin` publishes packages only to the official npm registry and
+creates a matching GitHub Release. Never commit an npm token or add
+`NODE_AUTH_TOKEN` to the release workflow.
 
 ## Release prerequisites
 
 1. Make the GitHub repository public so npm can verify the package provenance.
-2. Confirm the target version is not already published to npm.
+2. For a new release, confirm the target version is not already published to npm
+   or as a GitHub Release. Recovery runs may reconcile one missing destination.
 3. Confirm the protected GitHub environment `npm-publish` requires approval from
    a repository administrator.
 4. Confirm the npm package has a GitHub Actions Trusted Publisher for owner
@@ -32,29 +34,35 @@ After Trusted Publishing is configured:
    changelog releases, unstable versions, and version downgrades.
 3. Squash-merge or merge the clean release commit. After every required Linux
    and Windows check passes on `main`, CI creates the missing matching tag, for
-   example `v3.0.0`, and dispatches its npm release.
+   example `v3.0.0`, and dispatches its coordinated GitHub and npm release.
 
 `.github/workflows/release.yml` verifies the tag, installs from the lockfile,
 runs the dependency audit, type checking, tests, the build, and the
 package-content check before requesting approval for the protected
 `npm-publish` environment. After approval, a separate job rebuilds and
 rechecks the package, then publishes `openclaw-weixin` with npm provenance over
-GitHub OIDC. The OIDC permission is granted only to this approved publish job.
+GitHub OIDC. Once npm publication succeeds, a least-privilege job creates the
+matching GitHub Release with notes rendered from the versioned Chinese and
+English changelog sections. The OIDC permission is granted only to the approved
+npm publish job, while GitHub contents write permission is granted only to the
+GitHub Release job.
 
 CI explicitly dispatches the workflow at its newly created tag because tags
 created with `GITHUB_TOKEN` do not recursively trigger tag-push workflows. A
 maintainer can rerun a failed release by manually dispatching `release.yml`
 from the existing release tag; branch dispatches are rejected, and every
-publish attempt requires environment approval. Every `main` push retains its
-own run and reconciles the tag, npm registry, and release-run state, so an
-interrupted tag or dispatch step is recoverable without moving an existing tag
-or republishing a version. Only CI running on the first-parent commit that
-introduced the version may create its missing tag. Later same-version runs can
-reconcile an existing tag, but cannot invent one; after satisfying a blocked
-prerequisite such as repository visibility, rerun the original release
-commit's workflow. If npm already contains a version whose tag is missing,
-automation fails instead of creating a tag that could misrepresent the
-published artifact's source.
+new npm publish attempt requires environment approval. If npm already contains
+the target version, the workflow skips npm publication and creates or finalizes
+the missing GitHub Release without requesting another approval. Every `main`
+push retains its own run and reconciles the tag, npm registry, and release-run
+state, so an interrupted tag or dispatch step is recoverable without moving an
+existing tag or republishing a version. Only CI running on the first-parent
+commit that introduced the version may create its missing tag. Later
+same-version runs can reconcile an existing tag, but cannot invent one; after
+satisfying a blocked prerequisite such as repository visibility, rerun the
+original release commit's workflow. If npm already contains a version whose
+tag is missing, automation fails instead of creating a tag that could
+misrepresent the published artifact's source.
 Consecutive releases wait for the preceding repository version to appear on
 npm, and npm publication is globally serialized with a final check that the
 new version is greater than the current `latest` version.

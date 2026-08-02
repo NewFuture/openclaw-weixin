@@ -1,4 +1,4 @@
-name: Publish npm package
+name: Publish GitHub and npm release
 
 on:
   push:
@@ -10,14 +10,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: npm-publish
+  group: release-publish
   cancel-in-progress: false
 
 jobs:
   validate:
-    name: Validate npm release
+    name: Validate coordinated release
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    outputs:
+      npm_published: ${{ steps.npm-status.outputs.published }}
 
     steps:
       - name: Check out repository
@@ -67,9 +70,31 @@ jobs:
         run: npm run pack:check
 
       - name: Verify npm release order
+        id: npm-status
         run: |
+          set -euo pipefail
+          target_version="$(node -p "require('./package.json').version")"
           registry_error="$(mktemp)"
           trap 'rm -f "$registry_error"' EXIT
+          if published_version="$(
+            npm view "openclaw-weixin@${target_version}" version \
+              --registry=https://registry.npmjs.org 2>"$registry_error"
+          )"; then
+            if [[ "$published_version" != "$target_version" ]]; then
+              echo "::error::npm returned unexpected version ${published_version} for ${target_version}."
+              exit 1
+            fi
+            echo "openclaw-weixin@${target_version} is already published; npm publication will be skipped."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not determine whether openclaw-weixin@${target_version} is published."
+            exit 1
+          fi
+
+          : > "$registry_error"
           if ! latest_version="$(
             npm view "openclaw-weixin@latest" version \
               --registry=https://registry.npmjs.org 2>"$registry_error"
@@ -79,10 +104,12 @@ jobs:
             exit 1
           fi
           RELEASE_PREVIOUS_VERSION="$latest_version" npm run check:versions
+          echo "published=false" >> "$GITHUB_OUTPUT"
 
   publish:
     name: Approve and publish to npm
     needs: validate
+    if: needs.validate.outputs.npm_published != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -137,9 +164,31 @@ jobs:
         run: npm run pack:check
 
       - name: Verify npm release order
+        id: npm-status
         run: |
+          set -euo pipefail
+          target_version="$(node -p "require('./package.json').version")"
           registry_error="$(mktemp)"
           trap 'rm -f "$registry_error"' EXIT
+          if published_version="$(
+            npm view "openclaw-weixin@${target_version}" version \
+              --registry=https://registry.npmjs.org 2>"$registry_error"
+          )"; then
+            if [[ "$published_version" != "$target_version" ]]; then
+              echo "::error::npm returned unexpected version ${published_version} for ${target_version}."
+              exit 1
+            fi
+            echo "openclaw-weixin@${target_version} was published while this run waited for approval."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not determine whether openclaw-weixin@${target_version} is published."
+            exit 1
+          fi
+
+          : > "$registry_error"
           if ! latest_version="$(
             npm view "openclaw-weixin@latest" version \
               --registry=https://registry.npmjs.org 2>"$registry_error"
@@ -149,6 +198,76 @@ jobs:
             exit 1
           fi
           RELEASE_PREVIOUS_VERSION="$latest_version" npm run check:versions
+          echo "published=false" >> "$GITHUB_OUTPUT"
 
       - name: Publish package with provenance
+        if: steps.npm-status.outputs.published != 'true'
         run: npm publish --ignore-scripts --provenance --access public --registry=https://registry.npmjs.org
+
+  github-release:
+    name: Publish GitHub release
+    needs:
+      - validate
+      - publish
+    if: >-
+      ${{
+        always()
+        && needs.validate.result == 'success'
+        && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+
+      - name: Render bilingual release notes
+        run: node scripts/render-release-notes.mjs > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Create or finalize GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES: ${{ runner.temp }}/release-notes.md
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          release_error="$(mktemp)"
+          trap 'rm -f "$release_error"' EXIT
+          if release_state="$(
+            gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" \
+              --jq '[.draft, .prerelease, .html_url] | @tsv' 2>"$release_error"
+          )"; then
+            IFS=$'\t' read -r is_draft is_prerelease release_url <<< "$release_state"
+            if [[ "$is_draft" == "false" && "$is_prerelease" == "false" ]]; then
+              echo "${RELEASE_TAG} is already published at ${release_url}."
+              exit 0
+            fi
+            gh release edit "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft=false \
+              --prerelease=false \
+              --title "$RELEASE_TAG" \
+              --notes-file "$RELEASE_NOTES"
+            exit 0
+          fi
+          if ! grep -q 'HTTP 404' "$release_error"; then
+            cat "$release_error" >&2
+            echo "::error::Could not determine whether GitHub Release ${RELEASE_TAG} exists."
+            exit 1
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "$RELEASE_TAG" \
+            --notes-file "$RELEASE_NOTES"
