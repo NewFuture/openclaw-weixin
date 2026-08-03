@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="logo-title logo-desc">
+  <title id="logo-title">openclaw-weixin</title>
+  <desc id="logo-desc">A coral pincer emblem inside a green chat channel.</desc>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="16" fill="#07C160" stroke="#075D3B" stroke-width="3" />
+  <path
+    fill="#F7FFF9"
+    stroke="#075D3B"
+    stroke-width="1.5"
+    stroke-linejoin="round"
+    d="M18 9.5h28c7.2 0 13 5.8 13 13V34c0 7.2-5.8 13-13 13H35L23.7 55.2c-1.2.9-2.8-.2-2.5-1.7l1.3-6.5H18C10.8 47 5 41.2 5 34V22.5c0-7.2 5.8-13 13-13Z"
+  />
+  <g fill="#CB3F4D">
+    <path d="M26 17a8.5 8.5 0 1 0 0 12l-6-6 6-6Z" />
+    <path d="M38 17a8.5 8.5 0 1 1 0 12l6-6-6-6Z" />
+    <path d="M31 42.5a3 3 0 0 1-3-3v-1.8c-5.2-1.3-8.6-4.4-10.4-8.4l5.5-2.4c1.5 3.4 4.2 5.1 8.9 5.1s7.4-1.7 8.9-5.1l5.5 2.4c-1.8 4-5.2 7.1-10.4 8.4v1.8a3 3 0 0 1-3 3h-2Z" />
+  </g>
+</svg>
