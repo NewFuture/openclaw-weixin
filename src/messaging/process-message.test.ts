@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { REFERENCED_IMAGE_MESSAGE } from "../../test/fixtures/inbound-messages.js";
 import { createChannelRuntimeHarness } from "../../test/helpers/channel-runtime.js";
 import { makeTextMessage, SYNTHETIC_ACCOUNT_ID, SYNTHETIC_USER_ID } from "../../test/helpers/messages.js";
+import { MessageItemType } from "../api/types.js";
 import type { ProcessMessageDeps } from "./process-message.js";
 
 const mocks = vi.hoisted(() => ({
@@ -137,7 +137,7 @@ describe("processOneMessage", () => {
     expect(onReplyAdmitted).not.toHaveBeenCalled();
   });
 
-  it("drops unauthorized direct messages before routing", async () => {
+  it("drops unauthorized direct messages before dispatch", async () => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();
     mocks.directDmOutcome.mockReturnValue("unauthorized");
@@ -145,8 +145,11 @@ describe("processOneMessage", () => {
     await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
 
     expect(mocks.resolveSenderAuthorization).toHaveBeenCalledOnce();
-    expect(harness.mocks.resolveAgentRoute).not.toHaveBeenCalled();
+    // Route is resolved early for per-agent media subdir scoping (see process-message.ts),
+    // but the message is still dropped before session recording / dispatch.
+    expect(harness.mocks.resolveAgentRoute).toHaveBeenCalledOnce();
     expect(harness.mocks.recordInboundSession).not.toHaveBeenCalled();
+    expect(harness.mocks.dispatchReplyFromConfig).not.toHaveBeenCalled();
     expect(onReplyAdmitted).not.toHaveBeenCalled();
   });
 
@@ -250,5 +253,161 @@ describe("processOneMessage", () => {
         }),
       }),
     );
+  });
+
+  /**
+   * Build a minimal inbound IMAGE message that the resolver picks up as the
+   * primary downloadable media item (no `ref_msg` indirection needed).
+   */
+  function makeDirectImageMessage() {
+    return {
+      from_user_id: SYNTHETIC_USER_ID,
+      context_token: "context-token-test",
+      create_time_ms: 1_700_000_000_000,
+      item_list: [
+        {
+          type: MessageItemType.IMAGE,
+          image_item: {
+            media: {
+              full_url: "https://media.example.test/synthetic-direct-image",
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  describe("per-agent media isolation", () => {
+    it("routes media from distinct agents into distinct subdirectories", async () => {
+      const harness = createChannelRuntimeHarness();
+
+      // First run resolves to "agent-alpha" — capture the deps subdir.
+      harness.mocks.resolveAgentRoute.mockImplementationOnce(() => ({
+        agentId: "agent-alpha",
+        channel: "openclaw-weixin",
+        accountId: SYNTHETIC_ACCOUNT_ID,
+        sessionKey: "agent:agent-alpha:openclaw-weixin:account-test:user-test",
+        mainSessionKey: "agent:agent-alpha:main",
+        lastRoutePolicy: "session",
+        matchedBy: "default",
+      }));
+      await processOneMessage(makeDirectImageMessage(), makeDeps(harness.channelRuntime));
+      const firstDeps = mocks.downloadMedia.mock.calls[0]?.[1];
+
+      // Second run resolves to "agent-beta" — capture again.
+      harness.mocks.resolveAgentRoute.mockImplementationOnce(() => ({
+        agentId: "agent-beta",
+        channel: "openclaw-weixin",
+        accountId: SYNTHETIC_ACCOUNT_ID,
+        sessionKey: "agent:agent-beta:openclaw-weixin:account-test:user-test",
+        mainSessionKey: "agent:agent-beta:main",
+        lastRoutePolicy: "session",
+        matchedBy: "default",
+      }));
+      await processOneMessage(makeDirectImageMessage(), makeDeps(harness.channelRuntime));
+      const secondDeps = mocks.downloadMedia.mock.calls[1]?.[1];
+
+      expect(firstDeps).toEqual(expect.objectContaining({ subdir: "weixin/agent-alpha/inbound" }));
+      expect(secondDeps).toEqual(expect.objectContaining({ subdir: "weixin/agent-beta/inbound" }));
+      expect(mocks.downloadMedia).toHaveBeenCalledTimes(2);
+    });
+
+    it("drops unauthorized senders but still routes media before dispatch", async () => {
+      // Per-agent isolation downloads media BEFORE authorization (because the
+      // agentId is needed to scope the storage path). When auth rejects the
+      // message, the download already happened; dispatch is gated cleanly.
+      const harness = createChannelRuntimeHarness();
+      mocks.directDmOutcome.mockReturnValue("unauthorized");
+
+      await processOneMessage(makeDirectImageMessage(), makeDeps(harness.channelRuntime));
+
+      expect(mocks.downloadMedia).toHaveBeenCalledTimes(1);
+      expect(mocks.downloadMedia.mock.calls[0]?.[1]).toEqual(
+        expect.objectContaining({ subdir: "weixin/agent-test/inbound" }),
+      );
+      expect(harness.mocks.recordInboundSession).not.toHaveBeenCalled();
+      expect(harness.mocks.dispatchReplyFromConfig).not.toHaveBeenCalled();
+      expect(mocks.resolveSenderAuthorization).toHaveBeenCalledOnce();
+    });
+
+    it("falls back to the legacy 'inbound' subdir when no agentId resolves", async () => {
+      // Unresolved route: framework returns no agentId, so media is saved under
+      // the historical "inbound" path, keeping previously stored media accessible.
+      const harness = createChannelRuntimeHarness();
+      harness.mocks.resolveAgentRoute.mockImplementationOnce(() => ({
+        agentId: "",
+        channel: "openclaw-weixin",
+        accountId: SYNTHETIC_ACCOUNT_ID,
+        // Match the harness default shape so we still type-check under `satisfies` boundaries.
+        // Only `agentId` is intentionally empty.
+        sessionKey: "agent::openclaw-weixin:account-test:user-test",
+        mainSessionKey: "agent::main",
+        lastRoutePolicy: "session",
+        matchedBy: "default",
+      }));
+
+      await processOneMessage(makeDirectImageMessage(), makeDeps(harness.channelRuntime));
+
+      expect(mocks.downloadMedia).toHaveBeenCalledTimes(1);
+      expect(mocks.downloadMedia.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ subdir: "inbound" }));
+    });
+
+    it("sanitizes unsafe agentId characters before building the subdir", async () => {
+      // Path traversal / separators in agentId must not reach the media store.
+      // normalizeAccountId collapses the unsafe input into a safe `[a-z0-9_-]{1,64}` value.
+      const harness = createChannelRuntimeHarness();
+      harness.mocks.resolveAgentRoute.mockImplementationOnce(() => ({
+        agentId: "/../etc/passwd",
+        channel: "openclaw-weixin",
+        accountId: SYNTHETIC_ACCOUNT_ID,
+        sessionKey: "agent:sanitized:openclaw-weixin:account-test:user-test",
+        mainSessionKey: "agent:sanitized:main",
+        lastRoutePolicy: "session",
+        matchedBy: "default",
+      }));
+
+      await processOneMessage(makeDirectImageMessage(), makeDeps(harness.channelRuntime));
+
+      expect(mocks.downloadMedia).toHaveBeenCalledTimes(1);
+      const subdir = mocks.downloadMedia.mock.calls[0]?.[1]?.subdir as string;
+      // Must NOT contain slashes, '..', or absolute-path markers.
+      expect(subdir.startsWith("weixin/")).toBe(true);
+      expect(subdir.endsWith("/inbound")).toBe(true);
+      expect(subdir).not.toContain("..");
+      expect(subdir).not.toContain("\\");
+      const middle = subdir.slice("weixin/".length, -"/inbound".length);
+      expect(middle).toMatch(/^[a-z0-9_-]+$/);
+    });
+
+    it("scopes media by agent only, not by accountId — accounts for the same agent share storage", async () => {
+      // Account isolation: same agent across different accounts produces the same
+      // subdir, with each call's session bound to its account. Per-agent storage
+      // isolation is independent of multi-account binding.
+      const harness = createChannelRuntimeHarness();
+      const depsAlpha = makeDeps(harness.channelRuntime);
+      depsAlpha.accountId = "account-alpha";
+      const depsBeta = makeDeps(harness.channelRuntime);
+      depsBeta.accountId = "account-beta";
+
+      // Default route already returns agentId "agent-test" — no override needed.
+      await processOneMessage(makeDirectImageMessage(), depsAlpha);
+      await processOneMessage(makeDirectImageMessage(), depsBeta);
+
+      expect(mocks.downloadMedia).toHaveBeenCalledTimes(2);
+      expect(mocks.downloadMedia.mock.calls[0]?.[1]).toEqual(
+        expect.objectContaining({ subdir: "weixin/agent-test/inbound" }),
+      );
+      expect(mocks.downloadMedia.mock.calls[1]?.[1]).toEqual(
+        expect.objectContaining({ subdir: "weixin/agent-test/inbound" }),
+      );
+      const storeArgs0 = harness.mocks.recordInboundSession.mock.calls[0]?.[0];
+      const storeArgs1 = harness.mocks.recordInboundSession.mock.calls[1]?.[0];
+      expect(storeArgs0).toEqual(
+        expect.objectContaining({ updateLastRoute: expect.objectContaining({ accountId: "account-alpha" }) }),
+      );
+      expect(storeArgs1).toEqual(
+        expect.objectContaining({ updateLastRoute: expect.objectContaining({ accountId: "account-beta" }) }),
+      );
+    });
   });
 });
