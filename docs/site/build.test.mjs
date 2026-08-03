@@ -280,7 +280,7 @@ describe("buildSite", () => {
 
   it("indexes every Markdown document in llms.txt and marks untranslated pages", async () => {
     const llms = await read("llms.txt");
-    assert.match(llms, new RegExp(`- Version: ${result.version.replace(/\./g, "\\.")}`));
+    assert.ok(llms.includes(`- Version: ${result.version}\n`), "llms.txt should record the package version");
     assert.match(llms, /- Generated: 2026-01-02T03:04:05\.000Z/);
     for (const document of result.documents) {
       assert.ok(
