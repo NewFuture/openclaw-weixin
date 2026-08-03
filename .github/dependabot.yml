@@ -53,6 +53,19 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: npm
+    directory: /docs/site
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:15"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 3
+    groups:
+      documentation-site:
+        patterns:
+          - "*"
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
