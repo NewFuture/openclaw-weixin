@@ -1,24 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="openclaw-weixin">
   <title>openclaw-weixin</title>
   <defs>
-    <linearGradient id="tile" x1="6" y1="2" x2="58" y2="62" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2ad07f" />
-      <stop offset="0.55" stop-color="#0aa96a" />
-      <stop offset="1" stop-color="#0d7f93" />
-    </linearGradient>
-    <linearGradient id="claw" x1="22" y1="16" x2="45" y2="34" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0d7f93" />
-      <stop offset="1" stop-color="#0aa96a" />
+    <linearGradient id="tile" x1="2" y1="0" x2="62" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3ad884" />
+      <stop offset="0.52" stop-color="#07c160" />
+      <stop offset="1" stop-color="#04a058" />
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="16" fill="url(#tile)" />
+  <rect width="64" height="64" rx="15" fill="url(#tile)" />
   <path
     fill="#fff"
-    d="M23 12h18a11 11 0 0 1 11 11v11a11 11 0 0 1-11 11H30l-12.5 8-3-1.5 5-9.4A11 11 0 0 1 12 34V23a11 11 0 0 1 11-11Z"
+    d="M22 11h20a13 13 0 0 1 13 13v4a13 13 0 0 1-13 13h-9l-15.6 8.6a1.6 1.6 0 0 1-2.2-2L18.4 41H22A13 13 0 0 1 9 28v-4a13 13 0 0 1 13-13Z"
   />
-  <g fill="url(#claw)">
-    <path d="M24 17.5Q20.34 27.52 29.5 33Q28.63 24.58 24 17.5Z" />
-    <path d="M32 15.5Q27.64 27.06 37.5 34.5Q36.86 24.39 32 15.5Z" />
-    <path d="M40 17.5Q36.05 27.15 45 32.5Q44.4 24.37 40 17.5Z" />
+  <g fill="url(#tile)">
+    <path d="M22.5 15.5Q15.34 27.01 24.5 37Q26.89 25.94 22.5 15.5Z" />
+    <path d="M32 14Q25.11 27.92 36 39Q37.75 25.9 32 14Z" />
+    <path d="M41.5 15.5Q36.42 27.6 46.5 36Q47.3 24.94 41.5 15.5Z" />
   </g>
 </svg>
