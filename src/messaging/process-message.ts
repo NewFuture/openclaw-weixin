@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-
 import { createTypingCallbacks } from "openclaw/plugin-sdk/channel-runtime";
 import {
   resolveDirectDmAuthorizationOutcome,
@@ -8,6 +7,7 @@ import {
 } from "openclaw/plugin-sdk/command-auth";
 import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/infra-runtime";
+import { normalizeAgentId } from "openclaw/plugin-sdk/routing";
 
 import { sendTyping } from "../api/api.js";
 import type { WeixinMessage } from "../api/types.js";
@@ -84,7 +84,12 @@ function extractTextBody(itemList?: import("../api/types.js").MessageItem[]): st
 }
 
 /**
- * Process a single inbound message: route → download media → dispatch reply.
+ * Process a single inbound message: resolve route → download media → authorize → dispatch reply.
+ * Route is resolved first so the agentId can isolate media under
+ * `weixin/<agentId>/inbound` in the framework media store, preventing one agent
+ * from observing another agent's inbound files. Authorization still gates
+ * dispatch — `route` is reused for session/ctx bookkeeping but is not consulted
+ * for accept/reject decisions.
  * Extracted from the monitor loop to keep monitoring and message handling separate.
  */
 export async function processOneMessage(full: WeixinMessage, deps: ProcessMessageDeps): Promise<void> {
@@ -131,6 +136,43 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
     );
   }
 
+  // Resolve the agent route early so downloadMedia can place the file under a
+  // per-agent subdirectory in the framework media store. Authorization still
+  // gates dispatch below; the early route resolution only drives storage scoping.
+  const senderId = full.from_user_id ?? "";
+  const route = deps.channelRuntime.routing.resolveAgentRoute({
+    cfg: deps.config,
+    channel: "openclaw-weixin",
+    accountId: deps.accountId,
+    peer: { kind: "direct", id: senderId },
+  });
+  logger.debug(
+    `resolveAgentRoute: agentId=${route.agentId ?? "(none)"} sessionKey=${route.sessionKey ?? "(none)"} mainSessionKey=${route.mainSessionKey ?? "(none)"}`,
+  );
+  if (!route.agentId) {
+    logger.error(
+      `resolveAgentRoute: no agentId resolved for peer=${senderId} accountId=${deps.accountId} — message will not be dispatched`,
+    );
+  }
+  // Sanitize the agentId into a portable, filesystem-safe path component before
+  // embedding it under the media store. OpenClaw's media store rejects path
+  // traversal, absolute paths, empty segments, and null bytes (per the
+  // saveMediaBuffer contract). We deliberately use `normalizeAgentId` (from
+  // `openclaw/plugin-sdk/routing`) rather than `normalizeAccountId`: the latter
+  // is intended for account keys and collapses JS-reserved names like
+  // `constructor` / `prototype` / `__proto__` to `default`, which would
+  // collide distinct agents into the same directory and defeat this isolation.
+  // `normalizeAgentId` only collapses unsafe characters and keeps reserved
+  // names literal; it falls back to `main` for empty input, but we already
+  // gate that case above and emit the legacy `inbound` subdir instead.
+  const sanitizedAgentId = route.agentId ? normalizeAgentId(route.agentId) : "";
+  const mediaSubdir = sanitizedAgentId ? `weixin/${sanitizedAgentId}/inbound` : "inbound";
+  logger.debug(`mediaSubdir: subdir=${mediaSubdir} (agentId=${route.agentId ?? "(none)"})`);
+
+  if (debug) {
+    debugTrace.push("── 路由 ──", `│ route: agent=${route.agentId ?? "none"} session=${route.sessionKey ?? "none"}`);
+  }
+
   const mediaOpts: WeixinInboundMediaOpts = {};
 
   // Find the first downloadable media item (priority: IMAGE > VIDEO > FILE > VOICE).
@@ -158,6 +200,7 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
     const downloaded = await downloadMediaFromItem(mediaItem, {
       cdnBaseUrl: deps.cdnBaseUrl,
       saveMedia: deps.channelRuntime.media.saveMediaBuffer,
+      subdir: mediaSubdir,
       log: deps.log,
       errLog: deps.errLog,
       label,
@@ -177,8 +220,6 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   // --- Framework command authorization ---
   const rawBody = textBody.trim() || (ctx.Body?.trim() ?? "");
   ctx.CommandBody = rawBody;
-
-  const senderId = full.from_user_id ?? "";
 
   const { senderAllowedForCommands, commandAuthorized } = await resolveSenderCommandAuthorizationWithRuntime({
     cfg: deps.config,
@@ -217,30 +258,14 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
 
   if (debug) {
     debugTrace.push(
-      "── 鉴权 & 路由 ──",
+      "── 鉴权 ──",
       `│ auth: cmdAuthorized=${String(commandAuthorized)} senderAllowed=${String(senderAllowedForCommands)}`,
     );
-  }
-
-  const route = deps.channelRuntime.routing.resolveAgentRoute({
-    cfg: deps.config,
-    channel: "openclaw-weixin",
-    accountId: deps.accountId,
-    peer: { kind: "direct", id: ctx.To },
-  });
-  logger.debug(
-    `resolveAgentRoute: agentId=${route.agentId ?? "(none)"} sessionKey=${route.sessionKey ?? "(none)"} mainSessionKey=${route.mainSessionKey ?? "(none)"}`,
-  );
-  if (!route.agentId) {
-    logger.error(
-      `resolveAgentRoute: no agentId resolved for peer=${ctx.To} accountId=${deps.accountId} — message will not be dispatched`,
-    );
-  }
-
-  if (debug) {
-    debugTrace.push(`│ route: agent=${route.agentId ?? "none"} session=${route.sessionKey ?? "none"}`);
     debugTs.preDispatch = Date.now();
   }
+  // Note: `route` was resolved earlier so downloadMedia could pick the
+  // per-agent subdirectory. Session/storePath/dispatch below reuse the same
+  // resolved object; no second routing call is needed.
   // Propagate the resolved session key into ctx so dispatchReplyFromConfig uses
   // the correct session (matching the dmScope from config) instead of falling back
   // to agent:main:main.
