@@ -66,18 +66,21 @@ vi.mock("../util/logger.js", () => ({
   },
 }));
 
+import { resetWeixinInboundDedupeForTests } from "../messaging/inbound-dedupe.js";
 import { monitorWeixinProvider } from "./monitor.js";
 
 describe("monitorWeixinProvider", () => {
   beforeEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    resetWeixinInboundDedupeForTests({ persistent: false });
     getForUserMock.mockResolvedValue({ typingTicket: "ticket" });
     getRemainingPauseMsMock.mockReturnValue(60 * 60 * 1000);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    resetWeixinInboundDedupeForTests({ persistent: false });
   });
 
   it("orders ordinary admission while approvals bypass an active ordinary turn", async () => {
@@ -305,6 +308,37 @@ describe("monitorWeixinProvider", () => {
     expect(getUpdatesMock.mock.calls[1]?.[0].timeoutMs).toBe(12_345);
     abortController.abort();
     await expect(monitor).resolves.toBeUndefined();
+  });
+
+  it("drops getUpdates replays on ordinary and approval lanes without reprocessing", async () => {
+    const abortController = new AbortController();
+    const harness = createChannelRuntimeHarness();
+    const started: string[] = [];
+    getUpdatesMock
+      .mockResolvedValueOnce({
+        ret: 0,
+        msgs: [
+          makeMonitorMessage("hello", { message_id: 501 }),
+          makeMonitorMessage("hello", { message_id: 501 }),
+          makeMonitorMessage("/approve plugin:test approve", { message_id: 502 }),
+          makeMonitorMessage("/approve plugin:test approve", { message_id: 502 }),
+        ],
+      })
+      .mockImplementationOnce(
+        async ({ abortSignal }) =>
+          await new Promise<GetUpdatesResp>((_, reject) => {
+            abortSignal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+          }),
+      );
+    processOneMessageMock.mockImplementation(async (message) => {
+      started.push(getText(message));
+      if (started.length >= 2) abortController.abort();
+    });
+
+    const monitor = startMonitor(abortController, harness.channelRuntime);
+    await expect(monitor).resolves.toBeUndefined();
+    await vi.waitFor(() => expect(started).toEqual(["hello", "/approve plugin:test approve"]));
+    expect(processOneMessageMock).toHaveBeenCalledTimes(2);
   });
 
   it("releases the ordinary lane when preprocessing fails", async () => {

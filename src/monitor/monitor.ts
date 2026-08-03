@@ -5,6 +5,13 @@ import { WeixinConfigManager } from "../api/config-cache.js";
 import { getRemainingPauseMs, pauseSession, STALE_TOKEN_ERRCODE } from "../api/session-guard.js";
 import { MessageItemType, type WeixinMessage } from "../api/types.js";
 import { setContextToken } from "../messaging/inbound.js";
+import {
+  buildWeixinInboundDedupeKey,
+  claimWeixinInboundMessage,
+  commitWeixinInboundMessage,
+  logWeixinInboundDuplicate,
+  releaseWeixinInboundMessage,
+} from "../messaging/inbound-dedupe.js";
 import { processOneMessage, type WeixinChannelRuntime } from "../messaging/process-message.js";
 import { getSyncBufFilePath, loadGetUpdatesBuf, saveGetUpdatesBuf } from "../storage/sync-buf.js";
 import type { Logger } from "../util/logger.js";
@@ -71,8 +78,20 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
   }
 
   const configManager = new WeixinConfigManager({ baseUrl, token }, log);
-  const processInboundMessage = async (full: WeixinMessage, onReplyAdmitted: () => void): Promise<void> => {
-    if (abortSignal?.aborted) return;
+  const processInboundMessage = async (
+    full: WeixinMessage,
+    onReplyAdmitted: () => void,
+    dedupeKey: string | null,
+  ): Promise<void> => {
+    if (abortSignal?.aborted) {
+      if (dedupeKey) {
+        releaseWeixinInboundMessage(dedupeKey, {
+          namespace: accountId,
+          error: new Error("aborted"),
+        });
+      }
+      return;
+    }
     aLog.info(
       `inbound message: from=${full.from_user_id} types=${full.item_list?.map((i) => i.type).join(",") ?? "none"}`,
     );
@@ -85,22 +104,42 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
 
     const fromUserId = full.from_user_id ?? "";
     const cachedConfig = await configManager.getForUser(fromUserId, full.context_token);
-    if (abortSignal?.aborted) return;
+    if (abortSignal?.aborted) {
+      if (dedupeKey) {
+        releaseWeixinInboundMessage(dedupeKey, {
+          namespace: accountId,
+          error: new Error("aborted"),
+        });
+      }
+      return;
+    }
 
-    await processOneMessage(full, {
-      accountId,
-      config,
-      channelRuntime,
-      baseUrl,
-      cdnBaseUrl,
-      token,
-      typingTicket: cachedConfig.typingTicket,
-      log: opts.runtime?.log ?? (() => {}),
-      errLog,
-      onReplyAdmitted,
-    });
+    try {
+      await processOneMessage(full, {
+        accountId,
+        config,
+        channelRuntime,
+        baseUrl,
+        cdnBaseUrl,
+        token,
+        typingTicket: cachedConfig.typingTicket,
+        log: opts.runtime?.log ?? (() => {}),
+        errLog,
+        onReplyAdmitted,
+      });
+      if (dedupeKey) {
+        await commitWeixinInboundMessage(dedupeKey, { namespace: accountId });
+      }
+    } catch (error) {
+      if (dedupeKey) {
+        releaseWeixinInboundMessage(dedupeKey, { namespace: accountId, error });
+      }
+      throw error;
+    }
   };
   // Serialize preprocessing until core accepts the turn; approvals use an independent lane.
+  // Claim/commit runs inside each lane so ordinary and approval share the same replay guard
+  // without breaking synchronous lane chaining.
   let ordinaryLane = Promise.resolve();
   let approvalLane = Promise.resolve();
   const scheduleInboundMessage = (full: WeixinMessage): void => {
@@ -115,7 +154,23 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
             released = true;
             releaseLane();
           };
-          void processInboundMessage(full, releaseOnce)
+          void (async () => {
+            const dedupeKey = buildWeixinInboundDedupeKey(accountId, full);
+            if (dedupeKey) {
+              const claimed = await claimWeixinInboundMessage(dedupeKey, { namespace: accountId });
+              if (!claimed) {
+                logWeixinInboundDuplicate({
+                  accountId,
+                  key: dedupeKey,
+                  messageId: full.message_id,
+                  seq: full.seq,
+                  from: full.from_user_id,
+                });
+                return;
+              }
+            }
+            await processInboundMessage(full, releaseOnce, dedupeKey);
+          })()
             .catch((err) => {
               errLog(`weixin inbound message failed: ${String(err)}`);
               aLog.error(`Inbound message failed: ${String(err)}, stack=${(err as Error).stack ?? "none"}`);
