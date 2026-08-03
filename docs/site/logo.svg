@@ -1,21 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="logo-title logo-desc">
-  <title id="logo-title">openclaw-weixin</title>
-  <desc id="logo-desc">A green chat bubble speaking with a coral lobster claw.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+  <rect width="64" height="64" fill="#fff" />
   <path
-    fill="#07C160"
-    d="M18 5h23c9 0 16 7 16 16v5c0 9-7 16-16 16H29l-11 9c-1.2.9-2.8-.1-2.5-1.6L17 42C8 41 2 34 2 26v-5C2 12 9 5 18 5Z"
+    fill="#000"
+    d="M16 8h19c8 0 14 6 14 14v5c0 8-6 14-14 14h-7l-11 8c-1.1.8-2.6-.2-2.3-1.5L16 41C8 41 2 35 2 27v-5C2 14 8 8 16 8Z"
   />
-  <g fill="#F7FFF9">
-    <circle cx="22" cy="24" r="3.25" />
-    <circle cx="36" cy="24" r="3.25" />
+  <g fill="#fff">
+    <circle cx="19" cy="24" r="3.25" />
+    <circle cx="32" cy="24" r="3.25" />
   </g>
-  <path fill="none" stroke="#F7FFF9" stroke-width="9" stroke-linecap="round" d="m48 48-6 10" />
-  <path fill="none" stroke="#CB3F4D" stroke-width="6" stroke-linecap="round" d="m48 48-6 10" />
+  <path fill="none" stroke="#000" stroke-width="8" stroke-linecap="round" d="m39 38 8 9" />
   <path
-    fill="#CB3F4D"
-    stroke="#F7FFF9"
-    stroke-width="2.5"
-    stroke-linejoin="round"
-    d="M42 30c6-3 14-1 18 4 4 5 3 12-2 16-4 4-11 3-16-2l7-8-7-10Z"
+    fill="#000"
+    d="M42 47c-1-7 3-13 9-15 5-1 10 2 11 7 2 6-1 12-7 15-5 3-11 0-13-4-1-1-1-2 0-3Z"
   />
+  <path fill="#fff" d="m62 39-10 4 8 6c2-3 3-7 2-10Z" />
 </svg>
