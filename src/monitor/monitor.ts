@@ -6,8 +6,8 @@ import { getRemainingPauseMs, pauseSession, STALE_TOKEN_ERRCODE } from "../api/s
 import { MessageItemType, type WeixinMessage } from "../api/types.js";
 import { setContextToken } from "../messaging/inbound.js";
 import {
+  admitWeixinInboundMessage,
   buildWeixinInboundDedupeKey,
-  claimWeixinInboundMessage,
   commitWeixinInboundMessage,
   logWeixinInboundDuplicate,
   releaseWeixinInboundMessage,
@@ -157,14 +157,12 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
           void (async () => {
             const dedupeKey = buildWeixinInboundDedupeKey(accountId, full);
             if (dedupeKey) {
-              const claimed = await claimWeixinInboundMessage(dedupeKey, { namespace: accountId });
-              if (!claimed) {
+              const admission = await admitWeixinInboundMessage(dedupeKey, { namespace: accountId });
+              if (admission === "duplicate") {
                 logWeixinInboundDuplicate({
-                  accountId,
                   key: dedupeKey,
                   messageId: full.message_id,
                   seq: full.seq,
-                  from: full.from_user_id,
                 });
                 return;
               }

@@ -23,6 +23,8 @@ import { logger } from "../util/logger.js";
 export const WEIXIN_INBOUND_DEDUPE_TTL_MS = 24 * 60 * 60 * 1000;
 const WEIXIN_INBOUND_DEDUPE_MEMORY_MAX = 20_000;
 const WEIXIN_INBOUND_DEDUPE_FILE_MAX = 20_000;
+/** Cap reclaim attempts after an in-flight owner releases without committing. */
+const WEIXIN_INBOUND_ADMIT_MAX_ATTEMPTS = 3;
 
 function sanitizeSegment(value: string): string {
   const trimmed = value.trim();
@@ -94,22 +96,53 @@ export function buildWeixinInboundDedupeKey(accountId: string, msg: WeixinMessag
   return `weixin:v1:${accountId}:${from}:body:${digest}`;
 }
 
+/** Non-sensitive identity kind for logs (no account / user / client ids). */
+export function describeWeixinInboundDedupeIdentity(key: string): "mid" | "cid" | "seq" | "body" | "unknown" {
+  if (key.includes(":mid:")) return "mid";
+  if (key.includes(":cid:")) return "cid";
+  if (key.includes(":seq:")) return "seq";
+  if (key.includes(":body:")) return "body";
+  return "unknown";
+}
+
 export type WeixinInboundDedupeOptions = {
   /** Account-scoped namespace for persistent isolation. */
   namespace?: string;
   now?: number;
 };
 
+export type WeixinInboundAdmitResult = "process" | "duplicate";
+
 /**
- * Claim a logical inbound message for processing.
- * @returns true if this is the first claim (process it); false if duplicate/in-flight.
+ * Admit a logical inbound message for processing.
+ *
+ * - `process`: this delivery owns the claim
+ * - `duplicate`: a tombstone already exists, or an in-flight owner committed
+ *
+ * In-flight replays wait for the owner. If the owner releases (failure/abort),
+ * this delivery reclaims so the message is not lost.
  */
-export async function claimWeixinInboundMessage(key: string, options?: WeixinInboundDedupeOptions): Promise<boolean> {
-  const result = await inboundDedupe.claim(key, {
-    namespace: options?.namespace,
-    now: options?.now,
-  });
-  return result.kind === "claimed";
+export async function admitWeixinInboundMessage(
+  key: string,
+  options?: WeixinInboundDedupeOptions,
+): Promise<WeixinInboundAdmitResult> {
+  for (let attempt = 0; attempt < WEIXIN_INBOUND_ADMIT_MAX_ATTEMPTS; attempt++) {
+    const result = await inboundDedupe.claim(key, {
+      namespace: options?.namespace,
+      now: options?.now,
+    });
+    if (result.kind === "claimed") return "process";
+    if (result.kind === "duplicate") return "duplicate";
+
+    try {
+      await result.pending;
+      // Owner committed a tombstone — this delivery is a replay.
+      return "duplicate";
+    } catch {
+      // Owner released without commit — reclaim on the next attempt.
+    }
+  }
+  return "duplicate";
 }
 
 /** Persist the claim after successful handling (survives restart for TTL). */
@@ -139,14 +172,9 @@ export function resetWeixinInboundDedupeForTests(options?: { persistent?: boolea
   });
 }
 
-export function logWeixinInboundDuplicate(params: {
-  accountId: string;
-  key: string;
-  messageId?: number;
-  seq?: number;
-  from?: string;
-}): void {
+export function logWeixinInboundDuplicate(params: { key: string; messageId?: number; seq?: number }): void {
+  const identity = describeWeixinInboundDedupeIdentity(params.key);
   logger.info(
-    `[weixin] dropping duplicate inbound message account=${params.accountId} key=${params.key} msgId=${params.messageId ?? "?"} seq=${params.seq ?? "?"} from=${params.from ?? "?"}`,
+    `[weixin] dropping duplicate inbound message identity=${identity} hasMsgId=${params.messageId != null} hasSeq=${params.seq != null}`,
   );
 }

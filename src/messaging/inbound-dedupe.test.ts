@@ -8,9 +8,10 @@ import type { WeixinMessage } from "../api/types.js";
 import { MessageItemType } from "../api/types.js";
 import { logger } from "../util/logger.js";
 import {
+  admitWeixinInboundMessage,
   buildWeixinInboundDedupeKey,
-  claimWeixinInboundMessage,
   commitWeixinInboundMessage,
+  describeWeixinInboundDedupeIdentity,
   logWeixinInboundDuplicate,
   releaseWeixinInboundMessage,
   resetWeixinInboundDedupeForTests,
@@ -69,44 +70,59 @@ describe("buildWeixinInboundDedupeKey", () => {
   });
 });
 
-describe("claimWeixinInboundMessage", () => {
-  it("claims once, rejects in-flight/duplicate, allows after TTL", async () => {
+describe("describeWeixinInboundDedupeIdentity", () => {
+  it("returns a non-sensitive identity kind", () => {
+    expect(describeWeixinInboundDedupeIdentity("weixin:v1:acc:user:mid:1")).toBe("mid");
+    expect(describeWeixinInboundDedupeIdentity("weixin:v1:acc:user:cid:x")).toBe("cid");
+    expect(describeWeixinInboundDedupeIdentity("weixin:v1:acc:user:seq:9")).toBe("seq");
+    expect(describeWeixinInboundDedupeIdentity("weixin:v1:acc:user:body:abcd")).toBe("body");
+  });
+});
+
+describe("admitWeixinInboundMessage", () => {
+  it("admits once, rejects committed duplicates, allows after TTL", async () => {
     const key = buildWeixinInboundDedupeKey("jinjin", textMsg());
     expect(key).toBeTruthy();
     if (!key) return;
     const t0 = 1_000_000;
     const ns = { namespace: "jinjin", now: t0 };
 
-    expect(await claimWeixinInboundMessage(key, ns)).toBe(true);
-    expect(await claimWeixinInboundMessage(key, { ...ns, now: t0 + 900 })).toBe(false);
-
+    expect(await admitWeixinInboundMessage(key, ns)).toBe("process");
+    const inFlight = admitWeixinInboundMessage(key, { ...ns, now: t0 + 900 });
     await commitWeixinInboundMessage(key, ns);
-    expect(await claimWeixinInboundMessage(key, { ...ns, now: t0 + 60_000 })).toBe(false);
+    expect(await inFlight).toBe("duplicate");
+    expect(await admitWeixinInboundMessage(key, { ...ns, now: t0 + 60_000 })).toBe("duplicate");
     expect(
-      await claimWeixinInboundMessage(key, {
+      await admitWeixinInboundMessage(key, {
         namespace: "jinjin",
         now: t0 + WEIXIN_INBOUND_DEDUPE_TTL_MS + 1,
       }),
-    ).toBe(true);
+    ).toBe("process");
   });
 
-  it("release allows retry after failure", async () => {
+  it("reclaims after the in-flight owner releases", async () => {
     const key = buildWeixinInboundDedupeKey("jinjin", textMsg());
     expect(key).toBeTruthy();
     if (!key) return;
     const ns = { namespace: "jinjin", now: 1_000_000 };
-    expect(await claimWeixinInboundMessage(key, ns)).toBe(true);
+
+    expect(await admitWeixinInboundMessage(key, ns)).toBe("process");
+    const waiting = admitWeixinInboundMessage(key, ns);
+    // Let the waiter observe the in-flight claim before release.
+    await new Promise((resolve) => setTimeout(resolve, 0));
     releaseWeixinInboundMessage(key, { ...ns, error: new Error("boom") });
-    expect(await claimWeixinInboundMessage(key, ns)).toBe(true);
+    expect(await waiting).toBe("process");
   });
 
   it("isolates claims across account namespaces", async () => {
     const key = "weixin:v1:shared:user-1:mid:99";
-    expect(await claimWeixinInboundMessage(key, { namespace: "acc-a" })).toBe(true);
-    expect(await claimWeixinInboundMessage(key, { namespace: "acc-b" })).toBe(true);
+    expect(await admitWeixinInboundMessage(key, { namespace: "acc-a" })).toBe("process");
+    expect(await admitWeixinInboundMessage(key, { namespace: "acc-b" })).toBe("process");
     await commitWeixinInboundMessage(key, { namespace: "acc-a" });
-    expect(await claimWeixinInboundMessage(key, { namespace: "acc-a" })).toBe(false);
-    expect(await claimWeixinInboundMessage(key, { namespace: "acc-b" })).toBe(false);
+    expect(await admitWeixinInboundMessage(key, { namespace: "acc-a" })).toBe("duplicate");
+    const waitingB = admitWeixinInboundMessage(key, { namespace: "acc-b" });
+    await commitWeixinInboundMessage(key, { namespace: "acc-b" });
+    expect(await waitingB).toBe("duplicate");
   });
 
   it("covers long-turn redelivery window (30–50 min)", async () => {
@@ -114,14 +130,14 @@ describe("claimWeixinInboundMessage", () => {
     expect(key).toBeTruthy();
     if (!key) return;
     const t0 = 5_000_000;
-    expect(await claimWeixinInboundMessage(key, { namespace: "jinjin", now: t0 })).toBe(true);
+    expect(await admitWeixinInboundMessage(key, { namespace: "jinjin", now: t0 })).toBe("process");
     await commitWeixinInboundMessage(key, { namespace: "jinjin", now: t0 });
     expect(
-      await claimWeixinInboundMessage(key, {
+      await admitWeixinInboundMessage(key, {
         namespace: "jinjin",
         now: t0 + 50 * 60 * 1000,
       }),
-    ).toBe(false);
+    ).toBe("duplicate");
   });
 
   it("persists committed claims across restart", async () => {
@@ -133,11 +149,11 @@ describe("claimWeixinInboundMessage", () => {
       const key = buildWeixinInboundDedupeKey("jinjin", textMsg());
       expect(key).toBeTruthy();
       if (!key) return;
-      expect(await claimWeixinInboundMessage(key, { namespace: "jinjin" })).toBe(true);
+      expect(await admitWeixinInboundMessage(key, { namespace: "jinjin" })).toBe("process");
       await commitWeixinInboundMessage(key, { namespace: "jinjin" });
 
       resetWeixinInboundDedupeForTests({ persistent: true });
-      expect(await claimWeixinInboundMessage(key, { namespace: "jinjin" })).toBe(false);
+      expect(await admitWeixinInboundMessage(key, { namespace: "jinjin" })).toBe("duplicate");
 
       const jsonPath = path.join(dir, "openclaw-weixin", "replay-dedupe", "jinjin.json");
       const sqlitePath = path.join(dir, "state", "openclaw.sqlite");
@@ -159,14 +175,18 @@ describe("claimWeixinInboundMessage", () => {
 });
 
 describe("logWeixinInboundDuplicate", () => {
-  it("logs account and key", () => {
+  it("logs only non-sensitive identity metadata", () => {
     logWeixinInboundDuplicate({
-      accountId: "jinjin",
-      key: "weixin:v1:jinjin:u:mid:1",
+      key: "weixin:v1:jinjin:user-secret:mid:1",
       messageId: 1,
       seq: 2,
-      from: "u",
     });
-    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("dropping duplicate inbound message"));
+    expect(logger.info).toHaveBeenCalledWith(
+      "[weixin] dropping duplicate inbound message identity=mid hasMsgId=true hasSeq=true",
+    );
+    const logged = String(vi.mocked(logger.info).mock.calls[0]?.[0] ?? "");
+    expect(logged).not.toContain("jinjin");
+    expect(logged).not.toContain("user-secret");
+    expect(logged).not.toContain("weixin:v1");
   });
 });
