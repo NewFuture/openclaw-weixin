@@ -10,14 +10,15 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 - **Inbound getUpdates duplicate delivery:** ordinary and approval admission
   lanes claim a stable dedupe key (`message_id` → `client_id` → `seq` → body
-  fingerprint) via OpenClaw `createClaimableDedupe` (`pluginId: openclaw-weixin`,
-  account-scoped namespace) before processing, then commit a 24h plugin-state
-  tombstone so at-least-once iLink long-poll replays (~1s) and longer
-  redeliveries after stuck long turns do not run the AI pipeline twice —
-  including across process restart. Failures and abort release the claim for
-  retry. The window is a **replay-dedupe / tombstone window**, not a content
-  dedupe that swallows intentional re-sends with a new `message_id`. Stable
-  `MessageSid` uses the same key when transport ids are present. Port of
+  fingerprint) via OpenClaw `createClaimableDedupe` (account-scoped
+  `resolveFilePath` under `openclaw-weixin/replay-dedupe/`, compatible with the
+  minimum host `2026.6.1`) before processing, then commit a 24h tombstone so
+  at-least-once iLink long-poll replays (~1s) and longer redeliveries after
+  stuck long turns do not run the AI pipeline twice — including across process
+  restart. Failures and abort release the claim for retry. The window is a
+  **replay-dedupe / tombstone window**, not a content dedupe that swallows
+  intentional re-sends with a new `message_id`. Stable `MessageSid` uses the
+  same key when transport ids are present. Port of
   [Tencent/openclaw-weixin#240](https://github.com/Tencent/openclaw-weixin/pull/240);
   tracks [NewFuture/openclaw-weixin#36](https://github.com/NewFuture/openclaw-weixin/issues/36).
 

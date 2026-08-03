@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
 
 import { createClaimableDedupe } from "openclaw/plugin-sdk/persistent-dedupe";
 
 import type { MessageItem, WeixinMessage } from "../api/types.js";
 import { MessageItemType } from "../api/types.js";
+import { resolveStateDir } from "../storage/state-dir.js";
 import { logger } from "../util/logger.js";
 
 /**
@@ -12,16 +14,29 @@ import { logger } from "../util/logger.js";
  * stuck long turn). Not a content-dedupe window: a new user send with a new
  * `message_id` is always claimed. Body-fingerprint keys include create_time_ms.
  *
- * Uses OpenClaw `createClaimableDedupe` with the plugin-state SQLite backend
- * (`pluginId: openclaw-weixin`) so claims survive process restart. Account
- * isolation is via claim `namespace` (= accountId). Multi-replica gateways
- * without shared OPENCLAW_STATE_DIR still need a shared store / ingress drain.
+ * Uses OpenClaw `createClaimableDedupe` with the resolveFilePath shape that
+ * works on the minimum host (2026.6.1 JSON files) and newer hosts (path used
+ * as a stable SQLite namespace). Account isolation is via claim `namespace`
+ * (= accountId) and per-account files under
+ * `$OPENCLAW_STATE_DIR/openclaw-weixin/replay-dedupe/`.
  */
 export const WEIXIN_INBOUND_DEDUPE_TTL_MS = 24 * 60 * 60 * 1000;
 const WEIXIN_INBOUND_DEDUPE_MEMORY_MAX = 20_000;
-const WEIXIN_INBOUND_DEDUPE_STATE_MAX = 20_000;
-const WEIXIN_INBOUND_DEDUPE_NAMESPACE_PREFIX = "replay-dedupe";
-const WEIXIN_PLUGIN_ID = "openclaw-weixin";
+const WEIXIN_INBOUND_DEDUPE_FILE_MAX = 20_000;
+
+function sanitizeSegment(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "global";
+  return trimmed.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+function resolveReplayDedupeFilePath(namespace: string): string {
+  return path.join(resolveStateDir(), "openclaw-weixin", "replay-dedupe", `${sanitizeSegment(namespace)}.json`);
+}
+
+function onReplayDedupeDiskError(error: unknown): void {
+  logger.warn(`[weixin] inbound replay-dedupe disk error: ${error instanceof Error ? error.message : String(error)}`);
+}
 
 function createWeixinInboundDedupe(options?: { persistent?: boolean }) {
   const base = {
@@ -33,14 +48,9 @@ function createWeixinInboundDedupe(options?: { persistent?: boolean }) {
   }
   return createClaimableDedupe({
     ...base,
-    pluginId: WEIXIN_PLUGIN_ID,
-    namespacePrefix: WEIXIN_INBOUND_DEDUPE_NAMESPACE_PREFIX,
-    stateMaxEntries: WEIXIN_INBOUND_DEDUPE_STATE_MAX,
-    onDiskError: (error) => {
-      logger.warn(
-        `[weixin] inbound replay-dedupe disk error: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    },
+    fileMaxEntries: WEIXIN_INBOUND_DEDUPE_FILE_MAX,
+    resolveFilePath: resolveReplayDedupeFilePath,
+    onDiskError: onReplayDedupeDiskError,
   });
 }
 
@@ -85,7 +95,7 @@ export function buildWeixinInboundDedupeKey(accountId: string, msg: WeixinMessag
 }
 
 export type WeixinInboundDedupeOptions = {
-  /** Account-scoped namespace for plugin-state isolation. */
+  /** Account-scoped namespace for persistent isolation. */
   namespace?: string;
   now?: number;
 };

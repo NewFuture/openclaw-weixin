@@ -124,7 +124,7 @@ describe("claimWeixinInboundMessage", () => {
     ).toBe(false);
   });
 
-  it("persists committed claims across restart via plugin-state SQLite", async () => {
+  it("persists committed claims across restart", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "weixin-replay-dedupe-"));
     const previous = process.env.OPENCLAW_STATE_DIR;
     process.env.OPENCLAW_STATE_DIR = dir;
@@ -138,7 +138,10 @@ describe("claimWeixinInboundMessage", () => {
 
       resetWeixinInboundDedupeForTests({ persistent: true });
       expect(await claimWeixinInboundMessage(key, { namespace: "jinjin" })).toBe(false);
-      expect(fs.existsSync(path.join(dir, "state", "openclaw.sqlite"))).toBe(true);
+
+      const jsonPath = path.join(dir, "openclaw-weixin", "replay-dedupe", "jinjin.json");
+      const sqlitePath = path.join(dir, "state", "openclaw.sqlite");
+      expect(fs.existsSync(jsonPath) || fs.existsSync(sqlitePath)).toBe(true);
     } finally {
       if (previous === undefined) {
         delete process.env.OPENCLAW_STATE_DIR;
@@ -146,7 +149,11 @@ describe("claimWeixinInboundMessage", () => {
         process.env.OPENCLAW_STATE_DIR = previous;
       }
       resetWeixinInboundDedupeForTests({ persistent: false });
-      fs.rmSync(dir, { recursive: true, force: true });
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+      } catch {
+        // Windows may keep the OpenClaw state DB open until process exit.
+      }
     }
   });
 });
