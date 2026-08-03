@@ -22,7 +22,7 @@ contract.
 | Inbound and outbound messages | `src/messaging/` |
 | Media download, encryption, and upload | `src/media/`, `src/cdn/` |
 | Persistent state | `src/storage/`, `src/auth/accounts.ts` |
-| Documentation website | `site/`, `scripts/build-site.mjs` |
+| Documentation website | `docs/site/` |
 
 ## Non-negotiable contracts
 
@@ -42,7 +42,7 @@ contract.
   independent scheduling lane.
 - Preserve legacy account IDs, credential files, and sync-buffer migrations unless
   the change explicitly owns a tested migration.
-- `dist/`, `coverage/`, and `site/dist/` are generated. Do not hand-edit or
+- `dist/`, `coverage/`, and `docs/site/dist/` are generated. Do not hand-edit or
   commit them.
 - User-facing behavior changes require matching English and Chinese README or
   changelog updates.
@@ -80,10 +80,12 @@ run:
 npm run pack:check
 ```
 
-When Markdown documents or the website sources change, rebuild the site:
+When Markdown documents or the website sources change, rebuild the site. It has
+its own dependencies so that the published package manifest stays untouched:
 
 ```shell
-npm run site:build
+npm ci --prefix docs/site
+npm run build --prefix docs/site
 ```
 
 Use `npm run format` for mechanical formatting. Do not mix broad formatting with

@@ -4,20 +4,24 @@ on:
   push:
     branches:
       - main
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     name: Build site
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: read
 
     steps:
       - name: Check out repository
@@ -30,27 +34,32 @@ jobs:
         with:
           node-version: "24.15.0"
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: docs/site/package-lock.json
 
-      - name: Install dependencies
+      - name: Install site dependencies
         run: npm ci
+        working-directory: docs/site
 
       - name: Configure Pages
         id: pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Build site
         env:
           SITE_BASE_URL: ${{ steps.pages.outputs.base_url }}
-        run: npm run site:build
+        run: npm run build
+        working-directory: docs/site
 
       - name: Upload site artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: site/dist
+          path: docs/site/dist
 
   deploy:
     name: Deploy site
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10

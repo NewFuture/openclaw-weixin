@@ -1,0 +1,3 @@
+# The documentation website is a repository-only tool. `files` in package.json
+# ships `docs/`, so exclude this folder from the published npm package.
+*

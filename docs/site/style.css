@@ -1,4 +1,4 @@
-/* Documentation site theme. Generated pages link this file from /assets/styles.css. */
+/* Documentation site theme. Generated pages link this file from /assets/style.css. */
 
 :root {
   color-scheme: light dark;
@@ -140,10 +140,8 @@ a:hover {
 
 .brand-mark {
   display: inline-block;
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 0.45rem;
-  background: linear-gradient(135deg, var(--brand), #34d399);
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .topbar-search {
