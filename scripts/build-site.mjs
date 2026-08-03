@@ -122,7 +122,7 @@ export function rewriteMarkdownLinks(markdown, context) {
         return line;
       }
       if (openFence !== null) return line;
-      return line.replace(/(\]\()([^()\s]+)(\))/g, (whole, open, href, close) => {
+      return line.replace(/(\]\()([^()\s]+)(\))/g, (_whole, open, href, close) => {
         const rewritten = rewriteLink(href, context);
         return `${open}${rewritten}${close}`;
       });

@@ -245,9 +245,7 @@ describe("buildSite", () => {
     for (const language of LANGUAGES) {
       const search = JSON.parse(await readFile(path.join(outDir, "assets", `search-${language.id}.json`), "utf8"));
       expect(search.entries.length).toBeGreaterThan(PAGES.length);
-      expect(search.entries.every((entry) => entry.u.endsWith(".html") || entry.u.includes(".html#"))).toBe(
-        true,
-      );
+      expect(search.entries.every((entry) => entry.u.endsWith(".html") || entry.u.includes(".html#"))).toBe(true);
     }
   });
 });
