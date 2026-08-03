@@ -158,6 +158,31 @@ export function trimDocumentHeader(tokens) {
   return trimmed;
 }
 
+const ALERT_TYPES = new Set(["note", "tip", "important", "warning", "caution"]);
+const ALERT_MARKER = /^\[!([a-z]+)\][^\S\n]*\n?/i;
+
+/**
+ * Detect a GitHub alert blockquote (`> [!WARNING]`) and remove its marker.
+ *
+ * Returns the alert type, or `null` when the blockquote is an ordinary quote.
+ */
+export function extractAlert(token) {
+  if (token?.type !== "blockquote") return null;
+  const paragraph = token.tokens?.[0];
+  if (paragraph?.type !== "paragraph" || !Array.isArray(paragraph.tokens)) return null;
+  const first = paragraph.tokens[0];
+  if (first?.type !== "text" || typeof first.text !== "string") return null;
+  const match = ALERT_MARKER.exec(first.text);
+  if (!match) return null;
+  const type = match[1].toLowerCase();
+  if (!ALERT_TYPES.has(type)) return null;
+  first.text = first.text.slice(match[0].length);
+  first.raw = first.text;
+  if (!first.text) paragraph.tokens.shift();
+  if (paragraph.tokens.length === 0) token.tokens.shift();
+  return type;
+}
+
 function renderCodeBlock(token, strings) {
   const language = (token.lang ?? "").split(/\s+/)[0];
   const label = language ? escapeHtml(language) : "";
@@ -192,10 +217,22 @@ export function renderMarkdown(markdown, { sourcePath, pageIndex, strings, langu
     code(token) {
       return renderCodeBlock(token, strings);
     },
+    blockquote(token) {
+      const body = this.parser.parse(token.tokens);
+      if (!token.alertType) return `<blockquote>\n${body}</blockquote>\n`;
+      const label = strings.alerts?.[token.alertType] ?? token.alertType;
+      return [
+        `<blockquote class="alert alert-${token.alertType}">`,
+        `<p class="alert-title">${escapeHtml(label)}</p>\n`,
+        body,
+        "</blockquote>\n",
+      ].join("");
+    },
   };
   const instance = new Marked({ gfm: true, breaks: false }, { renderer });
   const tokens = trimDocumentHeader(instance.lexer(markdown));
   for (const token of walkAllTokens(tokens)) {
+    if (token.type === "blockquote") token.alertType = extractAlert(token);
     if (token.type === "link" || token.type === "image") {
       token.href = rewriteLink(token.href, { sourcePath, extension: ".html", pageIndex, language, currentPage });
     }

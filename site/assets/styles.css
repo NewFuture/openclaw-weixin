@@ -539,6 +539,99 @@ a:hover {
   color: var(--text-muted);
 }
 
+.markdown .alert {
+  border-left-color: var(--alert-color, var(--brand));
+  color: var(--text);
+}
+
+.markdown .alert-title {
+  margin: 0.75rem 0 0.35rem;
+  color: var(--alert-color, var(--brand));
+  font-weight: 600;
+}
+
+.markdown .alert-note {
+  --alert-color: #0969da;
+}
+
+.markdown .alert-tip {
+  --alert-color: #1a7f37;
+}
+
+.markdown .alert-important {
+  --alert-color: #8250df;
+}
+
+.markdown .alert-warning {
+  --alert-color: #9a6700;
+}
+
+.markdown .alert-caution {
+  --alert-color: #cf222e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .markdown .alert-note {
+    --alert-color: #4493f8;
+  }
+
+  .markdown .alert-tip {
+    --alert-color: #3fb950;
+  }
+
+  .markdown .alert-important {
+    --alert-color: #ab7df8;
+  }
+
+  .markdown .alert-warning {
+    --alert-color: #d29922;
+  }
+
+  .markdown .alert-caution {
+    --alert-color: #f85149;
+  }
+}
+
+:root[data-theme="dark"] .markdown .alert-note {
+  --alert-color: #4493f8;
+}
+
+:root[data-theme="dark"] .markdown .alert-tip {
+  --alert-color: #3fb950;
+}
+
+:root[data-theme="dark"] .markdown .alert-important {
+  --alert-color: #ab7df8;
+}
+
+:root[data-theme="dark"] .markdown .alert-warning {
+  --alert-color: #d29922;
+}
+
+:root[data-theme="dark"] .markdown .alert-caution {
+  --alert-color: #f85149;
+}
+
+:root[data-theme="light"] .markdown .alert-note {
+  --alert-color: #0969da;
+}
+
+:root[data-theme="light"] .markdown .alert-tip {
+  --alert-color: #1a7f37;
+}
+
+:root[data-theme="light"] .markdown .alert-important {
+  --alert-color: #8250df;
+}
+
+:root[data-theme="light"] .markdown .alert-warning {
+  --alert-color: #9a6700;
+}
+
+:root[data-theme="light"] .markdown .alert-caution {
+  --alert-color: #cf222e;
+}
+
 .markdown img {
   max-width: 100%;
 }

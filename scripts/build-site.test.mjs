@@ -10,6 +10,7 @@ import {
   buildSite,
   createPageIndex,
   createSlugger,
+  extractAlert,
   isTranslated,
   renderMarkdown,
   rewriteLink,
@@ -151,6 +152,45 @@ describe("renderMarkdown", () => {
     expect(html).toContain('<div class="table-wrap">');
     expect(html).toContain('data-language="bash"');
     expect(html).toContain("echo &#39;&lt;hi&gt;&#39;");
+  });
+});
+
+describe("GitHub alerts", () => {
+  const strings = {
+    copy: "Copy",
+    copied: "Copied",
+    copyCode: "Copy code",
+    alerts: { note: "Note", tip: "Tip", important: "Important", warning: "Warning", caution: "Caution" },
+  };
+
+  it("renders alert blockquotes without leaking the marker", () => {
+    const { html } = renderMarkdown("> [!WARNING]\n> Do not uninstall first.\n", {
+      ...linkContext("docs/guide.md", "en"),
+      strings,
+    });
+    expect(html).toContain('<blockquote class="alert alert-warning">');
+    expect(html).toContain('<p class="alert-title">Warning</p>');
+    expect(html).toContain("Do not uninstall first.");
+    expect(html).not.toContain("[!WARNING]");
+  });
+
+  it("keeps ordinary blockquotes and unknown markers unchanged", () => {
+    const quote = renderMarkdown("> Just a quote.\n", { ...linkContext("docs/guide.md", "en"), strings }).html;
+    expect(quote).toContain("<blockquote>");
+    expect(quote).not.toContain("alert-title");
+
+    const unknown = renderMarkdown("> [!SPOILER]\n> Hidden.\n", {
+      ...linkContext("docs/guide.md", "en"),
+      strings,
+    }).html;
+    expect(unknown).toContain("[!SPOILER]");
+    expect(unknown).not.toContain("alert-title");
+  });
+
+  it("ignores tokens that are not alert blockquotes", () => {
+    expect(extractAlert(null)).toBeNull();
+    expect(extractAlert({ type: "paragraph" })).toBeNull();
+    expect(extractAlert({ type: "blockquote", tokens: [] })).toBeNull();
   });
 });
 
