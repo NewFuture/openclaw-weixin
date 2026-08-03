@@ -1,17 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-  <rect width="64" height="64" fill="#fff" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="#000" aria-hidden="true" focusable="false">
   <path
-    fill="#000"
-    d="M16 8h19c8 0 14 6 14 14v5c0 8-6 14-14 14h-7l-11 8c-1.1.8-2.6-.2-2.3-1.5L16 41C8 41 2 35 2 27v-5C2 14 8 8 16 8Z"
+    fill-rule="evenodd"
+    d="M16 8h19c8 0 14 6 14 14v5c0 8-6 14-14 14h-7l-11 8c-1.1.8-2.6-.2-2.3-1.5L16 41C8 41 2 35 2 27v-5C2 14 8 8 16 8Zm6.25 16a3.25 3.25 0 1 1-6.5 0 3.25 3.25 0 1 1 6.5 0Zm13 0a3.25 3.25 0 1 1-6.5 0 3.25 3.25 0 1 1 6.5 0Z"
   />
-  <g fill="#fff">
-    <circle cx="19" cy="24" r="3.25" />
-    <circle cx="32" cy="24" r="3.25" />
-  </g>
   <path fill="none" stroke="#000" stroke-width="8" stroke-linecap="round" d="m39 38 8 9" />
-  <path
-    fill="#000"
-    d="M42 47c-1-7 3-13 9-15 5-1 10 2 11 7 2 6-1 12-7 15-5 3-11 0-13-4-1-1-1-2 0-3Z"
-  />
-  <path fill="#fff" d="m62 39-10 4 8 6c2-3 3-7 2-10Z" />
+  <path d="M42 47c-1-7 3-13 9-15 5-1 10 2 11 7l-10 4 8 6c-1 2-3 4-5 5-5 3-11 0-13-4-1-1-1-2 0-3Z" />
 </svg>
