@@ -354,7 +354,7 @@ describe("processOneMessage", () => {
 
     it("sanitizes unsafe agentId characters before building the subdir", async () => {
       // Path traversal / separators in agentId must not reach the media store.
-      // normalizeAccountId collapses the unsafe input into a safe `[a-z0-9_-]{1,64}` value.
+      // normalizeAgentId collapses the unsafe input into a safe `[a-z0-9_-]{1,64}` value.
       const harness = createChannelRuntimeHarness();
       harness.mocks.resolveAgentRoute.mockImplementationOnce(() => ({
         agentId: "/../etc/passwd",
@@ -377,6 +377,48 @@ describe("processOneMessage", () => {
       expect(subdir).not.toContain("\\");
       const middle = subdir.slice("weixin/".length, -"/inbound".length);
       expect(middle).toMatch(/^[a-z0-9_-]+$/);
+    });
+
+    it("preserves distinct subdirs for JS-reserved agentId names instead of collapsing them to 'default'", async () => {
+      // Regression: a previous version of this PR used `normalizeAccountId`, which
+      // routes JS-reserved names (`constructor`, `prototype`, `__proto__`) through
+      // `isBlockedObjectKey` and maps them to `default`. That would cause two
+      // distinct agents (e.g. an agent literally named `default` and an agent
+      // literally named `constructor`) to share the same `weixin/default/inbound`
+      // directory, defeating the per-agent isolation this PR provides.
+      // `normalizeAgentId` from `openclaw/plugin-sdk/routing` preserves those
+      // names verbatim.
+      const harness = createChannelRuntimeHarness();
+
+      // Agent named `constructor` — must NOT collapse to `default`.
+      harness.mocks.resolveAgentRoute.mockImplementationOnce(() => ({
+        agentId: "constructor",
+        channel: "openclaw-weixin",
+        accountId: SYNTHETIC_ACCOUNT_ID,
+        sessionKey: "agent:constructor:openclaw-weixin:account-test:user-test",
+        mainSessionKey: "agent:constructor:main",
+        lastRoutePolicy: "session",
+        matchedBy: "default",
+      }));
+      await processOneMessage(makeDirectImageMessage(), makeDeps(harness.channelRuntime));
+      const constructorSubdir = mocks.downloadMedia.mock.calls[0]?.[1]?.subdir as string;
+
+      // Agent named `default` — its own canonical subdir.
+      harness.mocks.resolveAgentRoute.mockImplementationOnce(() => ({
+        agentId: "default",
+        channel: "openclaw-weixin",
+        accountId: SYNTHETIC_ACCOUNT_ID,
+        sessionKey: "agent:default:openclaw-weixin:account-test:user-test",
+        mainSessionKey: "agent:default:main",
+        lastRoutePolicy: "session",
+        matchedBy: "default",
+      }));
+      await processOneMessage(makeDirectImageMessage(), makeDeps(harness.channelRuntime));
+      const defaultSubdir = mocks.downloadMedia.mock.calls[1]?.[1]?.subdir as string;
+
+      expect(constructorSubdir).toBe("weixin/constructor/inbound");
+      expect(defaultSubdir).toBe("weixin/default/inbound");
+      expect(constructorSubdir).not.toBe(defaultSubdir);
     });
 
     it("scopes media by agent only, not by accountId — accounts for the same agent share storage", async () => {

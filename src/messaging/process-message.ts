@@ -1,7 +1,5 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-
-import { normalizeAccountId } from "openclaw/plugin-sdk/account-id";
 import { createTypingCallbacks } from "openclaw/plugin-sdk/channel-runtime";
 import {
   resolveDirectDmAuthorizationOutcome,
@@ -9,6 +7,7 @@ import {
 } from "openclaw/plugin-sdk/command-auth";
 import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/infra-runtime";
+import { normalizeAgentId } from "openclaw/plugin-sdk/routing";
 
 import { sendTyping } from "../api/api.js";
 import type { WeixinMessage } from "../api/types.js";
@@ -158,9 +157,15 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   // Sanitize the agentId into a portable, filesystem-safe path component before
   // embedding it under the media store. OpenClaw's media store rejects path
   // traversal, absolute paths, empty segments, and null bytes (per the
-  // saveMediaBuffer contract). normalizeAccountId from the SDK produces a
-  // canonical `[a-z0-9_-]{1,64}` value, falling back to "default" for empty input.
-  const sanitizedAgentId = route.agentId ? normalizeAccountId(route.agentId) : "";
+  // saveMediaBuffer contract). We deliberately use `normalizeAgentId` (from
+  // `openclaw/plugin-sdk/routing`) rather than `normalizeAccountId`: the latter
+  // is intended for account keys and collapses JS-reserved names like
+  // `constructor` / `prototype` / `__proto__` to `default`, which would
+  // collide distinct agents into the same directory and defeat this isolation.
+  // `normalizeAgentId` only collapses unsafe characters and keeps reserved
+  // names literal; it falls back to `main` for empty input, but we already
+  // gate that case above and emit the legacy `inbound` subdir instead.
+  const sanitizedAgentId = route.agentId ? normalizeAgentId(route.agentId) : "";
   const mediaSubdir = sanitizedAgentId ? `weixin/${sanitizedAgentId}/inbound` : "inbound";
   logger.debug(`mediaSubdir: subdir=${mediaSubdir} (agentId=${route.agentId ?? "(none)"})`);
 

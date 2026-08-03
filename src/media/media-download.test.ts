@@ -115,14 +115,23 @@ describe("downloadMediaFromItem", () => {
     const perAgentSubdir = "weixin/agent-x/inbound";
     const saveMedia = vi.fn().mockResolvedValue({ path: "C:\\synthetic\\media.bin" });
     mocks.downloadAndDecryptBuffer.mockResolvedValue(Buffer.from("payload"));
-    // Force the SILK branch by reporting that silk->wav transcode is unavailable.
-    mocks.silkToWav.mockResolvedValue(null);
 
     // Image branch (encrypted path).
     await downloadMediaFromItem(makeImageItem(), { ...COMMON_DEPS, saveMedia, subdir: perAgentSubdir });
     expect(saveMedia).toHaveBeenLastCalledWith(Buffer.from("payload"), undefined, perAgentSubdir, 100 * 1024 * 1024);
 
-    // Voice branch (SILK fallback — silkToWav returns null).
+    // Voice branch — WAV path: silk->wav transcode succeeds, contentType is "audio/wav".
+    mocks.silkToWav.mockResolvedValueOnce(Buffer.from("synthetic-wav-payload"));
+    await downloadMediaFromItem(makeVoiceItem(), { ...COMMON_DEPS, saveMedia, subdir: perAgentSubdir });
+    expect(saveMedia).toHaveBeenLastCalledWith(
+      Buffer.from("synthetic-wav-payload"),
+      "audio/wav",
+      perAgentSubdir,
+      100 * 1024 * 1024,
+    );
+
+    // Voice branch — SILK fallback: silk->wav transcode unavailable, raw SILK is saved.
+    mocks.silkToWav.mockResolvedValueOnce(null);
     await downloadMediaFromItem(makeVoiceItem(), { ...COMMON_DEPS, saveMedia, subdir: perAgentSubdir });
     expect(saveMedia).toHaveBeenLastCalledWith(Buffer.from("payload"), "audio/silk", perAgentSubdir, 100 * 1024 * 1024);
 
@@ -140,7 +149,7 @@ describe("downloadMediaFromItem", () => {
     await downloadMediaFromItem(makeVideoItem(), { ...COMMON_DEPS, saveMedia, subdir: perAgentSubdir });
     expect(saveMedia).toHaveBeenLastCalledWith(Buffer.from("payload"), "video/mp4", perAgentSubdir, 100 * 1024 * 1024);
 
-    // Four distinct saveMedia calls, one per media type.
-    expect(saveMedia).toHaveBeenCalledTimes(4);
+    // Five distinct saveMedia calls, one per media branch (image + WAV + SILK + file + video).
+    expect(saveMedia).toHaveBeenCalledTimes(5);
   });
 });
