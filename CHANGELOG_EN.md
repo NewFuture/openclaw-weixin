@@ -6,6 +6,14 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Added
+
+- Added a multilingual documentation site generated from the repository
+  Markdown and published with GitHub Pages: it redirects to the browser
+  language, serves every page as HTML and as raw Markdown, and publishes
+  `llms.txt` plus `llms-full.txt` so language models can index the latest
+  documentation.
+
 ## [3.0.1] - 2026-08-02
 
 ### Changed

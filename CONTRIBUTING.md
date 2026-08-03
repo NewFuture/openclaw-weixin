@@ -76,6 +76,17 @@ The repository's stricter package contract check is:
 npm run pack:check
 ```
 
+Build the documentation website into `site/dist/` (the same command GitHub Pages
+runs) after editing Markdown documents or the files in `site/`:
+
+```shell
+npm run site:build
+```
+
+Serve `site/dist/` with any static file server to preview it locally. The
+generated directory is ignored by Git; only the sources in `site/` and
+`scripts/build-site.mjs` are committed.
+
 ## Pull requests
 
 - Keep changes focused and include tests for behavior changes.

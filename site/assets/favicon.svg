@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="openclaw-weixin">
+  <defs>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07c160" />
+      <stop offset="1" stop-color="#34d399" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#mark)" />
+  <path
+    fill="#fff"
+    d="M26 14c-8.8 0-16 5.9-16 13.2 0 4.2 2.4 7.9 6.1 10.3l-1.6 5.2 6-3.1c1.8.5 3.6.8 5.5.8h1.1c-.3-1.1-.5-2.2-.5-3.3 0-7.9 7.8-14.3 17.4-14.3.6 0 1.2 0 1.8.1C43.9 17.9 35.7 14 26 14Zm-6.4 8.2a2.3 2.3 0 1 1 0 4.6 2.3 2.3 0 0 1 0-4.6Zm12.8 0a2.3 2.3 0 1 1 0 4.6 2.3 2.3 0 0 1 0-4.6Z"
+  />
+  <path
+    fill="#fff"
+    fill-opacity=".92"
+    d="M44 26.5c-8 0-14.5 5.3-14.5 11.8S36 50.1 44 50.1c1.6 0 3.2-.2 4.7-.7l5.1 2.6-1.4-4.4c3.1-2.1 5.1-5.2 5.1-8.8 0-6.5-6.5-11.8-14.5-11.8Zm-5.3 7a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm10.6 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"
+  />
+</svg>
