@@ -12,7 +12,7 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { Marked } from "marked";
 
@@ -30,7 +30,7 @@ const SITE = {
  * have no translated source file and for browsers that request an unknown
  * language.
  */
-const LANGUAGES = [
+export const LANGUAGES = [
   { id: "en", htmlLang: "en", label: "English", shortLabel: "EN" },
   { id: "zh", htmlLang: "zh-CN", label: "简体中文", shortLabel: "中文" },
 ];
@@ -42,7 +42,7 @@ const DEFAULT_LANGUAGE = LANGUAGES[0].id;
  * Markdown file; a missing language falls back to the default language and the
  * page is marked as untranslated.
  */
-const PAGES = [
+export const PAGES = [
   {
     id: "index",
     slug: "index",
@@ -234,7 +234,7 @@ function escapeHtml(value) {
 }
 
 /** Slugify a heading the way GitHub does, so existing `#anchor` links keep working. */
-function slugify(text) {
+export function slugify(text) {
   return String(text)
     .trim()
     .toLowerCase()
@@ -242,7 +242,7 @@ function slugify(text) {
     .replace(/\s+/g, "-");
 }
 
-function createSlugger() {
+export function createSlugger() {
   const seen = new Map();
   return (text) => {
     const base = slugify(text) || "section";
@@ -264,7 +264,7 @@ function plainText(tokens) {
 }
 
 /** Map every known repository Markdown path to the page and language it belongs to. */
-function createPageIndex(pages = PAGES, aliases = SOURCE_ALIASES) {
+export function createPageIndex(pages = PAGES, aliases = SOURCE_ALIASES) {
   const byId = new Map(pages.map((page) => [page.id, page]));
   const bySource = new Map();
   for (const page of pages) {
@@ -301,7 +301,7 @@ function splitTarget(href) {
  * sources use at the top of each document. Links that leave the documentation
  * set fall back to the repository on GitHub.
  */
-function rewriteLink(href, { sourcePath, extension, pageIndex, language, currentPage }) {
+export function rewriteLink(href, { sourcePath, extension, pageIndex, language, currentPage }) {
   if (!href || href.startsWith("#") || EXTERNAL_LINK.test(href)) return href;
   const { target, hash } = splitTarget(href);
   if (!target) return href;
@@ -314,7 +314,7 @@ function rewriteLink(href, { sourcePath, extension, pageIndex, language, current
 }
 
 /** Rewrite inline Markdown links outside fenced code blocks. */
-function rewriteMarkdownLinks(markdown, context) {
+export function rewriteMarkdownLinks(markdown, context) {
   const fence = /^(\s*)(`{3,}|~{3,})/;
   let openFence = null;
   return markdown
@@ -352,7 +352,7 @@ function isNavigationParagraph(token) {
 }
 
 /** Drop the leading H1 and the "back to README | other language" navigation line. */
-function trimDocumentHeader(tokens) {
+export function trimDocumentHeader(tokens) {
   const trimmed = [...tokens];
   while (trimmed.length > 0 && trimmed[0].type === "space") trimmed.shift();
   if (trimmed[0]?.type === "heading" && trimmed[0].depth === 1) trimmed.shift();
@@ -372,7 +372,7 @@ const ALERT_MARKER = /^\[!([a-z]+)\][^\S\n]*\n?/i;
  *
  * Returns the alert type, or `null` when the blockquote is an ordinary quote.
  */
-function extractAlert(token) {
+export function extractAlert(token) {
   if (token?.type !== "blockquote") return null;
   const paragraph = token.tokens?.[0];
   if (paragraph?.type !== "paragraph" || !Array.isArray(paragraph.tokens)) return null;
@@ -841,7 +841,7 @@ function buildSearchEntries(documents, language) {
   return entries;
 }
 
-function siblingsFor(pageId, orderedPages) {
+export function siblingsFor(pageId, orderedPages) {
   const index = orderedPages.findIndex((page) => page.id === pageId);
   return {
     previous: index > 0 ? orderedPages[index - 1] : null,
@@ -849,11 +849,11 @@ function siblingsFor(pageId, orderedPages) {
   };
 }
 
-function normalizeBaseUrl(value) {
+export function normalizeBaseUrl(value) {
   return String(value).replace(/\/+$/, "");
 }
 
-async function buildSite({
+export async function buildSite({
   repoRoot = REPO_ROOT,
   outDir = path.join(SITE_DIR, "dist"),
   baseUrl = process.env.SITE_BASE_URL || SITE.defaultBaseUrl,
@@ -953,7 +953,7 @@ async function buildSite({
   return { outDir, baseUrl: normalizedBaseUrl, documents, version, generatedAt };
 }
 
-function parseArguments(argv) {
+export function parseArguments(argv) {
   const options = {};
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -963,7 +963,12 @@ function parseArguments(argv) {
   return options;
 }
 
-const result = await buildSite(parseArguments(process.argv.slice(2)));
-console.log(
-  `Site built: ${result.documents.length} documents for ${LANGUAGES.length} languages in ${path.relative(REPO_ROOT, result.outDir) || "."}`,
-);
+/** Only build when executed as a script, so tests can import the helpers above. */
+const isCliEntry = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isCliEntry) {
+  const result = await buildSite(parseArguments(process.argv.slice(2)));
+  console.log(
+    `Site built: ${result.documents.length} documents for ${LANGUAGES.length} languages in ${path.relative(REPO_ROOT, result.outDir) || "."}`,
+  );
+}

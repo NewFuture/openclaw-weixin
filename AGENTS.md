@@ -80,11 +80,13 @@ run:
 npm run pack:check
 ```
 
-When Markdown documents or the website sources change, rebuild the site. It has
-its own dependencies so that the published package manifest stays untouched:
+When Markdown documents or the website sources change, test and rebuild the
+site. It has its own dependencies so that the published package manifest stays
+untouched, so its generator tests run outside the root Vitest project:
 
 ```shell
 npm ci --prefix docs/site
+npm test --prefix docs/site
 npm run build --prefix docs/site
 ```
 

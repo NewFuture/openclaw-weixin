@@ -79,10 +79,12 @@ npm run pack:check
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The
 website keeps its own dependencies so that the published package manifest stays
-untouched:
+untouched, and its generator tests run with Node.js instead of the root Vitest
+project:
 
 ```shell
 npm ci --prefix docs/site
+npm test --prefix docs/site
 npm run build --prefix docs/site
 ```
 

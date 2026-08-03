@@ -40,6 +40,10 @@ jobs:
         run: npm ci
         working-directory: docs/site
 
+      - name: Test site generator
+        run: npm test
+        working-directory: docs/site
+
       - name: Configure Pages
         id: pages
         if: github.event_name != 'pull_request'
