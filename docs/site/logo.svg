@@ -17,7 +17,7 @@
       <path d="M45 15Q35 5 30 8" />
       <path d="M75 15Q85 5 90 8" />
     </g>
-    <g fill="#07C160">
+    <g fill="#fff">
       <circle cx="45" cy="35" r="5" />
       <circle cx="75" cy="35" r="5" />
     </g>
