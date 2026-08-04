@@ -47,9 +47,10 @@
     "format:check": "biome format .",
     "check:style": "biome check . --error-on-warnings",
     "check:versions": "node scripts/check-versions.mjs",
-    "check:static": "npm run check:versions && npm run check:style && npm run typecheck && npm run typecheck:tests",
+    "check:lockfile": "node scripts/check-lockfile.mjs",
+    "check:static": "npm run check:versions && npm run check:lockfile && npm run check:style && npm run typecheck && npm run typecheck:tests",
     "check:fast": "npm run check:static && npm run test:unit",
-    "audit:deps": "npm audit --audit-level=moderate",
+    "audit:deps": "node scripts/check-audit.mjs",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
     "check": "npm run check:static && npm run test:coverage && npm run build",
@@ -74,14 +75,6 @@
     "silk-wasm": "^3.7.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
-  },
-  "overrides": {
-    "@hono/node-server": "2.0.10",
-    "brace-expansion": "5.0.8",
-    "fast-uri": "3.1.4",
-    "hono": "4.12.27",
-    "protobufjs": "7.6.5",
-    "tar": "7.5.21"
   },
   "openclaw": {
     "extensions": [
