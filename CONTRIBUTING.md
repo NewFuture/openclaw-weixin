@@ -50,8 +50,7 @@ by CI:
 npm run check
 ```
 
-Audit all production and development dependencies at the same severity used by
-CI and releases:
+Audit production dependencies at the same severity used by CI and releases:
 
 ```shell
 npm run audit:deps
