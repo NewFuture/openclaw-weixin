@@ -42,6 +42,11 @@ contract.
 - Preserve legacy account IDs, credential files, and sync-buffer migrations unless
   the change explicitly owns a tested migration.
 - `dist/` and `coverage/` are generated. Do not hand-edit or commit them.
+- `package-lock.json` must describe what `npm ci` really installs: public
+  registry tarballs, sha512 integrity, no hand-edited versions. OpenClaw ships an
+  `npm-shrinkwrap.json`, so root `overrides` cannot move anything under
+  `node_modules/openclaw/`; pinning a transitive OpenClaw dependency only hides
+  the advisory from `npm audit`. Upgrade the `openclaw` devDependency instead.
 - User-facing behavior changes require matching English and Chinese README or
   changelog updates.
 
@@ -69,6 +74,12 @@ Run the full CI-equivalent gate before finishing:
 
 ```shell
 npm run check
+```
+
+When dependencies change, also re-run the audit gate:
+
+```shell
+npm run audit:deps
 ```
 
 When entry points, build output, package metadata, or dependencies change, also

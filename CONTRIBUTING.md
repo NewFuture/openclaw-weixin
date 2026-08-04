@@ -26,6 +26,10 @@ Install the exact dependency versions recorded in the lockfile:
 npm ci
 ```
 
+Use `npm ci` rather than `npm install` so the lockfile stays authoritative. When
+a dependency change does require refreshing it, run `npm install` against the
+public registry and confirm the diff only touches the intended packages.
+
 Read [AGENTS.md](./AGENTS.md) for repository invariants and
 [the architecture guide](./docs/architecture.md) for lifecycle and data flow.
 These rules apply whether a change is written manually or with coding-agent
@@ -50,12 +54,22 @@ by CI:
 npm run check
 ```
 
-Audit all production and development dependencies at the same severity used by
-CI and releases:
+Audit dependencies at the same severity used by CI and releases:
 
 ```shell
 npm run audit:deps
 ```
+
+This gate fails on `moderate` or higher advisories that this repository can fix,
+and reports the remaining ones. OpenClaw publishes an `npm-shrinkwrap.json`, so
+npm resolves everything under `node_modules/openclaw/` from that file: root
+`overrides` and hand-edited `package-lock.json` entries do not change what
+`npm ci` installs there, they only change what `npm audit` reads. Clear those
+advisories by upgrading the `openclaw` devDependency once upstream ships a fix,
+and re-run the audit in that pull request. Never pin a transitive OpenClaw
+dependency to silence a report; `npm run check:lockfile` rejects overrides the
+lockfile does not actually apply, along with tarballs resolved from a registry
+mirror or recorded with a weaker-than-sha512 integrity.
 
 Apply repository formatting with:
 
