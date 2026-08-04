@@ -103,6 +103,7 @@ override applies.
 | `openclaw-weixin/accounts/<accountId>.json` | Token, backend URL, save time, and linked user ID |
 | `openclaw-weixin/accounts/<accountId>.sync.json` | `getUpdates` cursor |
 | `openclaw-weixin/accounts/<accountId>.context-tokens.json` | Recipient context tokens for that account |
+| `openclaw-weixin/replay-dedupe/<accountId>.json` | Inbound getUpdates replay tombstones (24h; newer hosts may map the path to SQLite) |
 | `credentials/openclaw-weixin-<accountId>-allowFrom.json` | Framework pairing allow-list |
 | `openclaw.json` | Channel configuration and account overrides |
 

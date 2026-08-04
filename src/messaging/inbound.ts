@@ -5,6 +5,7 @@ import { MessageItemType } from "../api/types.js";
 import { resolveStateDir } from "../storage/state-dir.js";
 import { logger } from "../util/logger.js";
 import { generateId } from "../util/random.js";
+import { buildWeixinInboundDedupeKey } from "./inbound-dedupe.js";
 
 // ---------------------------------------------------------------------------
 // Context token store (in-process cache + disk persistence)
@@ -222,6 +223,7 @@ export function weixinMessageToMsgContext(
   opts?: WeixinInboundMediaOpts,
 ): WeixinMsgContext {
   const from_user_id = msg.from_user_id ?? "";
+  const stableSid = buildWeixinInboundDedupeKey(accountId, msg);
   const ctx: WeixinMsgContext = {
     Body: bodyFromItemList(msg.item_list),
     From: from_user_id,
@@ -229,7 +231,7 @@ export function weixinMessageToMsgContext(
     AccountId: accountId,
     OriginatingChannel: "openclaw-weixin",
     OriginatingTo: from_user_id,
-    MessageSid: generateMessageSid(),
+    MessageSid: stableSid ?? generateMessageSid(),
     SenderId: from_user_id,
     Timestamp: msg.create_time_ms,
     Provider: "openclaw-weixin",
