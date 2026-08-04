@@ -50,8 +50,9 @@ tests, and build used by CI:
 npm run check
 ```
 
-Run only the production dependency audit at the severity used by CI and
-releases:
+Run only the dependency audit used by CI and releases. It fails on every
+moderate or higher advisory except those pinned beneath
+`node_modules/openclaw` by OpenClaw's shrinkwrap:
 
 ```shell
 npm run audit:deps

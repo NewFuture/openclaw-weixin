@@ -69,8 +69,8 @@ Run the fast local gate:
 npm run check:fast
 ```
 
-Run the full CI-equivalent gate before finishing. It audits production
-dependencies, then runs static checks, coverage tests, and the build:
+Run the full CI-equivalent gate before finishing. It audits the dependency
+tree, then runs static checks, coverage tests, and the build:
 
 ```shell
 npm run check
