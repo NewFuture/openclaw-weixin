@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitepress";
 
-import { createNav, createPageByFile, createSidebar, htmlPathFor, LOCALES, SITE } from "./docs.mjs";
+import { createNav, createPageByFile, createSidebar, htmlPathFor, localeById, SITE } from "./docs.mjs";
 import { emitMachineReadable } from "./llms.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -18,7 +18,7 @@ const editLink = {
 
 export default defineConfig({
   title: SITE.name,
-  description: SITE.description.en,
+  description: SITE.description.zh,
   base,
   // `content/` is generated from the repository Markdown by `.vitepress/sync.mjs`.
   srcDir: "content",
@@ -31,25 +31,10 @@ export default defineConfig({
   sitemap: { hostname: `${baseUrl}/` },
 
   locales: {
+    // Simplified Chinese is the default locale and is served from the root.
     root: {
-      label: LOCALES[0].label,
-      lang: LOCALES[0].lang,
-      description: SITE.description.en,
-      themeConfig: {
-        nav: createNav("en"),
-        sidebar: createSidebar("en"),
-        outline: { level: [2, 3], label: "On this page" },
-        docFooter: { prev: "Previous", next: "Next" },
-        editLink: { ...editLink, text: "Edit this page on GitHub" },
-        footer: {
-          message: `${SITE.tagline.en} · Released under the MIT License.`,
-          copyright: `Derived from <a href="${SITE.upstreamUrl}">Tencent/openclaw-weixin</a>`,
-        },
-      },
-    },
-    zh: {
-      label: LOCALES[1].label,
-      lang: LOCALES[1].lang,
+      label: localeById("zh").label,
+      lang: localeById("zh").lang,
       description: SITE.description.zh,
       themeConfig: {
         nav: createNav("zh"),
@@ -69,6 +54,22 @@ export default defineConfig({
         },
       },
     },
+    en: {
+      label: localeById("en").label,
+      lang: localeById("en").lang,
+      description: SITE.description.en,
+      themeConfig: {
+        nav: createNav("en"),
+        sidebar: createSidebar("en"),
+        outline: { level: [2, 3], label: "On this page" },
+        docFooter: { prev: "Previous", next: "Next" },
+        editLink: { ...editLink, text: "Edit this page on GitHub" },
+        footer: {
+          message: `${SITE.tagline.en} · Released under the MIT License.`,
+          copyright: `Derived from <a href="${SITE.upstreamUrl}">Tencent/openclaw-weixin</a>`,
+        },
+      },
+    },
   },
 
   themeConfig: {
@@ -80,8 +81,9 @@ export default defineConfig({
     search: {
       provider: "local",
       options: {
+        // `root` is the Chinese locale; the other locales keep the English defaults.
         locales: {
-          zh: {
+          root: {
             translations: {
               button: { buttonText: "搜索文档", buttonAriaLabel: "搜索文档" },
               modal: {

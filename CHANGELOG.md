@@ -6,13 +6,6 @@
 
 ## [未发布]
 
-### 新增
-
-- 新增基于仓库 Markdown 生成的多语言文档站点，通过 GitHub Pages 发布：
-  使用 VitePress 提供中英文导航、本地搜索、深色模式与移动端布局，每个页面
-  同时提供 HTML 与 Markdown 原文，并输出 `llms.txt` 与 `llms-full.txt`
-  供大模型索引最新文档。
-
 ### 修复
 
 - **入站 getUpdates 双投递：** ordinary / approval 两条 admission 车道在处理前通过

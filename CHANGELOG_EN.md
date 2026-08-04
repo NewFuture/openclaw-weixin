@@ -6,14 +6,6 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
-### Added
-
-- Added a multilingual documentation site generated from the repository
-  Markdown and published with GitHub Pages: VitePress provides English and
-  Chinese navigation, local search, dark mode, and a mobile layout, every page
-  is served as HTML and as raw Markdown, and `llms.txt` plus `llms-full.txt`
-  let language models index the latest documentation.
-
 ### Fixed
 
 - **Inbound getUpdates duplicate delivery:** ordinary and approval admission

@@ -6,11 +6,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { createDocumentBySource, createPages, createPathResolver, DEFAULT_LOCALE, LOCALES, SITE } from "./docs.mjs";
+import { createDocumentBySource, createPages, createPathResolver, LOCALES, localeById, SITE } from "./docs.mjs";
 import { rewriteLinks } from "./links.mjs";
 
-/** Machine-readable marker for a locale page that carries the English text. */
-const UNTRANSLATED_NOTE = "(English source, not translated yet)";
+/** Machine-readable marker for a locale page that carries another locale's text. */
+function untranslatedNote(page) {
+  return page.translated ? "" : ` (${localeById(page.sourceLocale).label} source, not translated yet)`;
+}
 
 export function renderLlmsTxt({ baseUrl, version, generatedAt, pages }) {
   const lines = [
@@ -26,10 +28,9 @@ export function renderLlmsTxt({ baseUrl, version, generatedAt, pages }) {
     "",
   ];
   for (const locale of LOCALES) {
-    lines.push(`## ${locale.id === DEFAULT_LOCALE ? "Docs" : `Docs (${locale.label})`}`, "");
+    lines.push(`## Docs (${locale.label})`, "");
     for (const page of pages.filter((entry) => entry.locale === locale.id)) {
-      const note = page.translated ? "" : ` ${UNTRANSLATED_NOTE}`;
-      lines.push(`- [${page.title}](${baseUrl}/${page.path}.md): ${page.description}${note}`);
+      lines.push(`- [${page.title}](${baseUrl}/${page.path}.md): ${page.description}${untranslatedNote(page)}`);
     }
     lines.push("");
   }
