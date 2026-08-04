@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -183,6 +185,20 @@ function makeGatewayContext(account: ResolvedWeixinAccount, overrides: Partial<G
     ...overrides,
   };
 }
+
+describe("weixinPlugin channel metadata", () => {
+  it("points the docs link at the community documentation site", () => {
+    const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      homepage: string;
+      openclaw: { channel: { docsPath: string } };
+    };
+    const documentationSite = "https://newfuture.github.io/openclaw-weixin/";
+
+    expect(weixinPlugin.meta.docsPath).toBe(documentationSite);
+    expect(packageJson.openclaw.channel.docsPath).toBe(documentationSite);
+    expect(packageJson.homepage).toBe(documentationSite);
+  });
+});
 
 describe("weixinPlugin outbound account resolution", () => {
   beforeEach(() => {

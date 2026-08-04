@@ -11,7 +11,7 @@
     "type": "git",
     "url": "git+https://github.com/NewFuture/openclaw-weixin.git"
   },
-  "homepage": "https://github.com/NewFuture/openclaw-weixin#readme",
+  "homepage": "https://newfuture.github.io/openclaw-weixin/",
   "bugs": {
     "url": "https://github.com/NewFuture/openclaw-weixin/issues"
   },
@@ -94,7 +94,7 @@
       "id": "openclaw-weixin",
       "label": "WeChat",
       "selectionLabel": "WeChat",
-      "docsPath": "/channels/openclaw-weixin",
+      "docsPath": "https://newfuture.github.io/openclaw-weixin/",
       "docsLabel": "WeChat",
       "blurb": "Weixin channel",
       "order": 75

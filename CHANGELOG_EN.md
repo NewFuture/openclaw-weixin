@@ -14,6 +14,13 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
   is served as HTML and as raw Markdown, and `llms.txt` plus `llms-full.txt`
   let language models index the latest documentation.
 
+### Changed
+
+- Point the npm package `homepage` and the channel `docsPath` at the new
+  documentation site <https://newfuture.github.io/openclaw-weixin/>, so
+  OpenClaw channel selection and install surfaces no longer link to the
+  upstream Tencent distribution docs.
+
 ### Fixed
 
 - **Inbound getUpdates duplicate delivery:** ordinary and approval admission

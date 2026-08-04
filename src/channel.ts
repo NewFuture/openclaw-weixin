@@ -165,7 +165,9 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
     id: "openclaw-weixin",
     label: "WeChat",
     selectionLabel: "WeChat (long-poll)",
-    docsPath: "/channels/openclaw-weixin",
+    // Absolute URL so hosts link to the community documentation site instead of
+    // the upstream docs page for the Tencent distribution.
+    docsPath: "https://newfuture.github.io/openclaw-weixin/",
     docsLabel: "WeChat",
     blurb: "getUpdates long-poll upstream, sendMessage downstream; token auth.",
     order: 75,

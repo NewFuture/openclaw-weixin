@@ -13,6 +13,12 @@
   同时提供 HTML 与 Markdown 原文，并输出 `llms.txt` 与 `llms-full.txt`
   供大模型索引最新文档。
 
+### 变更
+
+- 将 npm 包主页（`homepage`）与渠道文档链接（`docsPath`）指向新的文档站点
+  <https://newfuture.github.io/openclaw-weixin/>，OpenClaw 的渠道选择与安装
+  界面不再跳转到上游腾讯发行版的文档页。
+
 ### 修复
 
 - **入站 getUpdates 双投递：** ordinary / approval 两条 admission 车道在处理前通过
