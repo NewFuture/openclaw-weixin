@@ -12,7 +12,7 @@ import { logger } from "../util/logger.js";
  * Replay-dedupe tombstone TTL for getUpdates at-least-once delivery.
  * Covers ~1s iLink replays and longer redeliveries (e.g. 30–50 min after a
  * stuck long turn). Not a content-dedupe window: a new user send with a new
- * `message_id` is always claimed. Body-fingerprint keys include create_time_ms.
+ * `message_id` is always claimed.
  *
  * Uses OpenClaw `createClaimableDedupe` with the resolveFilePath shape that
  * works on the minimum host (2026.6.1 JSON files) and newer hosts (path used
@@ -23,8 +23,6 @@ import { logger } from "../util/logger.js";
 export const WEIXIN_INBOUND_DEDUPE_TTL_MS = 24 * 60 * 60 * 1000;
 const WEIXIN_INBOUND_DEDUPE_MEMORY_MAX = 20_000;
 const WEIXIN_INBOUND_DEDUPE_FILE_MAX = 20_000;
-/** Cap reclaim attempts after an in-flight owner releases without committing. */
-const WEIXIN_INBOUND_ADMIT_MAX_ATTEMPTS = 3;
 
 function sanitizeSegment(value: string): string {
   const trimmed = value.trim();
@@ -61,6 +59,7 @@ let inboundDedupe = createWeixinInboundDedupe();
 function extractTextForFallback(itemList?: MessageItem[]): string {
   if (!itemList?.length) return "";
   for (const item of itemList) {
+    if (!item) continue;
     if (item.type === MessageItemType.TEXT && item.text_item?.text != null) {
       return String(item.text_item.text);
     }
@@ -71,9 +70,21 @@ function extractTextForFallback(itemList?: MessageItem[]): string {
   return "";
 }
 
+/** Canonical sorted item msg_id list for collision-safe media identity. */
+export function collectWeixinItemMsgIds(itemList?: MessageItem[]): string[] {
+  if (!itemList?.length) return [];
+  const ids: string[] = [];
+  for (const item of itemList) {
+    const id = item?.msg_id?.trim();
+    if (id) ids.push(id);
+  }
+  return ids.sort();
+}
+
 /**
  * Stable inbound identity for dedupe + MessageSid.
- * Prefer transport ids from iLink; fall back to content fingerprint.
+ * Prefer transport ids from iLink; then item msg_id digests; then text body.
+ * Returns null when no message-specific identity exists (never key by sender alone).
  */
 export function buildWeixinInboundDedupeKey(accountId: string, msg: WeixinMessage): string | null {
   const from = msg.from_user_id ?? "";
@@ -89,18 +100,28 @@ export function buildWeixinInboundDedupeKey(accountId: string, msg: WeixinMessag
     return `weixin:v1:${accountId}:${from}:seq:${msg.seq}`;
   }
 
+  const itemIds = collectWeixinItemMsgIds(msg.item_list);
+  if (itemIds.length > 0) {
+    const digest = createHash("sha256").update(itemIds.join("\0")).digest("hex").slice(0, 16);
+    return `weixin:v1:${accountId}:${from}:items:${digest}`;
+  }
+
   const body = extractTextForFallback(msg.item_list);
+  if (!body) {
+    // Empty-body media without transport/item ids must not share a sender-only key.
+    return null;
+  }
   const t = msg.create_time_ms ?? 0;
-  if (!from && !body && !t) return null;
   const digest = createHash("sha256").update(body).update("\0").update(String(t)).digest("hex").slice(0, 16);
   return `weixin:v1:${accountId}:${from}:body:${digest}`;
 }
 
 /** Non-sensitive identity kind for logs (no account / user / client ids). */
-export function describeWeixinInboundDedupeIdentity(key: string): "mid" | "cid" | "seq" | "body" | "unknown" {
+export function describeWeixinInboundDedupeIdentity(key: string): "mid" | "cid" | "seq" | "items" | "body" | "unknown" {
   if (key.includes(":mid:")) return "mid";
   if (key.includes(":cid:")) return "cid";
   if (key.includes(":seq:")) return "seq";
+  if (key.includes(":items:")) return "items";
   if (key.includes(":body:")) return "body";
   return "unknown";
 }
@@ -111,38 +132,36 @@ export type WeixinInboundDedupeOptions = {
   now?: number;
 };
 
-export type WeixinInboundAdmitResult = "process" | "duplicate";
+export type WeixinInboundClaimAttempt =
+  | { kind: "claimed" }
+  | { kind: "duplicate" }
+  | { kind: "inflight"; pending: Promise<boolean> };
 
 /**
- * Admit a logical inbound message for processing.
- *
- * - `process`: this delivery owns the claim
- * - `duplicate`: a tombstone already exists, or an in-flight owner committed
- *
- * In-flight replays wait for the owner. If the owner releases (failure/abort),
- * this delivery reclaims so the message is not lost.
+ * Non-blocking claim attempt for admission lanes.
+ * Callers must not await `inflight.pending` while holding a lane slot.
  */
-export async function admitWeixinInboundMessage(
+export async function tryClaimWeixinInboundMessage(
   key: string,
   options?: WeixinInboundDedupeOptions,
-): Promise<WeixinInboundAdmitResult> {
-  for (let attempt = 0; attempt < WEIXIN_INBOUND_ADMIT_MAX_ATTEMPTS; attempt++) {
-    const result = await inboundDedupe.claim(key, {
-      namespace: options?.namespace,
-      now: options?.now,
-    });
-    if (result.kind === "claimed") return "process";
-    if (result.kind === "duplicate") return "duplicate";
+): Promise<WeixinInboundClaimAttempt> {
+  const result = await inboundDedupe.claim(key, {
+    namespace: options?.namespace,
+    now: options?.now,
+  });
+  if (result.kind === "claimed") return { kind: "claimed" };
+  if (result.kind === "duplicate") return { kind: "duplicate" };
+  return { kind: "inflight", pending: result.pending };
+}
 
-    try {
-      await result.pending;
-      // Owner committed a tombstone — this delivery is a replay.
-      return "duplicate";
-    } catch {
-      // Owner released without commit — reclaim on the next attempt.
-    }
+/** Observe an in-flight owner without holding an admission lane. */
+export async function waitForInflightWeixinInboundOwner(pending: Promise<boolean>): Promise<"duplicate" | "released"> {
+  try {
+    await pending;
+    return "duplicate";
+  } catch {
+    return "released";
   }
-  return "duplicate";
 }
 
 /** Persist the claim after successful handling (survives restart for TTL). */

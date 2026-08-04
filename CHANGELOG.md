@@ -14,9 +14,11 @@
   （`message_id` → `client_id` → `seq` → 正文指纹），成功后写入 24 小时墓碑，
   避免 iLink 长轮询至少一次投递（约 1 秒重放）以及长任务卡住后的更长窗口重投
   把同一条消息跑两遍 AI，并在进程重启后仍生效。失败与 abort 会 release 以便
-  重试；进行中的重放会等待持有者，若持有者 release 则重新认领，避免消息丢失。
-  重复投递日志只记录非敏感的 identity 种类。该窗口是**重放去重 / 墓碑窗口**，
-  不会吞掉用户故意再发且带有新 `message_id` 的消息。存在传输层 id 时
+  重试。进行中的重放会立刻释放 admission 车道，在车道外观察持有者，仅在
+  release 时重新入队，避免挡住后续不同消息。认领成功后的每一步都在 claim
+  生命周期内。Fallback 优先用 item `msg_id` 摘要，绝不只按发送者建键。重复
+  投递日志只记录非敏感的 identity 种类。该窗口是**重放去重 / 墓碑窗口**，不
+  会吞掉用户故意再发且带有新 `message_id` 的消息。存在传输层 id 时
   `MessageSid` 使用同一稳定键。移植自
   [Tencent/openclaw-weixin#240](https://github.com/Tencent/openclaw-weixin/pull/240)；
   跟踪

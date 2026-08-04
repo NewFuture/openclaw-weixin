@@ -15,12 +15,15 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
   minimum host `2026.6.1`) before processing, then commit a 24h tombstone so
   at-least-once iLink long-poll replays (~1s) and longer redeliveries after
   stuck long turns do not run the AI pipeline twice — including across process
-  restart. Failures and abort release the claim for retry; an in-flight replay
-  waits for the owner and reclaims if the owner releases, so the message is not
-  lost. Duplicate logs record only a non-sensitive identity kind. The window is
-  a **replay-dedupe / tombstone window**, not a content dedupe that swallows
-  intentional re-sends with a new `message_id`. Stable `MessageSid` uses the
-  same key when transport ids are present. Port of
+  restart. Failures and abort release the claim for retry. In-flight replays
+  release the admission lane immediately, observe the owner out of band, and
+  re-enqueue only if the owner releases — so a distinct follow-up message is
+  not blocked. Claim ownership wraps every step after admission. Fallback keys
+  prefer item `msg_id` digests and never key by sender alone. Duplicate logs
+  record only a non-sensitive identity kind. The window is a **replay-dedupe /
+  tombstone window**, not a content dedupe that swallows intentional re-sends
+  with a new `message_id`. Stable `MessageSid` uses the same key when transport
+  ids are present. Port of
   [Tencent/openclaw-weixin#240](https://github.com/Tencent/openclaw-weixin/pull/240);
   tracks [NewFuture/openclaw-weixin#36](https://github.com/NewFuture/openclaw-weixin/issues/36).
 

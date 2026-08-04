@@ -6,11 +6,12 @@ import { getRemainingPauseMs, pauseSession, STALE_TOKEN_ERRCODE } from "../api/s
 import { MessageItemType, type WeixinMessage } from "../api/types.js";
 import { setContextToken } from "../messaging/inbound.js";
 import {
-  admitWeixinInboundMessage,
   buildWeixinInboundDedupeKey,
   commitWeixinInboundMessage,
   logWeixinInboundDuplicate,
   releaseWeixinInboundMessage,
+  tryClaimWeixinInboundMessage,
+  waitForInflightWeixinInboundOwner,
 } from "../messaging/inbound-dedupe.js";
 import { processOneMessage, type WeixinChannelRuntime } from "../messaging/process-message.js";
 import { getSyncBufFilePath, loadGetUpdatesBuf, saveGetUpdatesBuf } from "../storage/sync-buf.js";
@@ -78,43 +79,41 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
   }
 
   const configManager = new WeixinConfigManager({ baseUrl, token }, log);
+
+  /**
+   * Process one inbound delivery that already owns `dedupeKey` (or has none).
+   * Every step after admission is inside the claim guard so exceptions release.
+   */
   const processInboundMessage = async (
     full: WeixinMessage,
     onReplyAdmitted: () => void,
     dedupeKey: string | null,
   ): Promise<void> => {
-    if (abortSignal?.aborted) {
-      if (dedupeKey) {
-        releaseWeixinInboundMessage(dedupeKey, {
-          namespace: accountId,
-          error: new Error("aborted"),
-        });
-      }
-      return;
-    }
-    aLog.info(
-      `inbound message: from=${full.from_user_id} types=${full.item_list?.map((i) => i.type).join(",") ?? "none"}`,
-    );
-
-    const now = Date.now();
-    setStatus?.({ accountId, lastEventAt: now, lastInboundAt: now });
-
-    // allowFrom filtering is delegated to processOneMessage via the framework
-    // authorization pipeline (resolveSenderCommandAuthorizationWithRuntime).
-
-    const fromUserId = full.from_user_id ?? "";
-    const cachedConfig = await configManager.getForUser(fromUserId, full.context_token);
-    if (abortSignal?.aborted) {
-      if (dedupeKey) {
-        releaseWeixinInboundMessage(dedupeKey, {
-          namespace: accountId,
-          error: new Error("aborted"),
-        });
-      }
-      return;
-    }
-
+    let committed = false;
     try {
+      if (abortSignal?.aborted) {
+        throw new Error("aborted");
+      }
+
+      const itemTypes =
+        full.item_list
+          ?.map((item) => item?.type)
+          .filter((type) => type !== undefined)
+          .join(",") ?? "none";
+      aLog.info(`inbound message: from=${full.from_user_id} types=${itemTypes}`);
+
+      const now = Date.now();
+      setStatus?.({ accountId, lastEventAt: now, lastInboundAt: now });
+
+      // allowFrom filtering is delegated to processOneMessage via the framework
+      // authorization pipeline (resolveSenderCommandAuthorizationWithRuntime).
+
+      const fromUserId = full.from_user_id ?? "";
+      const cachedConfig = await configManager.getForUser(fromUserId, full.context_token);
+      if (abortSignal?.aborted) {
+        throw new Error("aborted");
+      }
+
       await processOneMessage(full, {
         accountId,
         config,
@@ -129,19 +128,45 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
       });
       if (dedupeKey) {
         await commitWeixinInboundMessage(dedupeKey, { namespace: accountId });
+        committed = true;
       }
     } catch (error) {
-      if (dedupeKey) {
+      if (dedupeKey && !committed) {
         releaseWeixinInboundMessage(dedupeKey, { namespace: accountId, error });
+      }
+      if (abortSignal?.aborted) {
+        return;
       }
       throw error;
     }
   };
+
   // Serialize preprocessing until core accepts the turn; approvals use an independent lane.
-  // Claim/commit runs inside each lane so ordinary and approval share the same replay guard
-  // without breaking synchronous lane chaining.
+  // Claim attempts are non-blocking for inflight: release the lane immediately and observe
+  // pending out of band, re-enqueueing only if the owner releases without commit.
   let ordinaryLane = Promise.resolve();
   let approvalLane = Promise.resolve();
+
+  const observeInflightReplay = (full: WeixinMessage, dedupeKey: string, pending: Promise<boolean>): void => {
+    void (async () => {
+      const outcome = await waitForInflightWeixinInboundOwner(pending);
+      if (outcome === "duplicate") {
+        logWeixinInboundDuplicate({
+          key: dedupeKey,
+          messageId: full.message_id,
+          seq: full.seq,
+        });
+        return;
+      }
+      if (abortSignal?.aborted) return;
+      // Owner released — re-enter admission so the message is not lost.
+      scheduleInboundMessage(full);
+    })().catch((err) => {
+      errLog(`weixin inbound inflight observe failed: ${String(err)}`);
+      aLog.error(`Inbound inflight observe failed: ${String(err)}, stack=${(err as Error).stack ?? "none"}`);
+    });
+  };
+
   const scheduleInboundMessage = (full: WeixinMessage): void => {
     const isApproval = isPluginApprovalMessage(full);
     const previous = isApproval ? approvalLane : ordinaryLane;
@@ -157,13 +182,18 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
           void (async () => {
             const dedupeKey = buildWeixinInboundDedupeKey(accountId, full);
             if (dedupeKey) {
-              const admission = await admitWeixinInboundMessage(dedupeKey, { namespace: accountId });
-              if (admission === "duplicate") {
+              const attempt = await tryClaimWeixinInboundMessage(dedupeKey, { namespace: accountId });
+              if (attempt.kind === "duplicate") {
                 logWeixinInboundDuplicate({
                   key: dedupeKey,
                   messageId: full.message_id,
                   seq: full.seq,
                 });
+                return;
+              }
+              if (attempt.kind === "inflight") {
+                // Do not hold this lane while waiting on the owner.
+                observeInflightReplay(full, dedupeKey, attempt.pending);
                 return;
               }
             }
@@ -279,7 +309,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
 }
 
 function isPluginApprovalMessage(message: WeixinMessage): boolean {
-  const text = message.item_list?.find((item) => item.type === MessageItemType.TEXT)?.text_item?.text;
+  const text = message.item_list?.find((item) => item?.type === MessageItemType.TEXT)?.text_item?.text;
   return PLUGIN_APPROVAL_RE.test(String(text ?? "").trim());
 }
 

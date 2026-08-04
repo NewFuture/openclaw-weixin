@@ -341,6 +341,89 @@ describe("monitorWeixinProvider", () => {
     expect(processOneMessageMock).toHaveBeenCalledTimes(2);
   });
 
+  it("does not block the ordinary lane while an in-flight replay waits on the owner", async () => {
+    const abortController = new AbortController();
+    const harness = createChannelRuntimeHarness();
+    const firstRun = createDeferred();
+    const secondStarted = createDeferred();
+    const started: string[] = [];
+    getUpdatesMock
+      .mockResolvedValueOnce({
+        ret: 0,
+        msgs: [
+          makeMonitorMessage("first", { message_id: 701 }),
+          makeMonitorMessage("first-replay", { message_id: 701 }),
+          makeMonitorMessage("second", { message_id: 702 }),
+        ],
+      })
+      .mockImplementationOnce(
+        async ({ abortSignal }) =>
+          await new Promise<GetUpdatesResp>((_, reject) => {
+            abortSignal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+          }),
+      );
+    processOneMessageMock.mockImplementation(async (message, deps) => {
+      const text = getText(message);
+      started.push(text);
+      if (text === "first") {
+        deps.onReplyAdmitted?.();
+        await firstRun.promise;
+        return;
+      }
+      if (text === "second") {
+        secondStarted.resolve();
+        abortController.abort();
+      }
+    });
+
+    const monitor = startMonitor(abortController, harness.channelRuntime);
+    await secondStarted.promise;
+    expect(started).toEqual(["first", "second"]);
+    expect(started).not.toContain("first-replay");
+    firstRun.resolve();
+    await expect(monitor).resolves.toBeUndefined();
+  });
+
+  it("releases a claim when preprocessing fails before processOneMessage", async () => {
+    const abortController = new AbortController();
+    const harness = createChannelRuntimeHarness();
+    const errLog = vi.fn();
+    const started: string[] = [];
+    let configCalls = 0;
+    getForUserMock.mockImplementation(async () => {
+      configCalls += 1;
+      if (configCalls === 1) {
+        throw new Error("synthetic config lookup failure");
+      }
+      return { typingTicket: "ticket" };
+    });
+    getUpdatesMock
+      .mockResolvedValueOnce({
+        ret: 0,
+        msgs: [makeMonitorMessage("first", { message_id: 801 })],
+      })
+      .mockResolvedValueOnce({
+        ret: 0,
+        msgs: [makeMonitorMessage("first-retry", { message_id: 801 })],
+      })
+      .mockImplementationOnce(
+        async ({ abortSignal }) =>
+          await new Promise<GetUpdatesResp>((_, reject) => {
+            abortSignal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+          }),
+      );
+    processOneMessageMock.mockImplementation(async (message) => {
+      started.push(getText(message));
+      abortController.abort();
+    });
+
+    const monitor = startMonitor(abortController, harness.channelRuntime, errLog);
+    await expect(monitor).resolves.toBeUndefined();
+    await vi.waitFor(() => expect(started).toEqual(["first-retry"]));
+    expect(errLog).toHaveBeenCalledWith(expect.stringContaining("synthetic config lookup failure"));
+    expect(processOneMessageMock).toHaveBeenCalledTimes(1);
+  });
+
   it("releases the ordinary lane when preprocessing fails", async () => {
     const abortController = new AbortController();
     const harness = createChannelRuntimeHarness();
