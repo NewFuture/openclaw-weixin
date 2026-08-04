@@ -35,6 +35,7 @@ describe("emitMachineReadable", () => {
     }
     const overview = await readFile(path.join(outDir, "zh", "index.md"), "utf8");
     assert.match(overview, /\[详细指南\]\(https:\/\/example\.test\/openclaw-weixin\/zh\/guide\.md\)/);
+    assert.match(overview, /\[架构说明\]\(https:\/\/example\.test\/openclaw-weixin\/zh\/architecture\.md\)/);
   });
 
   it("indexes every page in llms.txt, grouped by locale", async () => {
@@ -48,14 +49,21 @@ describe("emitMachineReadable", () => {
     }
   });
 
-  it("inlines every page in llms-full.txt with its repository source", async () => {
+  it("marks locale pages that still carry the English source", async () => {
+    const llms = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    assert.match(llms, /\/zh\/architecture\.md\): [^\n]+ \(English source, not translated yet\)\n/);
+    assert.doesNotMatch(llms, /\/zh\/guide\.md\): [^\n]*English source/);
+  });
+
+  it("inlines every translated page in llms-full.txt with its repository source", async () => {
     const full = await readFile(path.join(outDir, "llms-full.txt"), "utf8");
-    for (const page of result.pages) {
+    for (const page of result.pages.filter((entry) => entry.translated)) {
       assert.ok(
         full.includes(`<!-- source: ${page.source} | locale: ${page.locale} | url: ${BASE_URL}/${page.path}.md -->`),
         `llms-full.txt is missing ${page.source}`,
       );
     }
+    assert.ok(!full.includes(`url: ${BASE_URL}/zh/architecture.md`), "untranslated copies must not be duplicated");
   });
 
   it("points robots.txt at the sitemap and disables Jekyll", async () => {

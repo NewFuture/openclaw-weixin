@@ -6,8 +6,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { createPages, DEFAULT_LOCALE, LOCALES, SITE } from "./docs.mjs";
+import { createDocumentBySource, createPages, createPathResolver, DEFAULT_LOCALE, LOCALES, SITE } from "./docs.mjs";
 import { rewriteLinks } from "./links.mjs";
+
+/** Machine-readable marker for a locale page that carries the English text. */
+const UNTRANSLATED_NOTE = "(English source, not translated yet)";
 
 export function renderLlmsTxt({ baseUrl, version, generatedAt, pages }) {
   const lines = [
@@ -25,7 +28,8 @@ export function renderLlmsTxt({ baseUrl, version, generatedAt, pages }) {
   for (const locale of LOCALES) {
     lines.push(`## ${locale.id === DEFAULT_LOCALE ? "Docs" : `Docs (${locale.label})`}`, "");
     for (const page of pages.filter((entry) => entry.locale === locale.id)) {
-      lines.push(`- [${page.title}](${baseUrl}/${page.path}.md): ${page.description}`);
+      const note = page.translated ? "" : ` ${UNTRANSLATED_NOTE}`;
+      lines.push(`- [${page.title}](${baseUrl}/${page.path}.md): ${page.description}${note}`);
     }
     lines.push("");
   }
@@ -39,6 +43,7 @@ export function renderLlmsTxt({ baseUrl, version, generatedAt, pages }) {
   return lines.join("\n");
 }
 
+/** Inline each document once; untranslated locale copies repeat their source. */
 export function renderLlmsFullTxt({ baseUrl, version, generatedAt, pages }) {
   const parts = [
     `# ${SITE.name}`,
@@ -50,7 +55,7 @@ export function renderLlmsFullTxt({ baseUrl, version, generatedAt, pages }) {
     `- Index: ${baseUrl}/llms.txt`,
     "",
   ];
-  for (const page of pages) {
+  for (const page of pages.filter((entry) => entry.translated)) {
     parts.push(
       "---",
       "",
@@ -74,13 +79,21 @@ export function renderRobotsTxt(baseUrl) {
 export async function emitMachineReadable({ repoRoot, outDir, baseUrl, now = new Date() }) {
   const packageJson = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   const pages = createPages();
-  const urlBySource = new Map(pages.map((page) => [page.source, `${baseUrl}/${page.path}.md`]));
+  const documentBySource = createDocumentBySource();
+  const resolverByLocale = new Map();
 
   for (const page of pages) {
+    if (!resolverByLocale.has(page.locale)) {
+      resolverByLocale.set(page.locale, createPathResolver(page.locale, documentBySource));
+    }
+    const resolvePath = resolverByLocale.get(page.locale);
     const markdown = await readFile(path.join(repoRoot, page.source), "utf8");
     page.markdown = rewriteLinks(markdown, {
       source: page.source,
-      resolve: (target) => urlBySource.get(target),
+      resolve: (target) => {
+        const resolved = resolvePath(target);
+        return resolved ? `${baseUrl}/${resolved}.md` : undefined;
+      },
     });
     const destination = path.join(outDir, `${page.path}.md`);
     await mkdir(path.dirname(destination), { recursive: true });

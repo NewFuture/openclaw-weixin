@@ -23,13 +23,31 @@ export const SITE = {
     "Community-maintained OpenClaw WeChat (Weixin) channel plugin. This index lists the Markdown source of every documentation page in English and Simplified Chinese.",
 };
 
-/** Supported locales. The first entry is the fallback for untranslated pages. */
+/**
+ * Supported locales. The first entry is the fallback for untranslated pages;
+ * `untranslatedNotice` is prepended to those fallback copies.
+ */
 export const LOCALES = [
   { id: "en", lang: "en-US", label: "English", prefix: "/" },
-  { id: "zh", lang: "zh-CN", label: "简体中文", prefix: "/zh/" },
+  {
+    id: "zh",
+    lang: "zh-CN",
+    label: "简体中文",
+    prefix: "/zh/",
+    untranslatedNotice: {
+      title: "尚未翻译",
+      body: "本页尚无中文翻译，以下为英文原文。",
+    },
+  },
 ];
 
 export const DEFAULT_LOCALE = LOCALES[0].id;
+
+export function localeById(id) {
+  const locale = LOCALES.find((entry) => entry.id === id);
+  if (!locale) throw new Error(`Unknown locale: ${id}`);
+  return locale;
+}
 
 /**
  * Documentation pages. `sources` maps a locale to a repository-relative
@@ -136,31 +154,40 @@ export function isTranslated(document, locale) {
   return Boolean(document.sources[locale]);
 }
 
+/** Repository Markdown published for a locale, falling back to the default one. */
+export function sourceFor(document, locale) {
+  return document.sources[locale] ?? document.sources[DEFAULT_LOCALE];
+}
+
 /** Page path inside the generated content tree, without its extension. */
 export function pagePathFor(document, locale) {
   const prefix = locale === DEFAULT_LOCALE ? "" : `${locale}/`;
   return `${prefix}${document.slug}`;
 }
 
-/** Site link for a page, falling back to the English page when untranslated. */
+/** Site link for a page. Every document is published in every locale. */
 export function linkFor(document, locale) {
-  const target = isTranslated(document, locale) ? locale : DEFAULT_LOCALE;
-  const { prefix } = LOCALES.find((entry) => entry.id === target);
+  const { prefix } = localeById(locale);
   return document.slug === "index" ? prefix : `${prefix}${document.slug}`;
 }
 
-/** Every page the site publishes, in navigation order. */
+/**
+ * Every page the site publishes, in navigation order. Documents without a
+ * translation are still published per locale, carrying the default-locale
+ * Markdown, so that the language switcher never lands on a missing page.
+ */
 export function createPages() {
   const pages = [];
   for (const locale of LOCALES) {
     for (const slug of GROUPS.flatMap((group) => group.documents)) {
       const document = documentBySlug(slug);
-      if (!isTranslated(document, locale.id)) continue;
       pages.push({
         locale: locale.id,
         slug,
-        source: document.sources[locale.id],
+        source: sourceFor(document, locale.id),
+        translated: isTranslated(document, locale.id),
         path: pagePathFor(document, locale.id),
+        canonicalPath: pagePathFor(document, isTranslated(document, locale.id) ? locale.id : DEFAULT_LOCALE),
         title: document.title[locale.id],
         description: document.description[locale.id],
       });
@@ -169,9 +196,47 @@ export function createPages() {
   return pages;
 }
 
-/** Generated page file to its repository source, used for GitHub edit links. */
-export function createSourceByPage(pages = createPages()) {
-  return Object.fromEntries(pages.map((page) => [`${page.path}.md`, page.source]));
+/**
+ * Repository Markdown path to the document it belongs to. Cross-document links
+ * are resolved per locale, so a link is rewritten to the reader's language
+ * whichever translation of the target the source document happened to link to.
+ */
+export function createDocumentBySource() {
+  const index = new Map();
+  for (const document of DOCUMENTS) {
+    for (const source of Object.values(document.sources)) index.set(source, document);
+  }
+  return index;
+}
+
+/**
+ * Resolve a repository Markdown path to its published page path in `locale`.
+ *
+ * A link that points at another locale's translation is an explicit language
+ * switch, such as the README language header, and is honoured. A link to a
+ * document that has no translation in `locale` keeps the reader inside their
+ * own locale, where the fallback copy is published.
+ */
+export function createPathResolver(locale, documentBySource = createDocumentBySource()) {
+  return (source) => {
+    const document = documentBySource.get(source);
+    if (!document) return undefined;
+    if (!isTranslated(document, locale) || document.sources[locale] === source) {
+      return pagePathFor(document, locale);
+    }
+    const owner = LOCALES.find((entry) => document.sources[entry.id] === source);
+    return pagePathFor(document, owner.id);
+  };
+}
+
+/** Published URL path of a page, matching the `cleanUrls: false` output. */
+export function htmlPathFor(pagePath) {
+  return pagePath === "index" || pagePath.endsWith("/index") ? pagePath.slice(0, -"index".length) : `${pagePath}.html`;
+}
+
+/** Generated page file to its page record, used for edit links and canonicals. */
+export function createPageByFile(pages = createPages()) {
+  return Object.fromEntries(pages.map((page) => [`${page.path}.md`, page]));
 }
 
 export function createNav(locale) {

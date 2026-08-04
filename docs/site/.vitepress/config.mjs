@@ -2,11 +2,11 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitepress";
 
-import { createNav, createSidebar, createSourceByPage, LOCALES, SITE } from "./docs.mjs";
+import { createNav, createPageByFile, createSidebar, htmlPathFor, LOCALES, SITE } from "./docs.mjs";
 import { emitMachineReadable } from "./llms.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const SOURCE_BY_PAGE = createSourceByPage();
+const PAGE_BY_FILE = createPageByFile();
 
 /** GitHub Pages passes the deployed origin and path; fall back to the project page. */
 const baseUrl = (process.env.SITE_BASE_URL || SITE.defaultBaseUrl).replace(/\/+$/, "");
@@ -98,10 +98,19 @@ export default defineConfig({
     },
   },
 
-  /** Point the GitHub edit link at the repository source, not the generated copy. */
+  /**
+   * Point the GitHub edit link at the repository source, not the generated
+   * copy, and mark locale copies of untranslated documents as duplicates of
+   * the default-locale page.
+   */
   transformPageData(pageData) {
-    const source = SOURCE_BY_PAGE[pageData.relativePath];
-    if (source) pageData.filePath = source;
+    const page = PAGE_BY_FILE[pageData.relativePath];
+    if (!page) return;
+    pageData.filePath = page.source;
+    pageData.frontmatter.head = [
+      ...(pageData.frontmatter.head ?? []),
+      ["link", { rel: "canonical", href: `${baseUrl}/${htmlPathFor(page.canonicalPath)}` }],
+    ];
   },
 
   async buildEnd(siteConfig) {

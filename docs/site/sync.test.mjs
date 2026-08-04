@@ -6,7 +6,7 @@ import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { rewriteLinks } from "./.vitepress/links.mjs";
-import { syncContent } from "./.vitepress/sync.mjs";
+import { syncContent, withUntranslatedNotice } from "./.vitepress/sync.mjs";
 
 const SITE_DIR = fileURLToPath(new URL(".", import.meta.url));
 
@@ -55,8 +55,8 @@ describe("syncContent", () => {
     await rm(path.dirname(contentDir), { recursive: true, force: true });
   });
 
-  it("writes one page per translated source", async () => {
-    assert.ok(pages.length >= 13);
+  it("writes one page per document and locale", async () => {
+    assert.ok(pages.length >= 18);
     for (const page of pages) {
       await readFile(path.join(contentDir, `${page.path}.md`), "utf8");
     }
@@ -68,15 +68,45 @@ describe("syncContent", () => {
     assert.match(overview, /# openclaw-weixin/);
   });
 
-  it("rewrites cross-document links onto site paths", async () => {
+  it("rewrites cross-document links onto same-locale site paths", async () => {
     const overview = await readFile(path.join(contentDir, "zh", "index.md"), "utf8");
     assert.match(overview, /\[详细指南\]\(\/zh\/guide\.md\)/);
-    assert.match(overview, /\[架构说明\]\(\/architecture\.md\)/);
+    assert.match(overview, /\[架构说明\]\(\/zh\/architecture\.md\)/);
     assert.match(overview, /\[English\]\(\/index\.md\)/);
+  });
+
+  it("marks locale copies that still carry the English text", async () => {
+    const architecture = await readFile(path.join(contentDir, "zh", "architecture.md"), "utf8");
+    assert.match(architecture, /^---\ntitle: "架构说明"/);
+    assert.match(architecture, /\n# Architecture\n\n::: warning 尚未翻译\n本页尚无中文翻译，以下为英文原文。\n:::\n/);
+
+    const translated = await readFile(path.join(contentDir, "zh", "guide.md"), "utf8");
+    assert.doesNotMatch(translated, /尚未翻译/);
+    const english = await readFile(path.join(contentDir, "architecture.md"), "utf8");
+    assert.doesNotMatch(english, /::: warning/);
   });
 
   it("publishes the logo so the theme can reference it", async () => {
     const logo = await readFile(path.join(contentDir, "public", "logo.svg"), "utf8");
     assert.equal(logo, await readFile(path.join(SITE_DIR, "logo.svg"), "utf8"));
+  });
+});
+
+describe("withUntranslatedNotice", () => {
+  const notice = { title: "尚未翻译", body: "本页尚无中文翻译，以下为英文原文。" };
+
+  it("leaves translated pages untouched", () => {
+    assert.equal(withUntranslatedNotice("# Title\n\nBody", undefined), "# Title\n\nBody");
+  });
+
+  it("inserts the notice after the document title", () => {
+    assert.equal(
+      withUntranslatedNotice("# Title\n\nBody", notice),
+      "# Title\n\n::: warning 尚未翻译\n本页尚无中文翻译，以下为英文原文。\n:::\n\nBody",
+    );
+  });
+
+  it("prepends the notice when the document has no title", () => {
+    assert.match(withUntranslatedNotice("Body", notice), /^::: warning 尚未翻译\n/);
   });
 });

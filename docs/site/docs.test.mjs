@@ -5,12 +5,14 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  createPageByFile,
   createPages,
+  createPathResolver,
   createSidebar,
-  createSourceByPage,
   DEFAULT_LOCALE,
   DOCUMENTS,
   GROUPS,
+  htmlPathFor,
   isTranslated,
   LOCALES,
   linkFor,
@@ -21,6 +23,7 @@ const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 describe("documentation map", () => {
   it("points every document at Markdown that exists in the repository", async () => {
     for (const document of DOCUMENTS) {
+      assert.ok(document.sources[DEFAULT_LOCALE], `missing default source for ${document.slug}`);
       for (const locale of LOCALES) {
         if (!isTranslated(document, locale.id)) continue;
         await access(path.join(REPO_ROOT, document.sources[locale.id]));
@@ -50,25 +53,56 @@ describe("documentation map", () => {
     assert.equal(byPath.get("guide").locale, DEFAULT_LOCALE);
     assert.equal(byPath.get("zh/guide").source, "docs/guide.zh_CN.md");
     assert.equal(byPath.get("zh/index").source, "README.md");
-    assert.ok(!byPath.has("zh/architecture"), "untranslated documents must not be published");
+  });
+
+  it("publishes every document in every locale so language switching never 404s", () => {
+    const pages = createPages();
+    assert.equal(pages.length, DOCUMENTS.length * LOCALES.length);
+    const architecture = pages.find((page) => page.path === "zh/architecture");
+    assert.equal(architecture.source, "docs/architecture.md");
+    assert.equal(architecture.translated, false);
+    assert.equal(architecture.canonicalPath, "architecture");
+    const guide = pages.find((page) => page.path === "zh/guide");
+    assert.equal(guide.translated, true);
+    assert.equal(guide.canonicalPath, "zh/guide");
   });
 
   it("maps generated pages back to their repository source for edit links", () => {
-    const sourceByPage = createSourceByPage();
-    assert.equal(sourceByPage["index.md"], "README_EN.md");
-    assert.equal(sourceByPage["zh/changelog.md"], "CHANGELOG.md");
-    assert.equal(sourceByPage["security.md"], "SECURITY.md");
+    const pageByFile = createPageByFile();
+    assert.equal(pageByFile["index.md"].source, "README_EN.md");
+    assert.equal(pageByFile["zh/changelog.md"].source, "CHANGELOG.md");
+    assert.equal(pageByFile["security.md"].source, "SECURITY.md");
+    assert.equal(pageByFile["zh/security.md"].source, "SECURITY.md");
   });
 
-  it("falls back to the English page for untranslated documents", () => {
+  it("keeps every locale link inside its own locale", () => {
     const architecture = DOCUMENTS.find((document) => document.slug === "architecture");
-    assert.equal(linkFor(architecture, "zh"), "/architecture");
+    assert.equal(linkFor(architecture, "zh"), "/zh/architecture");
     assert.equal(linkFor(architecture, "en"), "/architecture");
 
     const sidebar = createSidebar("zh").flatMap((group) => group.items);
-    const entry = sidebar.find((item) => item.link === "/architecture");
+    const entry = sidebar.find((item) => item.link === "/zh/architecture");
     assert.equal(entry.text, "架构说明（EN）");
     assert.ok(sidebar.some((item) => item.link === "/zh/guide" && item.text === "详细指南"));
+  });
+
+  it("resolves a source document to the reader's locale", () => {
+    const resolve = createPathResolver("zh");
+    assert.equal(resolve("docs/guide.zh_CN.md"), "zh/guide");
+    assert.equal(resolve("docs/architecture.md"), "zh/architecture");
+    assert.equal(resolve("LICENSE"), undefined);
+  });
+
+  it("honours an explicit link to another locale's translation", () => {
+    assert.equal(createPathResolver("zh")("README_EN.md"), "index");
+    assert.equal(createPathResolver("en")("README.md"), "zh/index");
+    assert.equal(createPathResolver("en")("docs/architecture.md"), "architecture");
+  });
+
+  it("maps page paths onto the published HTML files", () => {
+    assert.equal(htmlPathFor("index"), "");
+    assert.equal(htmlPathFor("zh/index"), "zh/");
+    assert.equal(htmlPathFor("zh/architecture"), "zh/architecture.html");
   });
 
   it("links the localized home page at the locale root", () => {
