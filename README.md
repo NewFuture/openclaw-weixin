@@ -1,6 +1,6 @@
 # openclaw-weixin
 
-[English](./README_EN.md) · [文档站点](https://newfuture.github.io/openclaw-weixin/)
+[English](./README_EN.md) · [文档站点](https://openclaw-weixin.newfuture.cc/)
 
 这是 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin)
 的社区维护发行版，用于连接 OpenClaw 与微信，并提供更好的使用体验。
@@ -94,5 +94,5 @@ openclaw config set session.dmScope per-account-channel-peer
 - [详细指南](docs/guide.zh_CN.md)：安装行为、BotAgent、卸载和故障排查
 - [后端 API 协议](docs/backend-api.zh_CN.md)
 - [架构说明](docs/architecture.md)
-- [文档站点](https://newfuture.github.io/openclaw-weixin/)：多语言在线文档，同时提供
-  Markdown 原文与 [llms.txt](https://newfuture.github.io/openclaw-weixin/llms.txt) 索引
+- [文档站点](https://openclaw-weixin.newfuture.cc/)：多语言在线文档，同时提供
+  Markdown 原文与 [llms.txt](https://openclaw-weixin.newfuture.cc/llms.txt) 索引
