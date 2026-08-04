@@ -52,7 +52,7 @@
     "audit:deps": "npm audit --omit=dev --audit-level=moderate",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
-    "check": "npm run check:static && npm run test:coverage && npm run build",
+    "check": "npm run audit:deps && npm run check:static && npm run test:coverage && npm run build",
     "pack:check": "node scripts/check-package.mjs",
     "prepack": "npm run build",
     "prepublishOnly": "npm run check:static && npm test"

@@ -60,9 +60,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Audit dependencies
-        run: npm run audit:deps
-
       - name: Check project
         run: npm run check
 

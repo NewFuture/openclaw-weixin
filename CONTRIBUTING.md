@@ -43,14 +43,15 @@ Run the fast type, style, and unit-test gate:
 npm run check:fast
 ```
 
-Run the same formatting, linting, type checking, coverage tests, and build used
-by CI:
+Run the same dependency audit, formatting, linting, type checking, coverage
+tests, and build used by CI:
 
 ```shell
 npm run check
 ```
 
-Audit production dependencies at the same severity used by CI and releases:
+Run only the production dependency audit at the severity used by CI and
+releases:
 
 ```shell
 npm run audit:deps

@@ -88,23 +88,19 @@ jobs:
             node-version: "22.22.3"
             openclaw_version: "2026.7.1"
             pack_check: true
-            dependency_audit: true
           - os: ubuntu-latest
             node-version: "22.22.3"
             openclaw_version: "2026.6.1"
             minimum_host: true
             pack_check: false
-            dependency_audit: false
           - os: ubuntu-latest
             node-version: "24.15.0"
             openclaw_version: "2026.7.1"
             pack_check: false
-            dependency_audit: false
           - os: windows-latest
             node-version: "24.15.0"
             openclaw_version: "2026.7.1"
             pack_check: false
-            dependency_audit: false
 
     steps:
       - name: Check out repository
@@ -133,10 +129,6 @@ jobs:
           npm install --no-save --package-lock=false --ignore-scripts \
             "openclaw@${OPENCLAW_VERSION}"
           node -e 'const fs=require("node:fs"); const actual=JSON.parse(fs.readFileSync("node_modules/openclaw/package.json","utf8")).version; if(actual!==process.env.OPENCLAW_VERSION) throw new Error("expected OpenClaw "+process.env.OPENCLAW_VERSION+", found "+actual); console.log("Testing OpenClaw "+actual);'
-
-      - name: Audit dependencies
-        if: matrix.dependency_audit
-        run: npm run audit:deps
 
       - name: Check project
         run: npm run check

@@ -22,7 +22,7 @@ the GitHub Packages job exposes only its ephemeral `GITHUB_TOKEN` as
    visibility in GitHub package settings if a public listing is desired. npm
    packages on GitHub require authentication even when public.
 6. From the exact clean release commit, run `npm ci`, `npm run check:versions`,
-   `npm run audit:deps`, `npm run check`, and `npm run pack:check`.
+   `npm run check`, and `npm run pack:check`.
 7. Confirm `package.json`, `package-lock.json`, `openclaw.plugin.json`,
    `CHANGELOG.md`, and `CHANGELOG_EN.md` use the same release version.
 8. Merge release pull requests with a squash or merge commit. Rebase merge is
