@@ -54,21 +54,30 @@ function setupLanguageMemory() {
   }
 }
 
-function setupSidebar() {
-  const toggle = document.querySelector("[data-menu-toggle]");
-  const sidebar = document.querySelector("[data-sidebar]");
-  const scrim = document.querySelector("[data-sidebar-scrim]");
+export function setupSidebar(root = document, mobileViewport = window.matchMedia("(max-width: 880px)")) {
+  const toggle = root.querySelector("[data-menu-toggle]");
+  const sidebar = root.querySelector("[data-sidebar]");
+  const scrim = root.querySelector("[data-sidebar-scrim]");
   if (!toggle || !sidebar) return;
   const setOpen = (open) => {
-    sidebar.classList.toggle("is-open", open);
-    toggle.setAttribute("aria-expanded", String(open));
-    if (scrim) scrim.hidden = !open;
+    const nextOpen = Boolean(open && mobileViewport.matches);
+    if (mobileViewport.matches && !nextOpen && sidebar.contains(root.activeElement)) toggle.focus();
+    sidebar.classList.toggle("is-open", nextOpen);
+    sidebar.toggleAttribute("inert", mobileViewport.matches && !nextOpen);
+    if (mobileViewport.matches && !nextOpen) sidebar.setAttribute("aria-hidden", "true");
+    else sidebar.removeAttribute("aria-hidden");
+    toggle.setAttribute("aria-expanded", String(nextOpen));
+    if (scrim) scrim.hidden = !nextOpen;
   };
   toggle.addEventListener("click", () => setOpen(!sidebar.classList.contains("is-open")));
   scrim?.addEventListener("click", () => setOpen(false));
-  document.addEventListener("keydown", (event) => {
+  root.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setOpen(false);
   });
+  const handleViewportChange = () => setOpen(false);
+  if (mobileViewport.addEventListener) mobileViewport.addEventListener("change", handleViewportChange);
+  else mobileViewport.addListener?.(handleViewportChange);
+  setOpen(false);
 }
 
 function setupCopyButtons() {
@@ -127,29 +136,30 @@ function scoreEntry(entry, query) {
   return 0;
 }
 
-function setupSearch() {
-  const input = document.querySelector("[data-search]");
-  const results = document.querySelector("[data-search-results]");
+export function setupSearch(root = document, request = fetch) {
+  const input = root.querySelector("[data-search]");
+  const results = root.querySelector("[data-search-results]");
   if (!input || !results) return;
-  const language = document.documentElement.dataset.siteLang || "en";
+  const language = root.documentElement.dataset.siteLang || "en";
   let entries = null;
+  let searchVersion = 0;
 
   const render = (matches) => {
     results.replaceChildren();
     if (matches.length === 0) {
-      const empty = document.createElement("p");
+      const empty = root.createElement("p");
       empty.className = "search-empty";
       empty.textContent = results.dataset.empty ?? "";
       results.append(empty);
     }
     for (const entry of matches) {
-      const link = document.createElement("a");
+      const link = root.createElement("a");
       link.href = `./${entry.u}`;
       link.setAttribute("role", "option");
-      const page = document.createElement("span");
+      const page = root.createElement("span");
       page.className = "result-page";
       page.textContent = entry.p;
-      link.append(document.createTextNode(entry.t), page);
+      link.append(root.createTextNode(entry.t), page);
       results.append(link);
     }
     results.hidden = false;
@@ -157,13 +167,19 @@ function setupSearch() {
 
   const load = async () => {
     if (entries) return entries;
-    const response = await fetch(`../assets/search-${encodeURIComponent(language)}.json`);
+    const response = await request(`../assets/search-${encodeURIComponent(language)}.json`);
     const payload = await response.json();
     entries = Array.isArray(payload.entries) ? payload.entries : [];
     return entries;
   };
 
+  const dismiss = () => {
+    searchVersion += 1;
+    results.hidden = true;
+  };
+
   const search = async () => {
+    const version = ++searchVersion;
     const query = input.value.trim().toLowerCase();
     if (query.length === 0) {
       results.hidden = true;
@@ -173,9 +189,10 @@ function setupSearch() {
     try {
       index = await load();
     } catch {
-      results.hidden = true;
+      if (version === searchVersion) results.hidden = true;
       return;
     }
+    if (version !== searchVersion || input.value.trim().toLowerCase() !== query) return;
     const matches = index
       .map((entry) => ({ entry, score: scoreEntry(entry, query) }))
       .filter((item) => item.score > 0)
@@ -189,15 +206,15 @@ function setupSearch() {
   input.addEventListener("focus", () => {
     if (input.value.trim().length > 0) search();
   });
-  document.addEventListener("click", (event) => {
-    if (!results.contains(event.target) && event.target !== input) results.hidden = true;
+  root.addEventListener("click", (event) => {
+    if (!results.contains(event.target) && event.target !== input) dismiss();
   });
-  document.addEventListener("keydown", (event) => {
+  root.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      results.hidden = true;
+      dismiss();
       return;
     }
-    const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName ?? "");
+    const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(root.activeElement?.tagName ?? "");
     if (event.key === "/" && !typing) {
       event.preventDefault();
       input.focus();
@@ -205,9 +222,11 @@ function setupSearch() {
   });
 }
 
-setupTheme();
-setupLanguageMemory();
-setupSidebar();
-setupCopyButtons();
-setupTableOfContents();
-setupSearch();
+if (typeof document !== "undefined" && typeof window !== "undefined") {
+  setupTheme();
+  setupLanguageMemory();
+  setupSidebar();
+  setupCopyButtons();
+  setupTableOfContents();
+  setupSearch();
+}

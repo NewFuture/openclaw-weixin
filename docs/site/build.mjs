@@ -279,8 +279,12 @@ export function createPageIndex(pages = PAGES, aliases = SOURCE_ALIASES) {
   return { byId, bySource };
 }
 
+function sourceLanguageFor(page, language) {
+  return page.sources[language] ? language : DEFAULT_LANGUAGE;
+}
+
 function sourceFor(page, language) {
-  return page.sources[language] ?? page.sources[DEFAULT_LANGUAGE];
+  return page.sources[sourceLanguageFor(page, language)];
 }
 
 function isTranslated(page, language) {
@@ -313,8 +317,7 @@ export function rewriteLink(href, { sourcePath, extension, pageIndex, language, 
   return `./${entry.page.slug}${extension}${hash}`;
 }
 
-/** Rewrite inline Markdown links outside fenced code blocks. */
-export function rewriteMarkdownLinks(markdown, context) {
+function transformMarkdownLinks(markdown, transformLink) {
   const fence = /^(\s*)(`{3,}|~{3,})/;
   let openFence = null;
   return markdown
@@ -329,11 +332,23 @@ export function rewriteMarkdownLinks(markdown, context) {
       }
       if (openFence !== null) return line;
       return line.replace(/(\]\()([^()\s]+)(\))/g, (_whole, open, href, close) => {
-        const rewritten = rewriteLink(href, context);
-        return `${open}${rewritten}${close}`;
+        return `${open}${transformLink(href)}${close}`;
       });
     })
     .join("\n");
+}
+
+/** Rewrite inline Markdown links outside fenced code blocks. */
+export function rewriteMarkdownLinks(markdown, context) {
+  return transformMarkdownLinks(markdown, (href) => rewriteLink(href, context));
+}
+
+/** Resolve generated Markdown links against the document they came from. */
+export function absolutizeMarkdownLinks(markdown, documentUrl) {
+  return transformMarkdownLinks(markdown, (href) => {
+    if (!href || href.startsWith("#") || EXTERNAL_LINK.test(href)) return href;
+    return new URL(href, documentUrl).href;
+  });
 }
 
 function isNavigationParagraph(token) {
@@ -510,8 +525,9 @@ function renderLanguageSwitch(language, page, strings) {
     const href = `../${entry.id}/${page.slug}.html`;
     const className = current ? "lang-link is-current" : "lang-link";
     const ariaCurrent = current ? ' aria-current="true"' : "";
+    const hreflang = isTranslated(page, entry.id) ? ` hreflang="${entry.htmlLang}"` : "";
     return [
-      `<a class="${className}" href="${href}" hreflang="${entry.htmlLang}" data-lang="${entry.id}"`,
+      `<a class="${className}" href="${href}"${hreflang} data-lang="${entry.id}"`,
       `${ariaCurrent} lang="${entry.htmlLang}">${escapeHtml(entry.shortLabel)}</a>`,
     ].join("");
   }).join("");
@@ -535,18 +551,28 @@ function renderHero(strings, version, anchorId) {
   ].join("");
 }
 
-function renderDocumentHead({ language, title, description, canonical, alternates, depth, pageId }) {
-  const entry = LANGUAGES.find((item) => item.id === language);
+function renderDocumentHead({
+  documentLanguage,
+  siteLanguage,
+  title,
+  description,
+  canonical,
+  alternates,
+  depth,
+  pageId,
+}) {
+  const entry = LANGUAGES.find((item) => item.id === documentLanguage);
+  const siteEntry = LANGUAGES.find((item) => item.id === siteLanguage);
   const alternateTags = alternates
     .map((item) => `<link rel="alternate" hreflang="${item.hreflang}" href="${escapeHtml(item.href)}" />`)
     .join("\n    ");
   return [
     "<!doctype html>",
-    `<html lang="${entry.htmlLang}" data-page="${escapeHtml(pageId)}" data-site-lang="${language}">`,
+    `<html lang="${entry.htmlLang}" data-page="${escapeHtml(pageId)}" data-site-lang="${siteLanguage}">`,
     "  <head>",
     '    <meta charset="utf-8" />',
     '    <meta name="viewport" content="width=device-width, initial-scale=1" />',
-    `    <title>${escapeHtml(title)}</title>`,
+    `    <title lang="${siteEntry.htmlLang}">${escapeHtml(title)}</title>`,
     `    <meta name="description" content="${escapeHtml(description)}" />`,
     `    <meta property="og:title" content="${escapeHtml(title)}" />`,
     `    <meta property="og:description" content="${escapeHtml(description)}" />`,
@@ -612,9 +638,23 @@ function renderFooter({ strings, depth, version, generatedAt }) {
 }
 
 function renderPageDocument(options) {
-  const { language, page, strings, body, headings, siblings, sourcePath, version, generatedAt, canonical, alternates } =
-    options;
+  const {
+    language,
+    sourceLanguage,
+    page,
+    strings,
+    body,
+    headings,
+    siblings,
+    sourcePath,
+    version,
+    generatedAt,
+    canonical,
+    alternates,
+  } = options;
   const depth = 1;
+  const siteLanguageEntry = LANGUAGES.find((entry) => entry.id === language);
+  const sourceLanguageEntry = LANGUAGES.find((entry) => entry.id === sourceLanguage);
   const title = page.hero ? `${SITE.name} · ${strings.tagline}` : `${page.title[language]} · ${SITE.name}`;
   const editUrl = `${SITE.repositoryUrl}/blob/${SITE.defaultBranch}/${sourcePath}`;
   const untranslated = isTranslated(page, language)
@@ -628,7 +668,8 @@ function renderPageDocument(options) {
     : "<span></span>";
   return [
     renderDocumentHead({
-      language,
+      documentLanguage: sourceLanguage,
+      siteLanguage: language,
       title,
       description: page.description[language],
       canonical,
@@ -636,7 +677,7 @@ function renderPageDocument(options) {
       depth,
       pageId: page.id,
     }),
-    "  <body>",
+    `  <body lang="${siteLanguageEntry.htmlLang}">`,
     `    <a class="skip-link" href="#main">${escapeHtml(strings.skipToContent)}</a>`,
     `    ${renderTopbar({ language, strings, page, depth })}`,
     '    <div class="layout">',
@@ -648,7 +689,9 @@ function renderPageDocument(options) {
     page.hero ? "" : `<h1 class="page-title">${escapeHtml(page.title[language])}</h1>`,
     page.hero ? "" : `<p class="page-lede">${escapeHtml(page.description[language])}</p>`,
     untranslated,
+    `          <div class="document-body" lang="${sourceLanguageEntry.htmlLang}">`,
     body,
+    "          </div>",
     "        </article>",
     '        <div class="page-meta">',
     `          <a href="./${page.slug}.md">${escapeHtml(strings.viewMarkdown)}</a>`,
@@ -666,7 +709,7 @@ function renderPageDocument(options) {
   ].join("\n");
 }
 
-function renderRootRedirect({ version, generatedAt }) {
+function renderRootRedirect({ baseUrl, version, generatedAt }) {
   const links = LANGUAGES.map(
     (entry) =>
       `<a class="button button-primary" href="./${entry.id}/" hreflang="${entry.htmlLang}" lang="${entry.htmlLang}">${escapeHtml(entry.label)}</a>`,
@@ -681,9 +724,11 @@ function renderRootRedirect({ version, generatedAt }) {
     `    <title>${escapeHtml(SITE.name)} · ${escapeHtml(UI.en.tagline)}</title>`,
     `    <meta name="description" content="${escapeHtml(UI.en.tagline)}" />`,
     '    <meta name="color-scheme" content="light dark" />',
-    `    <link rel="canonical" href="${SITE.defaultBaseUrl}/${DEFAULT_LANGUAGE}/" />`,
-    ...LANGUAGES.map((entry) => `    <link rel="alternate" hreflang="${entry.htmlLang}" href="./${entry.id}/" />`),
-    `    <link rel="alternate" hreflang="x-default" href="./${DEFAULT_LANGUAGE}/" />`,
+    `    <link rel="canonical" href="${baseUrl}/${DEFAULT_LANGUAGE}/index.html" />`,
+    ...LANGUAGES.map(
+      (entry) => `    <link rel="alternate" hreflang="${entry.htmlLang}" href="${baseUrl}/${entry.id}/index.html" />`,
+    ),
+    `    <link rel="alternate" hreflang="x-default" href="${baseUrl}/${DEFAULT_LANGUAGE}/index.html" />`,
     '    <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />',
     '    <link rel="stylesheet" href="./assets/style.css" />',
     "    <script>",
@@ -797,12 +842,13 @@ function renderLlmsFullTxt({ baseUrl, version, generatedAt, documents }) {
     "",
   ];
   for (const document of documents) {
+    const markdown = absolutizeMarkdownLinks(document.markdown, `${baseUrl}/${document.markdownPath}`);
     parts.push(
       "---",
       "",
-      `<!-- source: ${document.sourcePath} | language: ${document.language} | url: ${baseUrl}/${document.markdownPath} -->`,
+      `<!-- source: ${document.sourcePath} | language: ${document.language} | source-language: ${document.sourceLanguage} | url: ${baseUrl}/${document.markdownPath} -->`,
       "",
-      document.markdown.trim(),
+      markdown.trim(),
       "",
     );
   }
@@ -811,7 +857,7 @@ function renderLlmsFullTxt({ baseUrl, version, generatedAt, documents }) {
 
 function renderSitemap({ baseUrl, documents, generatedAt }) {
   const lastmod = generatedAt.slice(0, 10);
-  const urls = [`${baseUrl}/`, ...documents.map((document) => `${baseUrl}/${document.htmlPath}`)];
+  const urls = documents.filter((document) => document.translated).map((document) => `${baseUrl}/${document.htmlPath}`);
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
@@ -880,6 +926,7 @@ export async function buildSite({
     const strings = UI[language.id];
     await mkdir(path.join(outDir, language.id), { recursive: true });
     for (const page of orderedPages) {
+      const sourceLanguage = sourceLanguageFor(page, language.id);
       const sourcePath = sourceFor(page, language.id);
       const markdown = await readFile(path.join(repoRoot, sourcePath), "utf8");
       const linkContext = { sourcePath, pageIndex, language: language.id, currentPage: page };
@@ -887,8 +934,9 @@ export async function buildSite({
       const markdownOut = rewriteMarkdownLinks(markdown, { ...linkContext, extension: ".md" });
       const htmlPath = `${language.id}/${page.slug}.html`;
       const markdownPath = `${language.id}/${page.slug}.md`;
+      const canonicalLanguage = isTranslated(page, language.id) ? language.id : sourceLanguage;
       const alternates = [
-        ...LANGUAGES.map((entry) => ({
+        ...LANGUAGES.filter((entry) => isTranslated(page, entry.id)).map((entry) => ({
           hreflang: entry.htmlLang,
           href: `${normalizedBaseUrl}/${entry.id}/${page.slug}.html`,
         })),
@@ -896,6 +944,7 @@ export async function buildSite({
       ];
       const document = renderPageDocument({
         language: language.id,
+        sourceLanguage,
         page,
         pageIndex,
         strings,
@@ -905,13 +954,14 @@ export async function buildSite({
         sourcePath,
         version,
         generatedAt,
-        canonical: `${normalizedBaseUrl}/${htmlPath}`,
+        canonical: `${normalizedBaseUrl}/${canonicalLanguage}/${page.slug}.html`,
         alternates,
       });
       await writeFile(path.join(outDir, htmlPath), document, "utf8");
       await writeFile(path.join(outDir, markdownPath), `${markdownOut.trimEnd()}\n`, "utf8");
       documents.push({
         language: language.id,
+        sourceLanguage,
         slug: page.slug,
         title: page.title[language.id],
         description: page.description[language.id],
@@ -930,7 +980,11 @@ export async function buildSite({
     );
   }
 
-  await writeFile(path.join(outDir, "index.html"), renderRootRedirect({ version, generatedAt }), "utf8");
+  await writeFile(
+    path.join(outDir, "index.html"),
+    renderRootRedirect({ baseUrl: normalizedBaseUrl, version, generatedAt }),
+    "utf8",
+  );
   await writeFile(path.join(outDir, "404.html"), renderNotFound({ basePath }), "utf8");
   await writeFile(
     path.join(outDir, "llms.txt"),

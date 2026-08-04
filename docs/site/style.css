@@ -2,8 +2,13 @@
 
 :root {
   color-scheme: light dark;
+  /* Weixin green leads the interface; OpenClaw coral is a supporting accent. */
   --brand: #07c160;
-  --brand-strong: #059748;
+  --brand-strong: #08783f;
+  --brand-fill: #08783f;
+  --brand-fill-hover: #096f3b;
+  --claw: #c43e34;
+  --on-brand: #ffffff;
   --bg: #ffffff;
   --bg-soft: #f6f8fa;
   --bg-raised: #ffffff;
@@ -26,6 +31,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --brand-strong: #5ee394;
+    --claw: #ff8a78;
     --bg: #0d1117;
     --bg-soft: #161b22;
     --bg-raised: #151b23;
@@ -39,6 +46,8 @@
 }
 
 :root[data-theme="light"] {
+  --brand-strong: #08783f;
+  --claw: #c43e34;
   --bg: #ffffff;
   --bg-soft: #f6f8fa;
   --bg-raised: #ffffff;
@@ -53,6 +62,8 @@
 }
 
 :root[data-theme="dark"] {
+  --brand-strong: #5ee394;
+  --claw: #ff8a78;
   --bg: #0d1117;
   --bg-soft: #161b22;
   --bg-raised: #151b23;
@@ -101,8 +112,8 @@ a:hover {
   z-index: 100;
   padding: 0.5rem 0.875rem;
   border-radius: var(--radius);
-  background: var(--brand);
-  color: #fff;
+  background: var(--brand-fill);
+  color: var(--on-brand);
 }
 
 .skip-link:focus {
@@ -163,8 +174,8 @@ a:hover {
 }
 
 .search-input:focus {
-  border-color: var(--brand);
-  outline: 2px solid color-mix(in srgb, var(--brand) 35%, transparent);
+  border-color: var(--brand-strong);
+  outline: 2px solid var(--brand-strong);
   outline-offset: 1px;
 }
 
@@ -289,8 +300,8 @@ a:hover {
 }
 
 .lang-link.is-current {
-  background: var(--brand);
-  color: #fff;
+  background: var(--brand-fill);
+  color: var(--on-brand);
 }
 
 /* Layout */
@@ -434,7 +445,7 @@ a:hover {
 
 .hero-tagline {
   margin: 0.5rem 0 0;
-  background: linear-gradient(90deg, var(--brand-strong), #3b82f6);
+  background: linear-gradient(90deg, var(--brand-strong), var(--claw));
   background-clip: text;
   color: transparent;
   font-size: 1.15rem;
@@ -473,12 +484,12 @@ a:hover {
 
 .button-primary {
   border-color: transparent;
-  background: var(--brand);
-  color: #fff;
+  background: var(--brand-fill);
+  color: var(--on-brand);
 }
 
 .button-primary:hover {
-  background: var(--brand-strong);
+  background: var(--brand-fill-hover);
 }
 
 .button-ghost {
@@ -538,13 +549,13 @@ a:hover {
 }
 
 .markdown .alert {
-  border-left-color: var(--alert-color, var(--brand));
+  border-left-color: var(--alert-color, var(--brand-strong));
   color: var(--text);
 }
 
 .markdown .alert-title {
   margin: 0.75rem 0 0.35rem;
-  color: var(--alert-color, var(--brand));
+  color: var(--alert-color, var(--brand-strong));
   font-weight: 600;
 }
 
@@ -883,12 +894,19 @@ a:hover {
     padding: 1rem;
     border-right: 1px solid var(--border);
     background: var(--bg);
+    pointer-events: none;
     transform: translateX(-102%);
-    transition: transform 0.18s ease-out;
+    visibility: hidden;
+    transition:
+      transform 0.18s ease-out,
+      visibility 0s linear 0.18s;
   }
 
   .sidebar.is-open {
+    pointer-events: auto;
     transform: translateX(0);
+    visibility: visible;
+    transition-delay: 0s;
   }
 
   .sidebar-scrim:not([hidden]) {

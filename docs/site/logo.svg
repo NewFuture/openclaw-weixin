@@ -7,14 +7,18 @@
       <stop offset="0.52" stop-color="#07c160" />
       <stop offset="1" stop-color="#04a058" />
     </linearGradient>
+    <linearGradient id="claw" x1="16" y1="16" x2="50" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ef6a5b" />
+      <stop offset="1" stop-color="#c43e34" />
+    </linearGradient>
   </defs>
   <rect width="64" height="64" rx="15" fill="url(#tile)" />
   <path
     fill="#fff"
     d="M21 8h22a14 14 0 0 1 14 14v8a14 14 0 0 1-14 14h-9l-15.6 8.6a1.6 1.6 0 0 1-2.2-2L16.4 44H21A14 14 0 0 1 7 30v-8A14 14 0 0 1 21 8Z"
   />
-  <ellipse fill="url(#tile)" cx="21" cy="30" rx="9.5" ry="8" transform="rotate(-20 21 30)" />
-  <g fill="none" stroke="url(#tile)" stroke-linecap="round">
+  <ellipse fill="url(#claw)" cx="21" cy="30" rx="9.5" ry="8" transform="rotate(-20 21 30)" />
+  <g fill="none" stroke="url(#claw)" stroke-linecap="round">
     <path stroke-width="6" d="M22 27q10-7.5 19.5-11" />
     <path stroke-width="7" d="M23 33q13 2 26-2" />
   </g>

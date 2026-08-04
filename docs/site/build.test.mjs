@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { Marked } from "marked";
 
 import {
+  absolutizeMarkdownLinks,
   buildSite,
   createPageIndex,
   createSlugger,
@@ -170,6 +171,28 @@ describe("rewriteMarkdownLinks", () => {
   });
 });
 
+describe("absolutizeMarkdownLinks", () => {
+  it("resolves relative links from the generated document while preserving external links and code", () => {
+    const markdown = [
+      "[Guide](./guide.md)",
+      "[English](../en/index.md#install-or-replace)",
+      "[Section](#section)",
+      "[External](https://example.invalid/elsewhere)",
+      "",
+      "```markdown",
+      "[Literal](./guide.md)",
+      "```",
+    ].join("\n");
+    const rewritten = absolutizeMarkdownLinks(markdown, "https://example.invalid/docs/zh/index.md");
+    const lines = rewritten.split("\n");
+    assert.equal(lines[0], "[Guide](https://example.invalid/docs/zh/guide.md)");
+    assert.equal(lines[1], "[English](https://example.invalid/docs/en/index.md#install-or-replace)");
+    assert.equal(lines[2], "[Section](#section)");
+    assert.equal(lines[3], "[External](https://example.invalid/elsewhere)");
+    assert.equal(lines[6], "[Literal](./guide.md)");
+  });
+});
+
 describe("trimDocumentHeader", () => {
   it("drops the title and the language navigation line", () => {
     const tokens = trimDocumentHeader(
@@ -267,15 +290,41 @@ describe("buildSite", () => {
       await read(asset);
     }
     assert.match(await read("robots.txt"), /Sitemap: https:\/\/example\.invalid\/docs\/sitemap\.xml/);
-    assert.match(await read("sitemap.xml"), /<lastmod>2026-01-02<\/lastmod>/);
+    const sitemap = await read("sitemap.xml");
+    assert.match(sitemap, /<lastmod>2026-01-02<\/lastmod>/);
+    assert.doesNotMatch(sitemap, /<loc>https:\/\/example\.invalid\/docs\/<\/loc>/);
   });
 
   it("normalizes the base URL in canonical and alternate links", async () => {
+    const root = await read("index.html");
+    assert.match(root, /<link rel="canonical" href="https:\/\/example\.invalid\/docs\/en\/index\.html" \/>/);
+    assert.match(root, /hreflang="zh-CN" href="https:\/\/example\.invalid\/docs\/zh\/index\.html"/);
+    assert.doesNotMatch(root, /newfuture\.github\.io/);
+
     const html = await read("zh/guide.html");
     assert.match(html, /<link rel="canonical" href="https:\/\/example\.invalid\/docs\/zh\/guide\.html" \/>/);
     assert.match(html, /hreflang="en" href="https:\/\/example\.invalid\/docs\/en\/guide\.html"/);
     assert.match(html, /hreflang="x-default" href="https:\/\/example\.invalid\/docs\/en\/guide\.html"/);
     assert.equal(result.baseUrl, "https://example.invalid/docs");
+  });
+
+  it("declares fallback source language without advertising an unavailable translation", async () => {
+    const fallback = await read("zh/architecture.html");
+    assert.match(fallback, /<html lang="en" data-page="architecture" data-site-lang="zh">/);
+    assert.match(fallback, /<title lang="zh-CN">/);
+    assert.match(fallback, /<body lang="zh-CN">/);
+    assert.match(fallback, /<div class="document-body" lang="en">/);
+    assert.match(fallback, /<link rel="canonical" href="https:\/\/example\.invalid\/docs\/en\/architecture\.html" \/>/);
+    assert.match(fallback, /rel="alternate" hreflang="en"/);
+    assert.doesNotMatch(fallback, /rel="alternate" hreflang="zh-CN"/);
+
+    const translated = await read("zh/guide.html");
+    assert.match(translated, /<html lang="zh-CN" data-page="guide" data-site-lang="zh">/);
+    assert.match(translated, /rel="alternate" hreflang="zh-CN"/);
+
+    const sitemap = await read("sitemap.xml");
+    assert.match(sitemap, /\/en\/architecture\.html/);
+    assert.doesNotMatch(sitemap, /\/zh\/architecture\.html/);
   });
 
   it("indexes every Markdown document in llms.txt and marks untranslated pages", async () => {
@@ -301,6 +350,8 @@ describe("buildSite", () => {
         `${document.sourcePath} should be inlined for ${document.language}`,
       );
     }
+    assert.match(full, /\]\(https:\/\/example\.invalid\/docs\/en\/guide\.md\)/);
+    assert.match(full, /\]\(https:\/\/example\.invalid\/docs\/zh\/index\.md\)/);
   });
 
   it("rewrites cross-document links in the generated Markdown", async () => {

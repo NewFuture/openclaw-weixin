@@ -49,6 +49,19 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
+      - name: Require HTTPS Pages URL
+        if: github.event_name != 'pull_request'
+        env:
+          SITE_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          case "$SITE_BASE_URL" in
+            https://*) ;;
+            *)
+              echo "::error::GitHub Pages must enforce HTTPS; received $SITE_BASE_URL"
+              exit 1
+              ;;
+          esac
+
       - name: Build site
         env:
           SITE_BASE_URL: ${{ steps.pages.outputs.base_url }}
