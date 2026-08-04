@@ -45,7 +45,7 @@ contract.
 - `dist/`, `coverage/`, `docs/site/content/`, and `docs/site/dist/` are generated.
   Do not hand-edit or commit them.
 - User-facing behavior changes require matching English and Chinese README or
-  changelog updates.
+  changelog updates. Documentation-only changes need no changelog entry.
 
 ## Validation ladder
 

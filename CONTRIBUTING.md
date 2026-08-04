@@ -105,7 +105,8 @@ with whichever locale sources exist.
 
 - Keep changes focused and include tests for behavior changes.
 - Update `README.md` and `README_EN.md` for user-facing documentation.
-- Update both changelogs when a change affects users.
+- Update both changelogs when a change affects users. Documentation-only
+  changes need no changelog entry.
 - Remove credentials, account identifiers, QR codes, and private message
   content from tests, logs, screenshots, and issue descriptions.
 - Review and take responsibility for all submitted changes, including
