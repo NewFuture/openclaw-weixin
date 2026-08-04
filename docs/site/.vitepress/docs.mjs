@@ -9,7 +9,7 @@ export const SITE = {
   repositoryUrl: "https://github.com/NewFuture/openclaw-weixin",
   npmUrl: "https://www.npmjs.com/package/openclaw-weixin",
   upstreamUrl: "https://github.com/Tencent/openclaw-weixin",
-  defaultBaseUrl: "https://newfuture.github.io/openclaw-weixin",
+  defaultBaseUrl: "https://openclaw-weixin.newfuture.cc",
   defaultBranch: "main",
   tagline: {
     en: "Community-maintained OpenClaw WeChat channel plugin",
