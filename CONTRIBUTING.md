@@ -50,8 +50,9 @@ by CI:
 npm run check
 ```
 
-Audit all production and development dependencies at the same severity used by
-CI and releases:
+Audit the production dependencies shipped with the plugin at the same severity
+used by CI and releases. Development tools and the host-provided OpenClaw peer
+dependency are omitted:
 
 ```shell
 npm run audit:deps
