@@ -1,8 +1,11 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
     globals: true,
+    // The documentation website keeps its own dependencies, so its generator
+    // tests run with `npm test --prefix docs/site` instead of this project.
+    exclude: [...configDefaults.exclude, "docs/site/**"],
     testTimeout: 15_000,
     coverage: {
       provider: "v8",

@@ -1,6 +1,6 @@
 # openclaw-weixin
 
-[简体中文](./README.md)
+[简体中文](./README.md) · [Documentation site](https://newfuture.github.io/openclaw-weixin/)
 
 Community-maintained distribution of
 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin) that
@@ -101,3 +101,6 @@ openclaw config set session.dmScope per-account-channel-peer
   troubleshooting
 - [Backend API protocol](docs/backend-api.md)
 - [Architecture](docs/architecture.md)
+- [Documentation site](https://newfuture.github.io/openclaw-weixin/): multilingual
+  documentation that also serves the raw Markdown and an
+  [llms.txt](https://newfuture.github.io/openclaw-weixin/llms.txt) index
