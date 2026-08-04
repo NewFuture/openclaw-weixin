@@ -6,18 +6,6 @@
 
 ## [未发布]
 
-### 变更
-
-- 移除 `package.json` 中全部 `overrides`。OpenClaw 发布了 `npm-shrinkwrap.json`，
-  npm 会据此解析 `node_modules/openclaw/` 下的依赖，这些 override 从未生效，只是
-  让 `npm audit` 读到与实际安装不符的版本。
-- 重新生成 `package-lock.json`，使其与 `npm ci` 实际安装的依赖树完全一致，并把 9 个
-  指向内部镜像、且只有 sha1 校验的 `@biomejs/*` 条目改回公共 registry 与 sha512。
-- `npm run audit:deps` 改为只在本仓库可修复的中危及以上告警时失败，其余由 OpenClaw
-  shrinkwrap 锁定的条目会列出并提示需随 `openclaw` 依赖升级解决。
-- 新增 `npm run check:lockfile`（已并入 `check:static`），拦截无法生效的 override、
-  镜像源 tarball 以及弱于 sha512 的完整性校验。
-
 ## [3.0.1] - 2026-08-02
 
 ### 变更

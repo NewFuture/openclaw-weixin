@@ -6,21 +6,6 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
-### Changed
-
-- Removed every `overrides` entry from `package.json`. OpenClaw publishes an
-  `npm-shrinkwrap.json` that npm uses to resolve `node_modules/openclaw/`, so
-  those pins never applied and only made `npm audit` read versions that differed
-  from the installed tree.
-- Regenerated `package-lock.json` so it matches the tree `npm ci` really
-  installs, and restored 9 `@biomejs/*` entries from an internal mirror with
-  sha1 integrity back to the public registry with sha512.
-- `npm run audit:deps` now fails only on moderate or higher advisories this
-  repository can fix, and reports the remaining ones as pinned by the OpenClaw
-  shrinkwrap until the `openclaw` dependency is upgraded.
-- Added `npm run check:lockfile` (part of `check:static`) to reject overrides
-  npm cannot apply, mirror tarballs, and weaker-than-sha512 integrity hashes.
-
 ## [3.0.1] - 2026-08-02
 
 ### Changed
