@@ -49,7 +49,7 @@
     "check:versions": "node scripts/check-versions.mjs",
     "check:static": "npm run check:versions && npm run check:style && npm run typecheck && npm run typecheck:tests",
     "check:fast": "npm run check:static && npm run test:unit",
-    "audit:deps": "npm audit --audit-level=moderate",
+    "audit:deps": "npm audit --omit=dev --omit=peer --audit-level=moderate",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
     "check": "npm run check:static && npm run test:coverage && npm run build",

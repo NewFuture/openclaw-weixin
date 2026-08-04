@@ -9,3 +9,5 @@ coverage/
 openclaw/
 pnpm-lock.yaml
 pnpm-workspace.yaml
+docs/site/content/
+docs/site/.vitepress/cache/
