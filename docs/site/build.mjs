@@ -607,9 +607,10 @@ function renderTopbar({ language, strings, page, depth }) {
     `<span class="brand-name">${escapeHtml(SITE.name)}</span></a>`,
     '<div class="topbar-search">',
     `<input class="search-input" type="search" data-search placeholder="${escapeHtml(strings.searchPlaceholder)}"`,
-    ` aria-label="${escapeHtml(strings.search)}" autocomplete="off" />`,
-    `<div class="search-results" data-search-results hidden role="listbox"`,
-    ` data-empty="${escapeHtml(strings.searchEmpty)}"></div>`,
+    ` aria-label="${escapeHtml(strings.search)}" autocomplete="off" role="combobox" aria-autocomplete="list"`,
+    ' aria-controls="search-results" aria-expanded="false" />',
+    `<div class="search-results" id="search-results" data-search-results hidden role="listbox"`,
+    ` aria-label="${escapeHtml(strings.search)}" data-empty="${escapeHtml(strings.searchEmpty)}"></div>`,
     "</div>",
     '<div class="topbar-actions">',
     page ? renderLanguageSwitch(language, page, strings) : "",
@@ -899,12 +900,27 @@ export function normalizeBaseUrl(value) {
   return String(value).replace(/\/+$/, "");
 }
 
+/**
+ * Resolve the output directory and refuse targets whose removal would take the
+ * checkout with them, because the build erases the directory before generating.
+ */
+export function resolveOutDir(outDir, repoRoot = REPO_ROOT) {
+  const resolved = path.resolve(outDir);
+  const relative = path.relative(resolved, path.resolve(repoRoot));
+  const containsRepository = relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  if (containsRepository || path.parse(resolved).root === resolved) {
+    throw new Error(`Refusing to build into "${resolved}": the output directory is erased before generation.`);
+  }
+  return resolved;
+}
+
 export async function buildSite({
   repoRoot = REPO_ROOT,
-  outDir = path.join(SITE_DIR, "dist"),
+  outDir: requestedOutDir = path.join(SITE_DIR, "dist"),
   baseUrl = process.env.SITE_BASE_URL || SITE.defaultBaseUrl,
   now = new Date(),
 } = {}) {
+  const outDir = resolveOutDir(requestedOutDir, repoRoot);
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
   const basePath = normalizeBaseUrl(new URL(`${normalizedBaseUrl}/`).pathname);
   const generatedAt = now.toISOString();

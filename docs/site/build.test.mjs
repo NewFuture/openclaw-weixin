@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
@@ -17,6 +17,7 @@ import {
   normalizeBaseUrl,
   PAGES,
   parseArguments,
+  resolveOutDir,
   rewriteLink,
   rewriteMarkdownLinks,
   siblingsFor,
@@ -254,6 +255,37 @@ describe("parseArguments", () => {
   });
 });
 
+describe("resolveOutDir", () => {
+  it("accepts a directory that does not hold the checkout", () => {
+    assert.equal(resolveOutDir(path.join(SITE_DIR, "dist"), REPO_ROOT), path.join(SITE_DIR, "dist"));
+    assert.equal(resolveOutDir("dist", REPO_ROOT), path.resolve("dist"));
+  });
+
+  it("refuses targets whose removal would erase the repository", () => {
+    const message = /Refusing to build into/;
+    assert.throws(() => resolveOutDir(REPO_ROOT, REPO_ROOT), message);
+    assert.throws(() => resolveOutDir(path.dirname(REPO_ROOT), REPO_ROOT), message);
+    assert.throws(() => resolveOutDir(path.join(SITE_DIR, "..", ".."), REPO_ROOT), message);
+    assert.throws(() => resolveOutDir(path.parse(REPO_ROOT).root, REPO_ROOT), message);
+  });
+});
+
+describe("buildSite", () => {
+  it("keeps the checkout when the requested output directory contains it", async () => {
+    const base = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-guard-"));
+    const repoRoot = path.join(base, "repo");
+    const manifest = '{"version":"0.0.0"}\n';
+    await mkdir(repoRoot, { recursive: true });
+    await writeFile(path.join(repoRoot, "package.json"), manifest, "utf8");
+    try {
+      await assert.rejects(buildSite({ repoRoot, outDir: base }), /Refusing to build into/);
+      assert.equal(await readFile(path.join(repoRoot, "package.json"), "utf8"), manifest);
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("buildSite", () => {
   let outDir;
   let result;
@@ -293,6 +325,16 @@ describe("buildSite", () => {
     const sitemap = await read("sitemap.xml");
     assert.match(sitemap, /<lastmod>2026-01-02<\/lastmod>/);
     assert.doesNotMatch(sitemap, /<loc>https:\/\/example\.invalid\/docs\/<\/loc>/);
+  });
+
+  it("exposes the search field as a combobox that owns the result listbox", async () => {
+    const html = await read("en/guide.html");
+    const combobox = html.match(/<input class="search-input"[^>]*>/)?.[0] ?? "";
+    assert.match(combobox, /role="combobox"/);
+    assert.match(combobox, /aria-autocomplete="list"/);
+    assert.match(combobox, /aria-controls="search-results"/);
+    assert.match(combobox, /aria-expanded="false"/);
+    assert.match(html, /<div class="search-results" id="search-results"[^>]*role="listbox"/);
   });
 
   it("normalizes the base URL in canonical and alternate links", async () => {

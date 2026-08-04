@@ -58,4 +58,8 @@ describe("site palette", () => {
     assert.match(responsive, /\.sidebar\s*\{[^}]*visibility:\s*hidden;/s);
     assert.match(responsive, /\.sidebar\.is-open\s*\{[^}]*visibility:\s*visible;/s);
   });
+
+  it("underlines prose links so color is not their only cue", () => {
+    assert.match(css, /\.markdown a:not\(\.button,\s*\.heading-anchor\)\s*\{[^}]*text-decoration:\s*underline;/s);
+  });
 });

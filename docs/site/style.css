@@ -105,6 +105,13 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Prose links need a non-color cue; buttons and heading anchors keep their own affordance. */
+.markdown a:not(.button, .heading-anchor) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
 .skip-link {
   position: absolute;
   top: -3rem;

@@ -11,45 +11,54 @@ const THEME_KEY = "openclaw-weixin:theme";
 const LANGUAGE_KEY = "openclaw-weixin:lang";
 const THEME_ORDER = ["auto", "light", "dark"];
 
-function readStorage(key) {
+function resolveStorage() {
   try {
-    return localStorage.getItem(key);
+    return globalThis.localStorage ?? null;
+  } catch {
+    /* Storage access can throw when cookies are blocked; the theme falls back to system. */
+    return null;
+  }
+}
+
+function readStorage(key, storage) {
+  try {
+    return storage?.getItem(key) ?? null;
   } catch {
     return null;
   }
 }
 
-function writeStorage(key, value) {
+function writeStorage(key, value, storage) {
   try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
+    if (value === null) storage?.removeItem(key);
+    else storage?.setItem(key, value);
   } catch {
     /* Storage can be unavailable in private modes; theme falls back to system. */
   }
 }
 
-function setupTheme() {
-  const button = document.querySelector("[data-theme-toggle]");
+export function setupTheme(root = document, storage = resolveStorage()) {
+  const button = root.querySelector("[data-theme-toggle]");
   if (!button) return;
   const apply = (theme) => {
-    if (theme === "auto") delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = theme;
+    if (theme === "auto") delete root.documentElement.dataset.theme;
+    else root.documentElement.dataset.theme = theme;
     button.dataset.theme = theme;
   };
-  const stored = readStorage(THEME_KEY);
+  const stored = readStorage(THEME_KEY, storage);
   apply(THEME_ORDER.includes(stored) ? stored : "auto");
   button.addEventListener("click", () => {
     const current = button.dataset.theme || "auto";
     const next = THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length];
     apply(next);
-    writeStorage(THEME_KEY, next === "auto" ? null : next);
+    writeStorage(THEME_KEY, next === "auto" ? null : next, storage);
   });
 }
 
-function setupLanguageMemory() {
-  for (const link of document.querySelectorAll("[data-lang]")) {
+function setupLanguageMemory(root = document, storage = resolveStorage()) {
+  for (const link of root.querySelectorAll("[data-lang]")) {
     link.addEventListener("click", () => {
-      writeStorage(LANGUAGE_KEY, link.dataset.lang);
+      writeStorage(LANGUAGE_KEY, link.dataset.lang, storage);
     });
   }
 }
@@ -143,26 +152,65 @@ export function setupSearch(root = document, request = fetch) {
   const language = root.documentElement.dataset.siteLang || "en";
   let entries = null;
   let searchVersion = 0;
+  let options = [];
+  let activeIndex = -1;
+
+  /** Keep the combobox state (`aria-activedescendant`) and the visible highlight in sync. */
+  const setActive = (index) => {
+    activeIndex = index >= 0 && index < options.length ? index : -1;
+    for (const [position, option] of options.entries()) {
+      const active = position === activeIndex;
+      option.classList.toggle("is-active", active);
+      option.setAttribute("aria-selected", String(active));
+    }
+    const active = options[activeIndex];
+    if (active) {
+      input.setAttribute("aria-activedescendant", active.id);
+      active.scrollIntoView?.({ block: "nearest" });
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
+  };
+
+  const collapse = () => {
+    results.hidden = true;
+    options = [];
+    setActive(-1);
+    input.setAttribute("aria-expanded", "false");
+  };
+
+  const move = (delta) => {
+    if (options.length === 0) return;
+    const first = delta > 0 ? 0 : options.length - 1;
+    setActive(activeIndex < 0 ? first : (activeIndex + delta + options.length) % options.length);
+  };
 
   const render = (matches) => {
     results.replaceChildren();
+    options = [];
     if (matches.length === 0) {
       const empty = root.createElement("p");
       empty.className = "search-empty";
+      empty.setAttribute("role", "option");
+      empty.setAttribute("aria-disabled", "true");
       empty.textContent = results.dataset.empty ?? "";
       results.append(empty);
     }
-    for (const entry of matches) {
+    for (const [index, entry] of matches.entries()) {
       const link = root.createElement("a");
       link.href = `./${entry.u}`;
+      link.id = `search-result-${index}`;
       link.setAttribute("role", "option");
       const page = root.createElement("span");
       page.className = "result-page";
       page.textContent = entry.p;
       link.append(root.createTextNode(entry.t), page);
       results.append(link);
+      options.push(link);
     }
+    setActive(-1);
     results.hidden = false;
+    input.setAttribute("aria-expanded", "true");
   };
 
   const load = async () => {
@@ -175,21 +223,21 @@ export function setupSearch(root = document, request = fetch) {
 
   const dismiss = () => {
     searchVersion += 1;
-    results.hidden = true;
+    collapse();
   };
 
   const search = async () => {
     const version = ++searchVersion;
     const query = input.value.trim().toLowerCase();
     if (query.length === 0) {
-      results.hidden = true;
+      collapse();
       return;
     }
     let index = [];
     try {
       index = await load();
     } catch {
-      if (version === searchVersion) results.hidden = true;
+      if (version === searchVersion) collapse();
       return;
     }
     if (version !== searchVersion || input.value.trim().toLowerCase() !== query) return;
@@ -205,6 +253,16 @@ export function setupSearch(root = document, request = fetch) {
   input.addEventListener("input", search);
   input.addEventListener("focus", () => {
     if (input.value.trim().length > 0) search();
+  });
+  input.addEventListener("keydown", (event) => {
+    if (results.hidden) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      move(event.key === "ArrowDown" ? 1 : -1);
+    } else if (event.key === "Enter" && activeIndex >= 0) {
+      event.preventDefault();
+      options[activeIndex].click();
+    }
   });
   root.addEventListener("click", (event) => {
     if (!results.contains(event.target) && event.target !== input) dismiss();
