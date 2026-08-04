@@ -95,6 +95,12 @@ repository Markdown into `docs/site/content/`, so always edit the original
 documents. The generated `content/` and `dist/` directories are ignored by Git;
 only the sources in `docs/site/` are committed.
 
+Simplified Chinese is the site's default locale and is published at the site
+root; English is published under `/en/`. A document without a translation is
+still published in every locale, carrying the Markdown it does have plus an
+untranslated notice, so register new pages in `docs/site/.vitepress/docs.mjs`
+with whichever locale sources exist.
+
 ## Pull requests
 
 - Keep changes focused and include tests for behavior changes.

@@ -11,21 +11,21 @@ import { syncContent, withUntranslatedNotice } from "./.vitepress/sync.mjs";
 const SITE_DIR = fileURLToPath(new URL(".", import.meta.url));
 
 describe("rewriteLinks", () => {
-  const resolve = (target) => (target === "docs/guide.zh_CN.md" ? "/zh/guide.md" : undefined);
+  const resolve = (target) => (target === "docs/guide.zh_CN.md" ? "/guide.md" : undefined);
 
   it("resolves links relative to the source document", () => {
     const markdown = "[指南](docs/guide.zh_CN.md)";
-    assert.equal(rewriteLinks(markdown, { source: "README.md", resolve }), "[指南](/zh/guide.md)");
+    assert.equal(rewriteLinks(markdown, { source: "README.md", resolve }), "[指南](/guide.md)");
     assert.equal(
       rewriteLinks("[指南](./guide.zh_CN.md)", { source: "docs/backend-api.zh_CN.md", resolve }),
-      "[指南](/zh/guide.md)",
+      "[指南](/guide.md)",
     );
   });
 
   it("keeps anchors and leaves external links untouched", () => {
     assert.equal(
       rewriteLinks("[安装](docs/guide.zh_CN.md#安装)", { source: "README.md", resolve }),
-      "[安装](/zh/guide.md#安装)",
+      "[安装](/guide.md#安装)",
     );
     assert.equal(
       rewriteLinks("[上游](https://example.test)", { source: "README.md", resolve }),
@@ -63,26 +63,30 @@ describe("syncContent", () => {
   });
 
   it("prefixes every page with its title and description", async () => {
-    const overview = await readFile(path.join(contentDir, "zh", "index.md"), "utf8");
+    const overview = await readFile(path.join(contentDir, "index.md"), "utf8");
     assert.match(overview, /^---\ntitle: "概览"\ndescription: "[^"]+"\n---\n/);
     assert.match(overview, /# openclaw-weixin/);
   });
 
   it("rewrites cross-document links onto same-locale site paths", async () => {
-    const overview = await readFile(path.join(contentDir, "zh", "index.md"), "utf8");
-    assert.match(overview, /\[详细指南\]\(\/zh\/guide\.md\)/);
-    assert.match(overview, /\[架构说明\]\(\/zh\/architecture\.md\)/);
-    assert.match(overview, /\[English\]\(\/index\.md\)/);
+    const overview = await readFile(path.join(contentDir, "index.md"), "utf8");
+    assert.match(overview, /\[详细指南\]\(\/guide\.md\)/);
+    assert.match(overview, /\[架构说明\]\(\/architecture\.md\)/);
+    assert.match(overview, /\[English\]\(\/en\/index\.md\)/);
+
+    const english = await readFile(path.join(contentDir, "en", "index.md"), "utf8");
+    assert.match(english, /\[Detailed guide\]\(\/en\/guide\.md\)/);
+    assert.match(english, /\[简体中文\]\(\/index\.md\)/);
   });
 
   it("marks locale copies that still carry the English text", async () => {
-    const architecture = await readFile(path.join(contentDir, "zh", "architecture.md"), "utf8");
+    const architecture = await readFile(path.join(contentDir, "architecture.md"), "utf8");
     assert.match(architecture, /^---\ntitle: "架构说明"/);
     assert.match(architecture, /\n# Architecture\n\n::: warning 尚未翻译\n本页尚无中文翻译，以下为英文原文。\n:::\n/);
 
-    const translated = await readFile(path.join(contentDir, "zh", "guide.md"), "utf8");
+    const translated = await readFile(path.join(contentDir, "guide.md"), "utf8");
     assert.doesNotMatch(translated, /尚未翻译/);
-    const english = await readFile(path.join(contentDir, "architecture.md"), "utf8");
+    const english = await readFile(path.join(contentDir, "en", "architecture.md"), "utf8");
     assert.doesNotMatch(english, /::: warning/);
   });
 

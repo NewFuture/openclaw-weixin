@@ -20,23 +20,35 @@ export const SITE = {
     zh: "连接 OpenClaw 与微信：一行命令安装、原位替换、扫码登录，并支持多账号。",
   },
   summary:
-    "Community-maintained OpenClaw WeChat (Weixin) channel plugin. This index lists the Markdown source of every documentation page in English and Simplified Chinese.",
+    "Community-maintained OpenClaw WeChat (Weixin) channel plugin. This index lists the Markdown source of every documentation page in Simplified Chinese and English.",
 };
 
 /**
- * Supported locales. The first entry is the fallback for untranslated pages;
- * `untranslatedNotice` is prepended to those fallback copies.
+ * Supported locales, in fallback order. The first entry is the default locale
+ * published at the site root; a page without a translation carries the Markdown
+ * of the first locale that has one, prefixed with `untranslatedNotice`.
  */
 export const LOCALES = [
-  { id: "en", lang: "en-US", label: "English", prefix: "/" },
   {
     id: "zh",
     lang: "zh-CN",
     label: "简体中文",
-    prefix: "/zh/",
+    shortLabel: "中文",
+    prefix: "/",
     untranslatedNotice: {
       title: "尚未翻译",
       body: "本页尚无中文翻译，以下为英文原文。",
+    },
+  },
+  {
+    id: "en",
+    lang: "en-US",
+    label: "English",
+    shortLabel: "EN",
+    prefix: "/en/",
+    untranslatedNotice: {
+      title: "Not translated yet",
+      body: "This page has no English translation yet; the Simplified Chinese source is shown below.",
     },
   },
 ];
@@ -51,7 +63,7 @@ export function localeById(id) {
 
 /**
  * Documentation pages. `sources` maps a locale to a repository-relative
- * Markdown file; a missing locale keeps the page in English only.
+ * Markdown file; a missing locale falls back to another locale's Markdown.
  */
 export const DOCUMENTS = [
   {
@@ -154,9 +166,20 @@ export function isTranslated(document, locale) {
   return Boolean(document.sources[locale]);
 }
 
-/** Repository Markdown published for a locale, falling back to the default one. */
+/**
+ * Locale whose Markdown a page carries: the reader's own when the document is
+ * translated, otherwise the first locale, in `LOCALES` order, that has a source.
+ */
+export function sourceLocaleFor(document, locale) {
+  if (isTranslated(document, locale)) return locale;
+  const fallback = LOCALES.find((entry) => isTranslated(document, entry.id));
+  if (!fallback) throw new Error(`Document has no source: ${document.slug}`);
+  return fallback.id;
+}
+
+/** Repository Markdown published for a locale, falling back to a translated one. */
 export function sourceFor(document, locale) {
-  return document.sources[locale] ?? document.sources[DEFAULT_LOCALE];
+  return document.sources[sourceLocaleFor(document, locale)];
 }
 
 /** Page path inside the generated content tree, without its extension. */
@@ -173,7 +196,7 @@ export function linkFor(document, locale) {
 
 /**
  * Every page the site publishes, in navigation order. Documents without a
- * translation are still published per locale, carrying the default-locale
+ * translation are still published per locale, carrying the fallback locale's
  * Markdown, so that the language switcher never lands on a missing page.
  */
 export function createPages() {
@@ -181,13 +204,15 @@ export function createPages() {
   for (const locale of LOCALES) {
     for (const slug of GROUPS.flatMap((group) => group.documents)) {
       const document = documentBySlug(slug);
+      const sourceLocale = sourceLocaleFor(document, locale.id);
       pages.push({
         locale: locale.id,
         slug,
-        source: sourceFor(document, locale.id),
-        translated: isTranslated(document, locale.id),
+        source: document.sources[sourceLocale],
+        sourceLocale,
+        translated: sourceLocale === locale.id,
         path: pagePathFor(document, locale.id),
-        canonicalPath: pagePathFor(document, isTranslated(document, locale.id) ? locale.id : DEFAULT_LOCALE),
+        canonicalPath: pagePathFor(document, sourceLocale),
         title: document.title[locale.id],
         description: document.description[locale.id],
       });
@@ -255,9 +280,10 @@ export function createSidebar(locale) {
     collapsed: false,
     items: group.documents.map((slug) => {
       const document = documentBySlug(slug);
-      const untranslated = !isTranslated(document, locale);
+      const sourceLocale = sourceLocaleFor(document, locale);
+      const title = document.title[locale];
       return {
-        text: untranslated ? `${document.title[locale]}（EN）` : document.title[locale],
+        text: sourceLocale === locale ? title : `${title}（${localeById(sourceLocale).shortLabel}）`,
         link: linkFor(document, locale),
       };
     }),
