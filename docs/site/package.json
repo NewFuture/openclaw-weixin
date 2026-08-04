@@ -2,14 +2,19 @@
   "name": "openclaw-weixin-site",
   "version": "0.0.0",
   "private": true,
-  "description": "Documentation website generator for openclaw-weixin",
+  "description": "Documentation website for openclaw-weixin",
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "node build.mjs",
+    "sync": "node .vitepress/sync.mjs",
+    "predev": "npm run sync",
+    "dev": "vitepress dev",
+    "prebuild": "npm run sync",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
     "test": "node --test"
   },
-  "dependencies": {
-    "marked": "18.0.7"
+  "devDependencies": {
+    "vitepress": "1.6.4"
   }
 }

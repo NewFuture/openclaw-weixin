@@ -42,8 +42,8 @@ contract.
   independent scheduling lane.
 - Preserve legacy account IDs, credential files, and sync-buffer migrations unless
   the change explicitly owns a tested migration.
-- `dist/`, `coverage/`, and `docs/site/dist/` are generated. Do not hand-edit or
-  commit them.
+- `dist/`, `coverage/`, `docs/site/content/`, and `docs/site/dist/` are generated.
+  Do not hand-edit or commit them.
 - User-facing behavior changes require matching English and Chinese README or
   changelog updates.
 
@@ -81,14 +81,19 @@ npm run pack:check
 ```
 
 When Markdown documents or the website sources change, test and rebuild the
-site. It has its own dependencies so that the published package manifest stays
-untouched, so its generator tests run outside the root Vitest project:
+site. It is a VitePress project with its own dependencies so that the published
+package manifest stays untouched, so its tests run outside the root Vitest
+project:
 
 ```shell
 npm ci --prefix docs/site
 npm test --prefix docs/site
 npm run build --prefix docs/site
 ```
+
+Use `npm run dev --prefix docs/site` to preview the site locally. Both commands
+first copy the repository Markdown into the generated `docs/site/content/` tree,
+so edit the original documents, never the copies.
 
 Use `npm run format` for mechanical formatting. Do not mix broad formatting with
 behavioral changes when the work can be separated.

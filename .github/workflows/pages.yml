@@ -40,7 +40,7 @@ jobs:
         run: npm ci
         working-directory: docs/site
 
-      - name: Test site generator
+      - name: Test site sources
         run: npm test
         working-directory: docs/site
 

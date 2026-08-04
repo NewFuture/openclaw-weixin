@@ -1,0 +1,200 @@
+/**
+ * Documentation map shared by the VitePress config and the machine-readable
+ * index. Every page is sourced from Markdown that already lives in the
+ * repository, so the website never duplicates documentation content.
+ */
+
+export const SITE = {
+  name: "openclaw-weixin",
+  repositoryUrl: "https://github.com/NewFuture/openclaw-weixin",
+  npmUrl: "https://www.npmjs.com/package/openclaw-weixin",
+  upstreamUrl: "https://github.com/Tencent/openclaw-weixin",
+  defaultBaseUrl: "https://newfuture.github.io/openclaw-weixin",
+  defaultBranch: "main",
+  tagline: {
+    en: "Community-maintained OpenClaw WeChat channel plugin",
+    zh: "社区维护的 OpenClaw 微信渠道插件",
+  },
+  description: {
+    en: "Connect OpenClaw with WeChat: one-command install, in-place replacement, QR login, and multi-account support.",
+    zh: "连接 OpenClaw 与微信：一行命令安装、原位替换、扫码登录，并支持多账号。",
+  },
+  summary:
+    "Community-maintained OpenClaw WeChat (Weixin) channel plugin. This index lists the Markdown source of every documentation page in English and Simplified Chinese.",
+};
+
+/** Supported locales. The first entry is the fallback for untranslated pages. */
+export const LOCALES = [
+  { id: "en", lang: "en-US", label: "English", prefix: "/" },
+  { id: "zh", lang: "zh-CN", label: "简体中文", prefix: "/zh/" },
+];
+
+export const DEFAULT_LOCALE = LOCALES[0].id;
+
+/**
+ * Documentation pages. `sources` maps a locale to a repository-relative
+ * Markdown file; a missing locale keeps the page in English only.
+ */
+export const DOCUMENTS = [
+  {
+    slug: "index",
+    sources: { en: "README_EN.md", zh: "README.md" },
+    title: { en: "Overview", zh: "概览" },
+    description: {
+      en: "Install the community-maintained WeChat channel plugin for OpenClaw and bind one or more accounts.",
+      zh: "安装社区维护的 OpenClaw 微信渠道插件，并绑定一个或多个微信账号。",
+    },
+  },
+  {
+    slug: "guide",
+    sources: { en: "docs/guide.md", zh: "docs/guide.zh_CN.md" },
+    title: { en: "Detailed Guide", zh: "详细指南" },
+    description: {
+      en: "Installation behavior, custom BotAgent, uninstall, and troubleshooting.",
+      zh: "安装行为、自定义 BotAgent、卸载与故障排查。",
+    },
+  },
+  {
+    slug: "architecture",
+    sources: { en: "docs/architecture.md" },
+    title: { en: "Architecture", zh: "架构说明" },
+    description: {
+      en: "Component map, plugin lifecycle, inbound and outbound flows, and persistent state.",
+      zh: "组件划分、插件生命周期、收发消息流程与持久化状态。",
+    },
+  },
+  {
+    slug: "backend-api",
+    sources: { en: "docs/backend-api.md", zh: "docs/backend-api.zh_CN.md" },
+    title: { en: "Backend API Protocol", zh: "后端 API 协议" },
+    description: {
+      en: "Every Weixin backend endpoint used for QR login, lifecycle, messages, and media.",
+      zh: "插件用于扫码登录、生命周期、消息与媒体的全部微信后端接口。",
+    },
+  },
+  {
+    slug: "changelog",
+    sources: { en: "CHANGELOG_EN.md", zh: "CHANGELOG.md" },
+    title: { en: "Changelog", zh: "变更日志" },
+    description: {
+      en: "Released versions and user-visible changes.",
+      zh: "已发布版本与用户可见的变更。",
+    },
+  },
+  {
+    slug: "contributing",
+    sources: { en: "CONTRIBUTING.md" },
+    title: { en: "Contributing", zh: "参与贡献" },
+    description: {
+      en: "Prerequisites, local development commands, and pull request expectations.",
+      zh: "环境要求、本地开发命令与提交 Pull Request 的要求。",
+    },
+  },
+  {
+    slug: "agents",
+    sources: { en: "AGENTS.md" },
+    title: { en: "Coding Agent Guide", zh: "编码智能体指南" },
+    description: {
+      en: "Repository invariants, module map, validation ladder, and definition of done.",
+      zh: "仓库约束、模块地图、验证流程与完成标准。",
+    },
+  },
+  {
+    slug: "release",
+    sources: { en: "RELEASE.md" },
+    title: { en: "Release Process", zh: "发布流程" },
+    description: {
+      en: "How npmjs, GitHub Packages, and GitHub Releases are published together.",
+      zh: "npmjs、GitHub Packages 与 GitHub Release 的协同发布流程。",
+    },
+  },
+  {
+    slug: "security",
+    sources: { en: "SECURITY.md" },
+    title: { en: "Security Policy", zh: "安全策略" },
+    description: {
+      en: "Supported versions and how to report a vulnerability privately.",
+      zh: "受支持的版本以及如何私下报告安全漏洞。",
+    },
+  },
+];
+
+/** Navigation grouping. Every document slug must appear exactly once. */
+export const GROUPS = [
+  { title: { en: "Getting Started", zh: "快速开始" }, documents: ["index", "guide"] },
+  { title: { en: "Reference", zh: "参考文档" }, documents: ["architecture", "backend-api", "changelog"] },
+  { title: { en: "Project", zh: "项目信息" }, documents: ["contributing", "agents", "release", "security"] },
+];
+
+export function documentBySlug(slug) {
+  const document = DOCUMENTS.find((entry) => entry.slug === slug);
+  if (!document) throw new Error(`Unknown document slug: ${slug}`);
+  return document;
+}
+
+export function isTranslated(document, locale) {
+  return Boolean(document.sources[locale]);
+}
+
+/** Page path inside the generated content tree, without its extension. */
+export function pagePathFor(document, locale) {
+  const prefix = locale === DEFAULT_LOCALE ? "" : `${locale}/`;
+  return `${prefix}${document.slug}`;
+}
+
+/** Site link for a page, falling back to the English page when untranslated. */
+export function linkFor(document, locale) {
+  const target = isTranslated(document, locale) ? locale : DEFAULT_LOCALE;
+  const { prefix } = LOCALES.find((entry) => entry.id === target);
+  return document.slug === "index" ? prefix : `${prefix}${document.slug}`;
+}
+
+/** Every page the site publishes, in navigation order. */
+export function createPages() {
+  const pages = [];
+  for (const locale of LOCALES) {
+    for (const slug of GROUPS.flatMap((group) => group.documents)) {
+      const document = documentBySlug(slug);
+      if (!isTranslated(document, locale.id)) continue;
+      pages.push({
+        locale: locale.id,
+        slug,
+        source: document.sources[locale.id],
+        path: pagePathFor(document, locale.id),
+        title: document.title[locale.id],
+        description: document.description[locale.id],
+      });
+    }
+  }
+  return pages;
+}
+
+/** Generated page file to its repository source, used for GitHub edit links. */
+export function createSourceByPage(pages = createPages()) {
+  return Object.fromEntries(pages.map((page) => [`${page.path}.md`, page.source]));
+}
+
+export function createNav(locale) {
+  return GROUPS.map((group) => ({
+    text: group.title[locale],
+    items: group.documents.map((slug) => {
+      const document = documentBySlug(slug);
+      return { text: document.title[locale], link: linkFor(document, locale) };
+    }),
+  }));
+}
+
+export function createSidebar(locale) {
+  return GROUPS.map((group) => ({
+    text: group.title[locale],
+    collapsed: false,
+    items: group.documents.map((slug) => {
+      const document = documentBySlug(slug);
+      const untranslated = !isTranslated(document, locale);
+      return {
+        text: untranslated ? `${document.title[locale]}（EN）` : document.title[locale],
+        link: linkFor(document, locale),
+      };
+    }),
+  }));
+}

@@ -79,9 +79,9 @@ npm run pack:check
 
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The
-website keeps its own dependencies so that the published package manifest stays
-untouched, and its generator tests run with Node.js instead of the root Vitest
-project:
+site is a [VitePress](https://vitepress.dev/) project that keeps its own
+dependencies so that the published package manifest stays untouched, and its
+tests run with Node.js instead of the root Vitest project:
 
 ```shell
 npm ci --prefix docs/site
@@ -89,9 +89,11 @@ npm test --prefix docs/site
 npm run build --prefix docs/site
 ```
 
-Serve `docs/site/dist/` with any static file server to preview it locally. The
-generated directory is ignored by Git; only the sources in `docs/site/` are
-committed.
+Preview the site with hot reload using `npm run dev --prefix docs/site`, or serve
+`docs/site/dist/` with any static file server. Both commands first copy the
+repository Markdown into `docs/site/content/`, so always edit the original
+documents. The generated `content/` and `dist/` directories are ignored by Git;
+only the sources in `docs/site/` are committed.
 
 ## Pull requests
 
