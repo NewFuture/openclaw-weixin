@@ -1,6 +1,6 @@
 {
   "id": "openclaw-weixin",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "channels": ["openclaw-weixin"],
   "channelConfigs": {
     "openclaw-weixin": {
