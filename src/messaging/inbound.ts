@@ -19,7 +19,12 @@ import { buildWeixinInboundDedupeKey } from "./inbound-dedupe.js";
 const contextTokenStore = new Map<string, string>();
 
 function contextTokenKey(accountId: string, userId: string): string {
-  return `${accountId}:${userId}`;
+  // WeChat OpenIDs are case-insensitive, while OpenClaw session keys normalize
+  // peer IDs to lowercase. getUpdates returns mixed-case OpenIDs and outbound
+  // ctx.to comes from the lowercased session target, so keys must be normalized
+  // to lowercase at the storage/lookup boundary or every outbound send after a
+  // gateway restart fails with sendMessage ret=-3 (invalid arguments).
+  return `${accountId}:${userId.toLowerCase()}`;
 }
 
 // ---------------------------------------------------------------------------

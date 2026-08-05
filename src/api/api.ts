@@ -518,6 +518,13 @@ export async function getUploadUrl(params: GetUploadUrlReq & WeixinApiOptions): 
 export function describeSendMessageFailure(resp: SendMessageResp, body: SendMessageReq): string {
   const errmsg = resp.errmsg?.trim();
   if (errmsg) {
+    // ret=-2 "prepare failed" typically means the server could not prepare the
+    // conversation for delivery: the context_token is stale/expired (only
+    // refreshed by a recent inbound message from the recipient) or the server
+    // side lost the bot-to-user binding (see Tencent/openclaw-weixin#244).
+    if (resp.ret === -2 && /prepare/i.test(errmsg)) {
+      return `sendMessage ret=-2 errmsg=${errmsg}; likely stale/missing context_token or server-side bot state — a fresh inbound message from the recipient usually refreshes it`;
+    }
     return `sendMessage ret=${resp.ret} errmsg=${errmsg}`;
   }
   const hint = body.msg?.context_token

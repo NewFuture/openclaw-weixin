@@ -213,6 +213,13 @@ describe("describeSendMessageFailure", () => {
     );
   });
 
+  it("adds an actionable hint for prepare failed", () => {
+    const msg = describeSendMessageFailure({ ret: -2, errmsg: "prepare failed" }, { msg: { context_token: "tok" } });
+    expect(msg).toContain("ret=-2");
+    expect(msg).toContain("prepare failed");
+    expect(msg).toContain("fresh inbound message");
+  });
+
   it("flags a likely expired context_token when one was present", () => {
     const msg = describeSendMessageFailure({ ret: -2, errmsg: "" }, { msg: { context_token: "tok" } });
     expect(msg).toContain("ret=-2");
