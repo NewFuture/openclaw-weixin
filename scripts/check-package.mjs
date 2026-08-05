@@ -17,13 +17,12 @@ try {
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const pluginManifest = JSON.parse(readFileSync("openclaw.plugin.json", "utf8"));
 const HOST_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
-const DEVELOPMENT_HOST_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/;
 
-function parseHostVersion(version, label, pattern = HOST_VERSION) {
-  if (typeof version !== "string" || !pattern.test(version)) {
-    fail(`${label} must use a valid YYYY.M.D version, found ${JSON.stringify(version)}`);
+function parseHostVersion(version, label) {
+  if (typeof version !== "string" || !HOST_VERSION.test(version)) {
+    fail(`${label} must use a stable YYYY.M.D version, found ${JSON.stringify(version)}`);
   }
-  return version.split("-", 1)[0].split(".").map(Number);
+  return version.split(".").map(Number);
 }
 
 function compareHostVersions(left, right) {
@@ -49,11 +48,7 @@ const minimumHostVersion = parseHostVersion(hostRangeMatch[1], "peerDependencies
 if (packageJson.openclaw?.install?.minHostVersion !== hostRange) {
   fail("openclaw.install.minHostVersion must match peerDependencies.openclaw");
 }
-const developmentHostVersion = parseHostVersion(
-  packageJson.devDependencies?.openclaw,
-  "devDependencies.openclaw",
-  DEVELOPMENT_HOST_VERSION,
-);
+const developmentHostVersion = parseHostVersion(packageJson.devDependencies?.openclaw, "devDependencies.openclaw");
 if (compareHostVersions(developmentHostVersion, minimumHostVersion) < 0) {
   fail("devDependencies.openclaw must not be older than the minimum supported host");
 }

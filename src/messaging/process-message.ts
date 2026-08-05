@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { createTypingCallbacks } from "openclaw/plugin-sdk/channel-reply-pipeline";
+import { createTypingCallbacks } from "openclaw/plugin-sdk/channel-runtime";
 import {
   resolveDirectDmAuthorizationOutcome,
   resolveSenderCommandAuthorizationWithRuntime,
