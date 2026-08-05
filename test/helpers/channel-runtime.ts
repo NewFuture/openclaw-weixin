@@ -24,10 +24,10 @@ export function createChannelRuntimeHarness() {
     size: 1,
     contentType: "application/octet-stream",
   }));
-  const finalizeInboundContext: ChannelRuntime["reply"]["finalizeInboundContext"] = (ctx) => ({
+  const finalizeInboundContext = ((ctx: Record<string, unknown>) => ({
     ...ctx,
     CommandAuthorized: ctx.CommandAuthorized === true,
-  });
+  })) as ChannelRuntime["reply"]["finalizeInboundContext"];
   const resolveHumanDelayConfig = vi.fn<ChannelRuntime["reply"]["resolveHumanDelayConfig"]>(() => undefined);
   const markDispatchIdle = vi.fn();
   const markRunComplete = vi.fn();

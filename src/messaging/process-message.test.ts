@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   sendTyping: vi.fn(),
 }));
 
-vi.mock("openclaw/plugin-sdk/channel-runtime", () => ({
+vi.mock("openclaw/plugin-sdk/channel-reply-pipeline", () => ({
   createTypingCallbacks: vi.fn(() => ({})),
 }));
 
