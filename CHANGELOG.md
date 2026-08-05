@@ -6,6 +6,14 @@
 
 ## [未发布]
 
+## [3.0.2] - 2026-08-05
+
+### 变更
+
+- **入站媒体按 Agent 隔离：** 图片、视频、文件和语音现在按已路由的 Agent 存入
+  `weixin/<agentId>/inbound`，避免多 Agent 部署中的媒体文件混放及跨 Agent
+  访问；无法解析 Agent 时继续使用兼容旧版本的 `inbound` 路径。
+
 ### 修复
 
 - **入站 getUpdates 双投递：** ordinary / approval 两条 admission 车道在处理前通过

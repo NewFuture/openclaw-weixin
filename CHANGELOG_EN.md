@@ -6,6 +6,15 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.0.2] - 2026-08-05
+
+### Changed
+
+- **Per-agent inbound media isolation:** images, videos, files, and voice messages
+  are now stored under `weixin/<agentId>/inbound` for the routed agent, preventing
+  mixed media and cross-agent access in multi-agent deployments. Unresolved
+  routes continue to use the legacy-compatible `inbound` path.
+
 ### Fixed
 
 - **Inbound getUpdates duplicate delivery:** ordinary and approval admission
