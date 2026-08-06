@@ -37,12 +37,10 @@ vi.mock("./api/session-guard.js", () => ({
 
 vi.mock("./auth/accounts.js", () => ({
   DEFAULT_BASE_URL: "https://api.example.test",
-  clearStaleAccountsForUserId: vi.fn(),
   listWeixinAccountIds: mocks.listAccountIds,
   loadWeixinAccount: vi.fn(),
-  registerWeixinAccountId: vi.fn(),
+  persistWeixinLoginAccounts: vi.fn(() => ({ primaryId: "bot-im-bot", aliasId: null })),
   resolveWeixinAccount: mocks.resolveAccount,
-  saveWeixinAccount: vi.fn(),
   triggerWeixinChannelReload: vi.fn(),
 }));
 

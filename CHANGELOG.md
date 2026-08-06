@@ -6,6 +6,13 @@
 
 ## [未发布]
 
+### 修复
+
+- **QR 登录保留稳定 `--account` 别名：** `channels login --account <alias>` 成功后除写入
+  服务端 `ilink_bot_id`（如 `hex-im-bot`）外，再写入同内容的别名凭证文件并登记索引。
+  多账号部署用 `leader` / `jinjin` 等配置键绑定时不再需要手工复制 hash 文件；
+  `clearStaleAccountsForUserId` 支持同时保留 primary + alias。
+
 ## [3.0.2] - 2026-08-05
 
 ### 变更

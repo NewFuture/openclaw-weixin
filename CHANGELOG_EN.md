@@ -6,6 +6,16 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Persist stable `--account` aliases on QR login:** after
+  `channels login --account <alias>` succeeds, credentials are written for both
+  the server `ilink_bot_id` (e.g. `hex-im-bot`) and the caller alias, then both
+  ids are indexed. Multi-account configs that bind names like `leader` /
+  `jinjin` no longer need a manual copy of the hash credential file.
+  `clearStaleAccountsForUserId` accepts a keep-list so primary + alias survive
+  stale cleanup.
+
 ## [3.0.2] - 2026-08-05
 
 ### Changed

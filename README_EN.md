@@ -83,11 +83,19 @@ Then follow **Reload check** above.
 
 ## Multiple Accounts
 
-Run the login command again to bind another WeChat account:
+Run the login command again to bind another WeChat account. Prefer a **stable
+alias** per number so `openclaw.json` / bindings can use a readable `accountId`
+instead of only the server hash:
 
 ```bash
-openclaw channels login --channel openclaw-weixin
+openclaw channels login --channel openclaw-weixin --account leader
+openclaw channels login --channel openclaw-weixin --account jinjin
 ```
+
+A successful login writes both:
+
+- `openclaw-weixin/accounts/<normalized ilink_bot_id>.json` (server bot id)
+- `openclaw-weixin/accounts/<alias>.json` (same token / userId)
 
 For multiple logged-in accounts, isolate context by account + channel + sender:
 
