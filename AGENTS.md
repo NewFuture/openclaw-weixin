@@ -4,12 +4,23 @@ This repository publishes the community-maintained `openclaw-weixin` channel
 plugin. Keep changes small, preserve compatibility, and use tests as the behavior
 contract.
 
-## Start here
+## Work in this order
 
-1. Read [the architecture guide](docs/architecture.md) for lifecycle and data flow.
-2. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup and validation commands.
-3. Read the relevant implementation and colocated tests before editing.
-4. Use synthetic identifiers and credentials in every test and example.
+1. Read [the architecture guide](docs/architecture.md) for lifecycle and data flow
+   and [CONTRIBUTING.md](CONTRIBUTING.md) for setup and validation.
+2. Use the module map and all matching project skills to scope the change. Read the
+   implementation, production callers, colocated tests, installed SDK
+   declarations, and analogous repository helpers before editing.
+3. Define the failing input, observable result, invariants to preserve, and one
+   negative case that distinguishes a real fix from a plausible-looking one.
+4. Trace the changed value through all affected callers, mutually exclusive
+   branches, error exits, persistence boundaries, and user-visible claims. Verify
+   helper and API semantics from implementation, types, or export maps.
+5. Add a focused original-failure test and its counterexample, then implement the
+   smallest complete fix.
+6. Run the focused test before escalating through the validation ladder. Review
+   the evidence separately: a green broad suite, test count, coverage floor, or
+   mocked boundary is not proof of the reported behavior.
 
 ## Module map
 
@@ -24,17 +35,36 @@ contract.
 | Persistent state | `src/storage/`, `src/auth/accounts.ts` |
 | Documentation website | `docs/site/` |
 
-## Non-negotiable contracts
+## Specialized skills
+
+Project skills provide detailed playbooks for higher-risk changes. Use every
+matching skill before editing:
+
+| Skill | Use when |
+| --- | --- |
+| [`stateful-message-processing`](.github/skills/stateful-message-processing/SKILL.md) | Persistent or account-scoped state, dedupe identity, claims, locks, monitor lanes, abort/retry, or resource cleanup changes |
+| [`openclaw-host-compatibility`](.github/skills/openclaw-host-compatibility/SKILL.md) | OpenClaw SDK imports, exported subpaths, host APIs, plugin entry points, peer/minimum versions, or compatibility claims |
+
+Skills supplement the contracts below; they never override privacy, account
+isolation, migration, release, or validation requirements.
+
+## Repository contracts
+
+### Compatibility and identity
 
 - The npm package, plugin, and channel ID is `openclaw-weixin`. Do not change the
   ID or `~/.openclaw/openclaw-weixin/` state paths without an approved migration.
 - Keep the published package compatible with Node.js 22. CI also validates the
   recommended Node.js 24 development environment.
 - This is a NodeNext ESM project. TypeScript imports use `.js` specifiers.
+
+### Privacy, state, and lifecycle
+
 - Tokens, context tokens, account IDs, QR codes, message bodies, and CDN query
-  parameters are sensitive. Never add real values to source, fixtures, logs,
-  issues, screenshots, or examples. Route diagnostic output through the existing
-  redaction helpers.
+  parameters are sensitive. Dedupe keys and fingerprints are sensitive when they
+  embed these values. Never add real values to source, fixtures, logs, issues,
+  screenshots, or examples. Route diagnostics through the existing redaction
+  helpers and test that sensitive values are absent.
 - Account state and context tokens are account-scoped. Do not introduce a global
   fallback that can send from the wrong account.
 - Stop and hot-reload must abort an in-flight long poll. Polling must continue
@@ -42,79 +72,70 @@ contract.
   independent scheduling lane.
 - Preserve legacy account IDs, credential files, and sync-buffer migrations unless
   the change explicitly owns a tested migration.
+
+### Artifacts, documentation, and releases
+
 - `dist/`, `coverage/`, `docs/site/content/`, and `docs/site/dist/` are generated.
   Do not hand-edit or commit them.
 - User-facing behavior changes require matching English and Chinese README or
   changelog updates. Documentation-only changes need no changelog entry.
+- Routine feature and fix changelog entries belong in the matching English and
+  Chinese `Unreleased` sections. Do not bump package, lockfile, or plugin versions
+  or create a dated release section; the maintainer release flow owns those
+  changes.
+- Logs, comments, architecture diagrams, diagnostics, and user documentation must
+  describe the control flow the code actually executes.
 
-## Validation ladder
+## Testing contract
 
-Install exactly what the lockfile records:
-
-```shell
-npm ci
-```
-
-Run one affected suite while iterating:
-
-```shell
-npm run test:unit -- src/path/to/file.test.ts
-```
-
-Run the fast local gate:
-
-```shell
-npm run check:fast
-```
-
-Run the full CI-equivalent gate before finishing:
-
-```shell
-npm run check
-```
-
-When entry points, build output, package metadata, or dependencies change, also
-run:
-
-```shell
-npm run pack:check
-```
-
-When Markdown documents or the website sources change, test and rebuild the
-site. It is a VitePress project with its own dependencies so that the published
-package manifest stays untouched, so its tests run outside the root Vitest
-project:
-
-```shell
-npm ci --prefix docs/site
-npm test --prefix docs/site
-npm run build --prefix docs/site
-```
-
-Use `npm run dev --prefix docs/site` to preview the site locally. Both commands
-first copy the repository Markdown into the generated `docs/site/content/` tree,
-so edit the original documents, never the copies.
-
-Use `npm run format` for mechanical formatting. Do not mix broad formatting with
-behavioral changes when the work can be separated.
-
-## Testing rules
-
-- Add or update a regression test for every behavior change.
+- Add or update a focused regression test for every behavior change. It must
+  reproduce the original failure and assert the observable boundary result.
 - Tests must not call the live Weixin backend, perform QR login, or depend on a
   developer's OpenClaw state.
+- Use synthetic identifiers and credentials in every test and example.
 - Prefer builders from `test/helpers/` and sanitized data from `test/fixtures/`.
   Keep test-only support outside `src/` so it cannot enter the npm package.
+- For helper selection or parameter plumbing, include a counterexample that
+  distinguishes the chosen semantics and separately enter every affected
+  mutually exclusive branch and production write site.
 - Keep tests safe under Vitest's default parallelism. Restore environment
   variables, timers, globals, mocks, and temporary directories.
 - Prefer fake timers and explicit deferred promises over sleeps.
 - Assert observable boundary behavior instead of private implementation details.
 
+## Validation ladder
+
+1. Install exactly what the lockfile records: `npm ci`.
+2. Iterate with one affected suite:
+   `npm run test:unit -- src/path/to/file.test.ts`.
+3. Run the fast local gate when useful: `npm run check:fast`.
+4. Run the full CI-equivalent gate before finishing: `npm run check`.
+5. Also run `npm run pack:check` when entry points, build output, package metadata,
+   or dependencies change.
+6. For Markdown or documentation-site changes, run:
+
+   ```shell
+   npm ci --prefix docs/site
+   npm test --prefix docs/site
+   npm run build --prefix docs/site
+   ```
+
+The documentation commands generate `docs/site/content/` and `docs/site/dist/`;
+edit only the source documents. Use `npm run format` for mechanical formatting,
+but do not mix broad formatting with behavioral changes.
+
 ## Definition of done
 
-- The focused test demonstrates the requested behavior or original regression.
-- `npm run check` passes without warnings or generated-file drift.
-- `npm run pack:check` passes when packaging surfaces changed.
-- Compatibility, privacy, state migration, and multi-account behavior have been
-  considered explicitly.
-- Related developer and bilingual user documentation is updated.
+- The focused test fails for the original reason without the fix and demonstrates
+  the requested behavior with the fix.
+- The applicable project-skill completion criteria pass, and every affected
+  production caller and error exit has been reviewed.
+- Assumptions based on a similar name, API, fallback, or neighboring branch have
+  exact semantic evidence and a negative counterexample; no boundary claim relies
+  only on mocks, the current dependency version, aggregate coverage, or green CI.
+- Comments, diagnostics, architecture, bilingual documentation, and release
+  metadata match the behavior and ownership that will actually ship.
+- `npm run check` and every applicable additional validation pass without warnings
+  or generated-file drift.
+- Compatibility, privacy, state migration, multi-account behavior, and related
+  developer or bilingual user documentation have been addressed.
