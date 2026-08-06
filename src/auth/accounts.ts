@@ -95,9 +95,7 @@ export function clearStaleAccountsForUserId(
 ): void {
   if (!userId) return;
   const keep = new Set(
-    (Array.isArray(keepAccountIds) ? keepAccountIds : [keepAccountIds])
-      .map((id) => id.trim())
-      .filter(Boolean),
+    (Array.isArray(keepAccountIds) ? keepAccountIds : [keepAccountIds]).map((id) => id.trim()).filter(Boolean),
   );
   if (keep.size === 0) return;
   const allIds = listIndexedWeixinAccountIds();
@@ -168,9 +166,7 @@ export function persistWeixinLoginAccounts(params: {
   const aliasId = resolveLoginAccountAlias(params.requestedAccountId, primaryId);
   if (aliasId) {
     saveWeixinAccount(aliasId, creds);
-    logger.info(
-      `persistWeixinLoginAccounts: wrote alias=${aliasId} alongside primary=${primaryId}`,
-    );
+    logger.info(`persistWeixinLoginAccounts: wrote alias=${aliasId} alongside primary=${primaryId}`);
   }
 
   const keep = aliasId ? [primaryId, aliasId] : [primaryId];
