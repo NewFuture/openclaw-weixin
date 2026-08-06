@@ -26,7 +26,8 @@ section.
 
 For every claimed version:
 
-1. Inspect `openclaw/package.json` exports and the installed type declarations.
+1. Inspect `node_modules/openclaw/package.json` exports and the installed `.d.ts`
+   declarations.
 2. Confirm the exact exported subpath, symbol name, signature, and return shape.
 3. Check all production imports and callers of the changed symbol.
 4. Keep NodeNext source imports on `.js` specifiers where required by this

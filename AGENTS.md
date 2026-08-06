@@ -9,8 +9,9 @@ contract.
 1. Read [the architecture guide](docs/architecture.md) for lifecycle and data flow
    and [CONTRIBUTING.md](CONTRIBUTING.md) for setup and validation.
 2. Use the module map and all matching project skills to scope the change. Read the
-   implementation, production callers, colocated tests, installed SDK
-   declarations, and analogous repository helpers before editing.
+   implementation, production callers, colocated tests, installed SDK package
+   exports and `.d.ts` declarations, and analogous repository helpers before
+   editing.
 3. Define the failing input, observable result, invariants to preserve, and one
    negative case that distinguishes a real fix from a plausible-looking one.
 4. Trace the changed value through all affected callers, mutually exclusive
