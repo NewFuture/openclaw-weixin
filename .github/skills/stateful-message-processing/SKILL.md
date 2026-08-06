@@ -78,7 +78,9 @@ Cover every applicable scenario:
 
 ## Test persistence and cleanup
 
-- Point `OPENCLAW_STATE_DIR` to an isolated temporary directory.
+- Isolate both `OPENCLAW_STATE_DIR` and the higher-precedence
+  `OPENCLAW_OAUTH_DIR`; clear the latter or point it to its own temporary
+  directory.
 - Cover write/read, account isolation, case normalization, supported legacy
   formats, and module or process restart.
 - Close database, file, and lock handles before deleting temporary directories.

@@ -12,16 +12,17 @@ contract.
    implementation, production callers, colocated tests, installed SDK package
    exports and `.d.ts` declarations, and analogous repository helpers before
    editing.
-3. Define the failing input, observable result, invariants to preserve, and one
-   negative case that distinguishes a real fix from a plausible-looking one.
-4. Trace the changed value through all affected callers, mutually exclusive
-   branches, error exits, persistence boundaries, and user-visible claims. Verify
-   helper and API semantics from implementation, types, or export maps.
-5. Add a focused original-failure test and its counterexample, then implement the
-   smallest complete fix.
-6. Run the focused test before escalating through the validation ladder. Review
-   the evidence separately: a green broad suite, test count, coverage floor, or
-   mocked boundary is not proof of the reported behavior.
+3. For behavior changes, define the failing input, observable result, invariants to
+   preserve, and one negative case that distinguishes a real fix from a
+   plausible-looking one. Trace the changed value through all affected callers,
+   mutually exclusive branches, error exits, and persistence boundaries.
+4. For every change, verify affected helper and API semantics and user-visible
+   claims from implementation, types, or export maps.
+5. For behavior changes, add a focused original-failure test and its
+   counterexample, then implement the smallest complete fix.
+6. Run applicable focused validation before escalating through the validation
+   ladder. Review the evidence separately: a green broad suite, test count,
+   coverage floor, or mocked boundary is not proof of the reported behavior.
 
 ## Module map
 

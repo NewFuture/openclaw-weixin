@@ -65,9 +65,10 @@ Restore the lockfile dependency installation before the normal full validation.
 
 - Run `npm run pack:check` when entry points, build output, package metadata,
   dependencies, or published files change.
-- Keep the declared minimum host consistent across the `package.json`
-  `peerDependencies` and `openclaw.install.minHostVersion` fields, bilingual
-  READMEs, `CONTRIBUTING.md`, and CI.
+- Keep the declared minimum host consistent across `SUPPORTED_HOST_MIN` in
+  `src/compat.ts`, the `package.json` `peerDependencies` and
+  `openclaw.install.minHostVersion` fields, bilingual READMEs, `CONTRIBUTING.md`,
+  and CI.
 - Update matching English and Chinese `Unreleased` notes for user-visible
   compatibility changes, but leave release versioning to the maintainer flow.
 - State exact tested versions and commands in the PR; do not use total test count
