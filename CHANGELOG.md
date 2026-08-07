@@ -8,10 +8,11 @@
 
 ### 修复
 
-- **QR 登录保留稳定 `--account` 别名：** `channels login --account <alias>` 成功后除写入
-  服务端 `ilink_bot_id`（如 `hex-im-bot`）外，再写入同内容的别名凭证文件并登记索引。
-  多账号部署用 `leader` / `jinjin` 等配置键绑定时不再需要手工复制 hash 文件；
-  `clearStaleAccountsForUserId` 支持同时保留 primary + alias。
+- **QR 登录保留稳定 `--account` 别名：** `channels login --account <alias>` 成功后写入
+  别名与服务端 `ilink_bot_id` 两份凭证，但运行时索引只登记**一个** canonical id（优先别名），
+  避免同一 bot token 拉起两条 monitor。宿主 `default` 哨兵不会变成别名；
+  `alreadyConnected` / `binded_redirect` 时在不歧义的情况下把 hash 绑定迁移到别名；
+  先发布索引再清理 stale，索引写入失败时保留原索引。
 
 ## [3.0.2] - 2026-08-05
 

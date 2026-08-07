@@ -39,7 +39,12 @@ vi.mock("./auth/accounts.js", () => ({
   DEFAULT_BASE_URL: "https://api.example.test",
   listWeixinAccountIds: mocks.listAccountIds,
   loadWeixinAccount: vi.fn(),
-  persistWeixinLoginAccounts: vi.fn(() => ({ primaryId: "bot-im-bot", aliasId: null })),
+  persistWeixinLoginAccounts: vi.fn(() => ({
+    primaryId: "bot-im-bot",
+    aliasId: null,
+    canonicalId: "bot-im-bot",
+  })),
+  migrateBoundAccountToAlias: vi.fn(() => null),
   resolveWeixinAccount: mocks.resolveAccount,
   triggerWeixinChannelReload: vi.fn(),
 }));

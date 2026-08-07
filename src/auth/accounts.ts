@@ -57,16 +57,24 @@ export function listIndexedWeixinAccountIds(): string[] {
   }
 }
 
-/** Add accountId to the persistent index (no-op if already present). */
-export function registerWeixinAccountId(accountId: string): void {
+/**
+ * OpenClaw host sentinel passed to `auth.login` when the user omits `--account`.
+ * Must never become a durable runtime / credential alias.
+ */
+export const HOST_DEFAULT_ACCOUNT_ID = "default";
+
+/** Replace the persistent account index in a single write. */
+function writeAccountIndex(accountIds: string[]): void {
   const dir = resolveWeixinStateDir();
   fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(resolveAccountIndexPath(), JSON.stringify(accountIds, null, 2), "utf-8");
+}
 
+/** Add accountId to the persistent index (no-op if already present). */
+export function registerWeixinAccountId(accountId: string): void {
   const existing = listIndexedWeixinAccountIds();
   if (existing.includes(accountId)) return;
-
-  const updated = [...existing, accountId];
-  fs.writeFileSync(resolveAccountIndexPath(), JSON.stringify(updated, null, 2), "utf-8");
+  writeAccountIndex([...existing, accountId]);
 }
 
 /** Remove accountId from the persistent index. */
@@ -74,7 +82,7 @@ export function unregisterWeixinAccountId(accountId: string): void {
   const existing = listIndexedWeixinAccountIds();
   const updated = existing.filter((id) => id !== accountId);
   if (updated.length !== existing.length) {
-    fs.writeFileSync(resolveAccountIndexPath(), JSON.stringify(updated, null, 2), "utf-8");
+    writeAccountIndex(updated);
   }
 }
 
@@ -83,9 +91,10 @@ export function unregisterWeixinAccountId(accountId: string): void {
  * Called after a successful QR login to ensure only the latest account remains
  * for a given WeChat user, preventing ambiguous contextToken matches.
  *
- * `keepAccountIds` may list both the bot hash id and a stable CLI alias so a
- * dual-file login (primary + alias) does not delete itself.
- *
+ * @param keepAccountIds canonical runtime id and optional companion credential
+ *   ids that must not be deleted (e.g. bot-hash file kept for lookup while only
+ *   the alias is indexed)
+ * @param userId WeChat user id whose other indexed accounts should be removed
  * @param onClearContextTokens callback to clear context tokens for the removed account
  */
 export function clearStaleAccountsForUserId(
@@ -112,8 +121,9 @@ export function clearStaleAccountsForUserId(
 }
 
 /**
- * True when `requestedAccountId` is a human-stable alias (e.g. `collin`), not the
- * server bot id and not an ephemeral UUID session key used as login sessionKey.
+ * Resolve a stable human alias to persist alongside the primary bot id.
+ * Returns null for missing input, the primary bot id itself, the OpenClaw
+ * `default` host sentinel, or an ephemeral UUID session key.
  */
 export function resolveLoginAccountAlias(
   requestedAccountId: string | null | undefined,
@@ -123,6 +133,7 @@ export function resolveLoginAccountAlias(
   if (!raw) return null;
   const alias = normalizeAccountId(raw);
   if (!alias || alias === primaryNormalizedId) return null;
+  if (alias.toLowerCase() === HOST_DEFAULT_ACCOUNT_ID) return null;
   // Ephemeral login session keys must never become durable account files.
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(alias)) {
     return null;
@@ -133,16 +144,29 @@ export function resolveLoginAccountAlias(
 export type PersistWeixinLoginAccountsResult = {
   primaryId: string;
   aliasId: string | null;
+  /** Sole id registered for gateway `listAccountIds` / monitor startup. */
+  canonicalId: string;
 };
+
+/**
+ * Publish exactly one canonical runtime account id into the index.
+ * Drops the bot-hash id from the index when an alias is canonical so OpenClaw
+ * does not start two monitors for the same bot token.
+ */
+function publishCanonicalAccountIndex(canonicalId: string, dropFromIndex: readonly string[]): void {
+  const drop = new Set(dropFromIndex.filter((id) => id && id !== canonicalId));
+  const next = listIndexedWeixinAccountIds().filter((id) => id !== canonicalId && !drop.has(id));
+  next.push(canonicalId);
+  writeAccountIndex(next);
+}
 
 /**
  * Persist QR-login credentials under the server bot id and, when the caller
  * passed a stable `--account` alias, also under that alias (same token/userId).
  *
- * Multi-account deployments bind OpenClaw config to names like `leader` /
- * `jinjin`, but iLink returns `hex@im.bot`. Without the alias file,
- * `channels login --account <alias>` leaves only the hash credential and
- * alias-based bindings / allowlists cannot resolve the linked userId.
+ * Only the canonical runtime id is indexed (`alias` when present, otherwise the
+ * bot hash). The bot-hash credential file may still exist for lookup/compat, but
+ * must not create a second gateway monitor.
  */
 export function persistWeixinLoginAccounts(params: {
   botAccountId: string;
@@ -164,22 +188,124 @@ export function persistWeixinLoginAccounts(params: {
   saveWeixinAccount(primaryId, creds);
 
   const aliasId = resolveLoginAccountAlias(params.requestedAccountId, primaryId);
+  const canonicalId = aliasId ?? primaryId;
   if (aliasId) {
     saveWeixinAccount(aliasId, creds);
     logger.info(`persistWeixinLoginAccounts: wrote alias=${aliasId} alongside primary=${primaryId}`);
   }
 
-  const keep = aliasId ? [primaryId, aliasId] : [primaryId];
+  // Publish the canonical index entry before destructive stale cleanup so a
+  // later failure cannot leave credentials undiscoverable after restart.
+  publishCanonicalAccountIndex(canonicalId, aliasId ? [primaryId] : []);
+
   if (params.userId?.trim()) {
-    clearStaleAccountsForUserId(keep, params.userId.trim(), params.onClearContextTokens);
+    clearStaleAccountsForUserId(
+      aliasId ? [canonicalId, primaryId] : [canonicalId],
+      params.userId.trim(),
+      params.onClearContextTokens,
+    );
   }
 
-  registerWeixinAccountId(primaryId);
-  if (aliasId) {
-    registerWeixinAccountId(aliasId);
+  return { primaryId, aliasId, canonicalId };
+}
+
+export type MigrateBoundAccountToAliasResult = PersistWeixinLoginAccountsResult;
+
+/**
+ * When QR login returns `alreadyConnected` / `binded_redirect`, migrate an
+ * unambiguous hash-only binding onto a requested stable `--account` alias.
+ *
+ * Returns null when no alias was requested (including the host `default`
+ * sentinel). Throws when multiple token-bearing indexed accounts make the
+ * source binding ambiguous, or when no local credentials exist to migrate.
+ */
+export function migrateBoundAccountToAlias(params: {
+  requestedAccountId?: string | null;
+  onClearContextTokens?: (accountId: string) => void;
+}): MigrateBoundAccountToAliasResult | null {
+  // primary id unknown until we resolve the source credential; pass "" so only
+  // sentinel / UUID / empty checks apply before we know the hash id.
+  const aliasId = resolveLoginAccountAlias(params.requestedAccountId, "");
+  if (!aliasId) return null;
+
+  const indexedWithToken = listIndexedWeixinAccountIds()
+    .map((id) => ({ id, data: loadWeixinAccount(id) }))
+    .filter((entry): entry is { id: string; data: WeixinAccountData } => Boolean(entry.data?.token?.trim()));
+
+  const aliasEntry = indexedWithToken.find((entry) => entry.id === aliasId);
+  if (aliasEntry) {
+    const aliasToken = aliasEntry.data.token?.trim() ?? "";
+    const companion = (aliasToken ? findCompanionBotAccountId(aliasToken, aliasId) : null) ?? aliasId;
+    return { primaryId: companion, aliasId, canonicalId: aliasId };
   }
 
-  return { primaryId, aliasId };
+  if (indexedWithToken.length === 0) {
+    throw new Error(
+      `weixin: already connected, but no local credentials are available to migrate to --account ${aliasId}. ` +
+        `Clear stale state or re-login with a fresh QR (force) so a token is issued.`,
+    );
+  }
+
+  if (indexedWithToken.length > 1) {
+    const ids = indexedWithToken.map((entry) => entry.id).join(", ");
+    throw new Error(
+      `weixin: already connected, but multiple bound accounts are ambiguous (${ids}). ` +
+        `Re-login with force for a single account, or remove the extra credentials before migrating to --account ${aliasId}.`,
+    );
+  }
+
+  const source = indexedWithToken[0];
+  const token = source.data.token?.trim();
+  if (!token) {
+    throw new Error(
+      `weixin: already connected, but the matched account ${source.id} has no token to migrate to --account ${aliasId}.`,
+    );
+  }
+  const creds = {
+    token,
+    baseUrl: source.data.baseUrl,
+    userId: source.data.userId,
+  };
+  saveWeixinAccount(aliasId, creds);
+  // Keep the source credential file for lookup; only the alias is indexed.
+  if (source.id !== aliasId) {
+    saveWeixinAccount(source.id, creds);
+  }
+
+  publishCanonicalAccountIndex(aliasId, source.id !== aliasId ? [source.id] : []);
+
+  if (creds.userId?.trim()) {
+    clearStaleAccountsForUserId(
+      source.id === aliasId ? [aliasId] : [aliasId, source.id],
+      creds.userId.trim(),
+      params.onClearContextTokens,
+    );
+  }
+
+  logger.info(`migrateBoundAccountToAlias: canonical=${aliasId} from source=${source.id}`);
+  return { primaryId: source.id, aliasId, canonicalId: aliasId };
+}
+
+/** Best-effort companion bot-hash id sharing the same token (unindexed lookup). */
+function findCompanionBotAccountId(token: string, excludeId: string): string | null {
+  const dir = resolveAccountsDir();
+  try {
+    if (!fs.existsSync(dir)) return null;
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.endsWith(".json") || name.includes(".sync.") || name.includes(".context-tokens.")) {
+        continue;
+      }
+      const id = name.slice(0, -".json".length);
+      if (!id || id === excludeId) continue;
+      const data = loadWeixinAccount(id);
+      if (data?.token?.trim() === token && id.includes("-im-bot")) {
+        return id;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import {
   clearWeixinAccount,
   listIndexedWeixinAccountIds,
   loadWeixinAccount,
+  migrateBoundAccountToAlias,
   persistWeixinLoginAccounts,
   registerWeixinAccountId,
   resolveLoginAccountAlias,
@@ -186,10 +187,15 @@ describe("resolveLoginAccountAlias", () => {
   it("returns null for ephemeral UUID session keys", () => {
     expect(resolveLoginAccountAlias("550e8400-e29b-41d4-a716-446655440000", "bot-im-bot")).toBeNull();
   });
+
+  it("returns null for the OpenClaw DEFAULT_ACCOUNT_ID sentinel", () => {
+    expect(resolveLoginAccountAlias("default", "bot-im-bot")).toBeNull();
+    expect(resolveLoginAccountAlias("Default", "bot-im-bot")).toBeNull();
+  });
 });
 
 describe("persistWeixinLoginAccounts", () => {
-  it("writes only the bot id when no stable alias is requested", () => {
+  it("indexes only the bot id when no stable alias is requested", () => {
     const result = persistWeixinLoginAccounts({
       botAccountId: "abc@im.bot",
       token: "tok-1",
@@ -197,7 +203,11 @@ describe("persistWeixinLoginAccounts", () => {
       userId: "user-1@im.wechat",
     });
 
-    expect(result).toEqual({ primaryId: "abc-im-bot", aliasId: null });
+    expect(result).toEqual({
+      primaryId: "abc-im-bot",
+      aliasId: null,
+      canonicalId: "abc-im-bot",
+    });
     expect(listIndexedWeixinAccountIds()).toEqual(["abc-im-bot"]);
     expect(loadWeixinAccount("abc-im-bot")).toMatchObject({
       token: "tok-1",
@@ -206,7 +216,24 @@ describe("persistWeixinLoginAccounts", () => {
     expect(loadWeixinAccount("collin")).toBeNull();
   });
 
-  it("writes alias credentials alongside the bot id for multi-account login", () => {
+  it("treats host DEFAULT_ACCOUNT_ID as no alias and indexes only the bot id", () => {
+    const result = persistWeixinLoginAccounts({
+      botAccountId: "abc@im.bot",
+      token: "tok-default",
+      userId: "user-1@im.wechat",
+      requestedAccountId: "default",
+    });
+
+    expect(result).toEqual({
+      primaryId: "abc-im-bot",
+      aliasId: null,
+      canonicalId: "abc-im-bot",
+    });
+    expect(listIndexedWeixinAccountIds()).toEqual(["abc-im-bot"]);
+    expect(loadWeixinAccount("default")).toBeNull();
+  });
+
+  it("indexes only the alias as the canonical runtime id while keeping the bot-hash credential file", () => {
     const result = persistWeixinLoginAccounts({
       botAccountId: "9ff4830b870e@im.bot",
       token: "tok-alias",
@@ -215,8 +242,13 @@ describe("persistWeixinLoginAccounts", () => {
       requestedAccountId: "collin",
     });
 
-    expect(result).toEqual({ primaryId: "9ff4830b870e-im-bot", aliasId: "collin" });
-    expect(listIndexedWeixinAccountIds()).toEqual(["9ff4830b870e-im-bot", "collin"]);
+    expect(result).toEqual({
+      primaryId: "9ff4830b870e-im-bot",
+      aliasId: "collin",
+      canonicalId: "collin",
+    });
+    // One gateway monitor only — never register primary + alias together.
+    expect(listIndexedWeixinAccountIds()).toEqual(["collin"]);
     expect(loadWeixinAccount("collin")).toMatchObject({
       token: "tok-alias",
       userId: "o9cq80zLSSEWjtr2UODlOgvt3pO4@im.wechat",
@@ -224,7 +256,7 @@ describe("persistWeixinLoginAccounts", () => {
     expect(loadWeixinAccount("9ff4830b870e-im-bot")?.token).toBe("tok-alias");
   });
 
-  it("does not delete the alias when clearing stale accounts for the same user", () => {
+  it("publishes the canonical index entry before clearing stale accounts", () => {
     saveWeixinAccount("old-im-bot", { token: "old", userId: "user-shared@im.wechat" });
     registerWeixinAccountId("old-im-bot");
 
@@ -238,6 +270,93 @@ describe("persistWeixinLoginAccounts", () => {
     expect(loadWeixinAccount("old-im-bot")).toBeNull();
     expect(loadWeixinAccount("staff")?.token).toBe("fresh");
     expect(loadWeixinAccount("new-im-bot")?.token).toBe("fresh");
-    expect(listIndexedWeixinAccountIds()).toEqual(["new-im-bot", "staff"]);
+    expect(listIndexedWeixinAccountIds()).toEqual(["staff"]);
+  });
+
+  it("leaves the previous index intact when publishing the canonical id fails", () => {
+    saveWeixinAccount("old-im-bot", { token: "old", userId: "user-shared@im.wechat" });
+    registerWeixinAccountId("old-im-bot");
+    const indexPath = path.join(tmpDir, "openclaw-weixin", "accounts.json");
+    expect(listIndexedWeixinAccountIds()).toEqual(["old-im-bot"]);
+
+    const originalWrite = fs.writeFileSync.bind(fs);
+    const writeSpy = vi.spyOn(fs, "writeFileSync").mockImplementation((file, data, options) => {
+      if (String(file) === indexPath) {
+        throw new Error("injected index write failure");
+      }
+      return originalWrite(file, data, options as never);
+    });
+
+    expect(() =>
+      persistWeixinLoginAccounts({
+        botAccountId: "new@im.bot",
+        token: "fresh",
+        userId: "user-shared@im.wechat",
+        requestedAccountId: "staff",
+      }),
+    ).toThrow(/injected index write failure/);
+
+    writeSpy.mockRestore();
+    expect(listIndexedWeixinAccountIds()).toEqual(["old-im-bot"]);
+    expect(loadWeixinAccount("old-im-bot")?.token).toBe("old");
+  });
+});
+
+describe("migrateBoundAccountToAlias", () => {
+  it("returns null when no stable alias was requested", () => {
+    saveWeixinAccount("hash-im-bot", { token: "tok", userId: "user-a@im.wechat" });
+    registerWeixinAccountId("hash-im-bot");
+    expect(migrateBoundAccountToAlias({ requestedAccountId: "default" })).toBeNull();
+    expect(migrateBoundAccountToAlias({})).toBeNull();
+    expect(listIndexedWeixinAccountIds()).toEqual(["hash-im-bot"]);
+  });
+
+  it("migrates an unambiguous hash-only binding to the requested alias", () => {
+    saveWeixinAccount("hash-im-bot", {
+      token: "tok",
+      baseUrl: "https://ilink.example.test",
+      userId: "user-a@im.wechat",
+    });
+    registerWeixinAccountId("hash-im-bot");
+
+    const result = migrateBoundAccountToAlias({ requestedAccountId: "leader" });
+
+    expect(result).toEqual({
+      primaryId: "hash-im-bot",
+      aliasId: "leader",
+      canonicalId: "leader",
+    });
+    expect(listIndexedWeixinAccountIds()).toEqual(["leader"]);
+    expect(loadWeixinAccount("leader")).toMatchObject({
+      token: "tok",
+      userId: "user-a@im.wechat",
+    });
+    // Companion credential retained for lookup; not a second runtime account.
+    expect(loadWeixinAccount("hash-im-bot")?.token).toBe("tok");
+  });
+
+  it("is a no-op success when the alias is already the sole indexed account", () => {
+    saveWeixinAccount("leader", { token: "tok", userId: "user-a@im.wechat" });
+    saveWeixinAccount("hash-im-bot", { token: "tok", userId: "user-a@im.wechat" });
+    registerWeixinAccountId("leader");
+
+    const result = migrateBoundAccountToAlias({ requestedAccountId: "leader" });
+
+    expect(result).toEqual({
+      primaryId: "hash-im-bot",
+      aliasId: "leader",
+      canonicalId: "leader",
+    });
+    expect(listIndexedWeixinAccountIds()).toEqual(["leader"]);
+  });
+
+  it("fails with an actionable error when multiple bound accounts are ambiguous", () => {
+    saveWeixinAccount("a-im-bot", { token: "tok-a", userId: "user-a@im.wechat" });
+    saveWeixinAccount("b-im-bot", { token: "tok-b", userId: "user-b@im.wechat" });
+    registerWeixinAccountId("a-im-bot");
+    registerWeixinAccountId("b-im-bot");
+
+    expect(() => migrateBoundAccountToAlias({ requestedAccountId: "leader" })).toThrow(/ambiguous|multiple/i);
+    expect(listIndexedWeixinAccountIds()).toEqual(["a-im-bot", "b-im-bot"]);
   });
 });

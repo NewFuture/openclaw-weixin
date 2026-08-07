@@ -8,6 +8,7 @@ import {
   DEFAULT_BASE_URL,
   listWeixinAccountIds,
   loadWeixinAccount,
+  migrateBoundAccountToAlias,
   persistWeixinLoginAccounts,
   resolveWeixinAccount,
   triggerWeixinChannelReload,
@@ -380,9 +381,10 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       if (waitResult.connected && waitResult.botToken && waitResult.accountId) {
         try {
           // Persist under the server bot id and, when CLI/gateway passed a stable
-          // `--account` alias (e.g. collin), also under that alias so multi-account
-          // configs can resolve credentials without hand-copying hash files.
-          const { primaryId, aliasId } = persistWeixinLoginAccounts({
+          // `--account` alias (e.g. collin), also under that alias. Only the
+          // canonical runtime id is indexed (alias preferred) so one bot token
+          // never starts two monitors.
+          const { primaryId, aliasId, canonicalId } = persistWeixinLoginAccounts({
             botAccountId: waitResult.accountId,
             token: waitResult.botToken,
             baseUrl: waitResult.baseUrl,
@@ -393,20 +395,39 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           void triggerWeixinChannelReload();
           log(
             aliasId
-              ? `\n已将此 OpenClaw 连接到微信（账号 ${aliasId} → ${primaryId}）。`
+              ? `\n已将此 OpenClaw 连接到微信（账号 ${canonicalId}，凭证兼存 ${primaryId}）。`
               : `\n已将此 OpenClaw 连接到微信。`,
           );
         } catch (err) {
           logger.error(`auth.login: failed to save account data accountId=${waitResult.accountId} err=${String(err)}`);
           log(`⚠️  保存账号数据失败: ${String(err)}`);
+          throw err;
         }
       } else if (waitResult.alreadyConnected) {
-        // Server confirmed this OpenClaw is already bound to the scanned bot;
-        // local credentials are intact, nothing to persist. Exit successfully
-        // so that automated installers don't treat re-runs as login failures.
-        // The QR poller already wrote the user-facing message to stdout, so
-        // we deliberately do NOT echo it again via `log(...)`.
-        logger.info(`auth.login: bot already connected to this OpenClaw accountId=${account.accountId}`);
+        // Server confirmed this OpenClaw is already bound (binded_redirect). When
+        // the caller asked for a stable --account alias, migrate the unambiguous
+        // local credential onto that alias; otherwise succeed quietly for re-runs.
+        try {
+          const migrated = migrateBoundAccountToAlias({
+            requestedAccountId: account.accountId,
+            onClearContextTokens: clearContextTokensForAccount,
+          });
+          if (migrated) {
+            void triggerWeixinChannelReload();
+            log(`\n已将已绑定账号迁移为稳定别名 ${migrated.canonicalId}（凭证兼存 ${migrated.primaryId}）。`);
+            logger.info(
+              `auth.login: migrated already-connected bot to alias=${migrated.canonicalId} from=${migrated.primaryId}`,
+            );
+          } else {
+            logger.info(`auth.login: bot already connected to this OpenClaw accountId=${account.accountId}`);
+          }
+        } catch (err) {
+          logger.error(
+            `auth.login: already-connected alias migration failed accountId=${account.accountId} err=${String(err)}`,
+          );
+          log(`⚠️  ${String(err)}`);
+          throw err;
+        }
       } else {
         logger.warn(`auth.login: login did not complete accountId=${account.accountId} message=${waitResult.message}`);
         // log(waitResult.message);
@@ -532,7 +553,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
 
       if (result.connected && result.botToken && result.accountId) {
         try {
-          const { primaryId, aliasId } = persistWeixinLoginAccounts({
+          const { primaryId, aliasId, canonicalId } = persistWeixinLoginAccounts({
             botAccountId: result.accountId,
             token: result.botToken,
             baseUrl: result.baseUrl,
@@ -540,19 +561,36 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
             requestedAccountId: params.accountId,
             onClearContextTokens: clearContextTokensForAccount,
           });
-          triggerWeixinChannelReload();
+          void triggerWeixinChannelReload();
           logger.info(
             aliasId
-              ? `loginWithQrWait: saved account data primary=${primaryId} alias=${aliasId}`
-              : `loginWithQrWait: saved account data for accountId=${primaryId}`,
+              ? `loginWithQrWait: saved account data canonical=${canonicalId} primary=${primaryId}`
+              : `loginWithQrWait: saved account data for accountId=${canonicalId}`,
           );
         } catch (err) {
           logger.error(`loginWithQrWait: failed to save account data err=${String(err)}`);
+          throw err;
+        }
+      } else if (result.alreadyConnected) {
+        try {
+          const migrated = migrateBoundAccountToAlias({
+            requestedAccountId: params.accountId,
+            onClearContextTokens: clearContextTokensForAccount,
+          });
+          if (migrated) {
+            void triggerWeixinChannelReload();
+            logger.info(
+              `loginWithQrWait: migrated already-connected bot to alias=${migrated.canonicalId} from=${migrated.primaryId}`,
+            );
+          }
+        } catch (err) {
+          logger.error(`loginWithQrWait: already-connected alias migration failed err=${String(err)}`);
+          throw err;
         }
       }
 
       return {
-        connected: result.connected,
+        connected: result.connected || Boolean(result.alreadyConnected),
         message: result.message,
         accountId: result.accountId,
       } as { connected: boolean; message: string };

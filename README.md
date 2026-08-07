@@ -85,10 +85,12 @@ openclaw channels login --channel openclaw-weixin --account leader
 openclaw channels login --channel openclaw-weixin --account jinjin
 ```
 
-登录成功后会同时写入：
+登录成功后会写入：
 
-- `openclaw-weixin/accounts/<ilink_bot_id 规范化>.json`（服务端 bot id）
-- `openclaw-weixin/accounts/<alias>.json`（与上相同的 token / userId）
+- `openclaw-weixin/accounts/<alias>.json`（运行时账号；网关只按此 id 起一条 monitor）
+- `openclaw-weixin/accounts/<ilink_bot_id 规范化>.json`（同 token / userId，仅作查找兼容，不进运行时索引）
+
+未传 `--account` 时（宿主会传入 `default` 哨兵）只索引服务端 bot id，不会创建名为 `default` 的账号。已绑定过的 hash 账号再执行 `login --account <alias>` 时，会在不歧义的情况下把绑定迁移到别名。
 
 多个账号同时登录时，建议按「账号 + 渠道 + 对端」隔离上下文：
 
