@@ -169,9 +169,9 @@ jobs:
           console.log(`Registered ${plugin.id} with OpenClaw ${hostPackage.version}`);
           NODE
 
-      - name: Audit dependencies
+      - name: Audit all dependencies
         if: matrix.dependency_audit
-        run: npm run audit:deps
+        run: npm run audit:all
 
       - name: Check project
         if: matrix.validation == 'strict'
