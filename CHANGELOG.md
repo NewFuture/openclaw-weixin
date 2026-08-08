@@ -8,6 +8,14 @@
 
 ### 修复
 
+- **OpenClaw SDK 入口兼容：** `createTypingCallbacks` 改从
+  `openclaw/plugin-sdk/channel-message` 导入，同时兼容仍提供旧入口的最低宿主和已经移除
+  `channel-runtime` 的新版宿主；CI 针对两类实际 SDK 构建并导入该边界，且执行无 mock
+  插件注册冒烟。
+- **context token 用户 ID 大小写规范化（发送 ret=-3）：** context token 的账号级内存键和
+  持久化键统一对用户 ID 做小写规范化；getUpdates 返回混合大小写 ID、OpenClaw 会话目标
+  为小写或重启恢复旧格式文件时，仍能命中正确 token
+  （见 Tencent/openclaw-weixin#243）。
 - **QR 登录保留稳定 `--account` 别名（逻辑映射）：** `channels login --account <alias>`
   成功后凭证与状态仍落在服务端 `ilink_bot_id`（primary hash）下，并写入一对一
   `alias → hash` 映射供 bindings / 出站解析；`listAccountIds` / monitor 只使用

@@ -8,6 +8,16 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Fixed
 
+- **OpenClaw SDK entry compatibility:** `createTypingCallbacks` now imports from
+  `openclaw/plugin-sdk/channel-message`, supporting both the minimum host that
+  still exposes the legacy entry and modern hosts that removed `channel-runtime`.
+  CI builds and imports this boundary and runs an unmocked plugin-registration
+  smoke against both real SDK profiles.
+- **Context-token user ID case normalization (outbound ret=-3):** account-scoped
+  in-memory and persisted context-token keys now lowercase the user ID. Mixed-case
+  IDs from getUpdates, lowercased OpenClaw session targets, and legacy persisted
+  files therefore resolve the same token after restart
+  (see Tencent/openclaw-weixin#243).
 - **Persist stable `--account` aliases on QR login (logical mapping):** after
   `channels login --account <alias>` succeeds, credentials and state stay under
   the server `ilink_bot_id` (primary hash) and a 1:1 `alias → hash` map is stored

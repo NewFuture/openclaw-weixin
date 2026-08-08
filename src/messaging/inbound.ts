@@ -19,7 +19,9 @@ import { buildWeixinInboundDedupeKey } from "./inbound-dedupe.js";
 const contextTokenStore = new Map<string, string>();
 
 function contextTokenKey(accountId: string, userId: string): string {
-  return `${accountId}:${userId}`;
+  // OpenClaw lowercases peer IDs before outbound lookup, while getUpdates can
+  // supply the same ID with mixed case.
+  return `${accountId}:${userId.toLowerCase()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -28,6 +30,10 @@ function contextTokenKey(accountId: string, userId: string): string {
 
 function resolveContextTokenFilePath(accountId: string): string {
   return path.join(resolveStateDir(), "openclaw-weixin", "accounts", `${accountId}.context-tokens.json`);
+}
+
+function formatContextTokenStoreError(err: unknown, filePath: string): string {
+  return String(err).replaceAll(filePath, "<state-file>");
 }
 
 /** Persist all context tokens for a given account to disk. */
@@ -45,7 +51,9 @@ function persistContextTokens(accountId: string): void {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(filePath, JSON.stringify(tokens, null, 0), "utf-8");
   } catch (err) {
-    logger.warn(`persistContextTokens: failed to write ${filePath}: ${String(err)}`);
+    logger.warn(
+      `persistContextTokens: failed to write account-scoped state: ${formatContextTokenStoreError(err, filePath)}`,
+    );
   }
 }
 
@@ -66,9 +74,11 @@ export function restoreContextTokens(accountId: string): void {
         count++;
       }
     }
-    logger.info(`restoreContextTokens: restored ${count} tokens for account=${accountId}`);
+    logger.info(`restoreContextTokens: restored ${count} account-scoped tokens`);
   } catch (err) {
-    logger.warn(`restoreContextTokens: failed to read ${filePath}: ${String(err)}`);
+    logger.warn(
+      `restoreContextTokens: failed to read account-scoped state: ${formatContextTokenStoreError(err, filePath)}`,
+    );
   }
 }
 
@@ -84,16 +94,18 @@ export function clearContextTokensForAccount(accountId: string): void {
   try {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   } catch (err) {
-    logger.warn(`clearContextTokensForAccount: failed to remove ${filePath}: ${String(err)}`);
+    logger.warn(
+      `clearContextTokensForAccount: failed to remove account-scoped state: ${formatContextTokenStoreError(err, filePath)}`,
+    );
   }
-  logger.info(`clearContextTokensForAccount: cleared tokens for account=${accountId}`);
+  logger.info("clearContextTokensForAccount: cleared account-scoped tokens");
 }
 
 /** Store a context token for a given account+user pair (memory + disk). */
 export function setContextToken(accountId: string, userId: string, token: string): void {
   const k = contextTokenKey(accountId, userId);
-  logger.debug(`setContextToken: key=${k}`);
   contextTokenStore.set(k, token);
+  logger.debug(`setContextToken: stored=true storeSize=${contextTokenStore.size}`);
   persistContextTokens(accountId);
 }
 
@@ -101,7 +113,7 @@ export function setContextToken(accountId: string, userId: string, token: string
 export function getContextToken(accountId: string, userId: string): string | undefined {
   const k = contextTokenKey(accountId, userId);
   const val = contextTokenStore.get(k);
-  logger.debug(`getContextToken: key=${k} found=${val !== undefined} storeSize=${contextTokenStore.size}`);
+  logger.debug(`getContextToken: found=${val !== undefined} storeSize=${contextTokenStore.size}`);
   return val;
 }
 
