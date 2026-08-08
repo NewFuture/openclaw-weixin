@@ -94,10 +94,10 @@ openclaw channels login --channel openclaw-weixin --account jinjin
 
 A successful login writes:
 
-- `openclaw-weixin/accounts/<alias>.json` (runtime account; the gateway starts one monitor for this id)
-- `openclaw-weixin/accounts/<normalized ilink_bot_id>.json` (same token / userId, lookup/compat only — not indexed)
+- `openclaw-weixin/accounts/<normalized ilink_bot_id>.json` (credential + state namespace; `listAccountIds` / monitors use only this id)
+- `openclaw-weixin/account-aliases.json` (1:1 `alias → hash` map for bindings / outbound resolution; aliases never start a second transport)
 
-Without `--account` (the host passes its `default` sentinel) only the server bot id is indexed; a `default` account file is never created. Re-running `login --account <alias>` against an already-bound hash-only install migrates that binding to the alias when unambiguous.
+Without `--account` (the host passes its `default` sentinel) only the server bot id is indexed; a `default` account file is never created. Re-running `login --account <alias>` against an already-bound hash-only install records an alias mapping when unambiguous (no online rename, no state-namespace move).
 
 For multiple logged-in accounts, isolate context by account + channel + sender:
 

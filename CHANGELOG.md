@@ -8,11 +8,12 @@
 
 ### 修复
 
-- **QR 登录保留稳定 `--account` 别名：** `channels login --account <alias>` 成功后写入
-  别名与服务端 `ilink_bot_id` 两份凭证，但运行时索引只登记**一个** canonical id（优先别名），
-  避免同一 bot token 拉起两条 monitor。宿主 `default` 哨兵不会变成别名；
-  `alreadyConnected` / `binded_redirect` 时在不歧义的情况下把 hash 绑定迁移到别名；
-  先发布索引再清理 stale，索引写入失败时保留原索引。
+- **QR 登录保留稳定 `--account` 别名（逻辑映射）：** `channels login --account <alias>`
+  成功后凭证与状态仍落在服务端 `ilink_bot_id`（primary hash）下，并写入一对一
+  `alias → hash` 映射供 bindings / 出站解析；`listAccountIds` / monitor 只使用
+  primary，宿主对别名的 `start/stop` 不会再起一条 transport。宿主 `default`
+  哨兵不会变成别名；`alreadyConnected` / `binded_redirect` 在不歧义时只登记映射；
+  索引原子写入，失败时保留原索引。
 
 ## [3.0.2] - 2026-08-05
 

@@ -122,14 +122,18 @@ type GatewayContext = Parameters<StartAccount>[0];
 const cfg: OpenClawConfig = {};
 const recipient = "user-test@im.wechat";
 
-function makeAccount(accountId: string): ResolvedWeixinAccount {
+function makeAccount(accountId: string, overrides: Partial<ResolvedWeixinAccount> = {}): ResolvedWeixinAccount {
+  const primaryId = overrides.primaryId ?? accountId;
   return {
-    accountId,
     baseUrl: "https://api.example.test",
     cdnBaseUrl: "https://cdn.example.test",
-    token: `token-${accountId}`,
+    token: `token-${primaryId}`,
     enabled: true,
     configured: true,
+    ...overrides,
+    accountId,
+    primaryId,
+    aliasId: overrides.aliasId ?? null,
   };
 }
 
@@ -425,6 +429,57 @@ describe("weixinPlugin gateway lifecycle", () => {
     abortController.abort();
     await expect(start).resolves.toBeUndefined();
     expect(monitorSettled).toBe(true);
+  });
+
+  it("skips transport when the host starts an alias lifecycle task", async () => {
+    const setStatus = vi.fn();
+
+    await expect(
+      requireStartAccount()(
+        makeGatewayContext(makeAccount("leader", { primaryId: "bot-im-bot", aliasId: "leader" }), {
+          setStatus,
+        }),
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(mocks.monitorProvider).not.toHaveBeenCalled();
+    expect(mocks.notifyStart).not.toHaveBeenCalled();
+    expect(setStatus).toHaveBeenCalledWith({
+      accountId: "leader",
+      running: false,
+    });
+  });
+
+  it("starts the primary monitor with routeAccountId set to the bound alias", async () => {
+    const setStatus = vi.fn();
+    const abortController = new AbortController();
+    let resolveMonitor: (() => void) | undefined;
+    mocks.monitorProvider.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveMonitor = resolve;
+          abortController.signal.addEventListener("abort", () => resolve());
+        }),
+    );
+
+    const start = requireStartAccount()(
+      makeGatewayContext(makeAccount("bot-im-bot", { primaryId: "bot-im-bot", aliasId: "leader" }), {
+        abortSignal: abortController.signal,
+        setStatus,
+      }),
+    );
+
+    await vi.waitFor(() => expect(mocks.monitorProvider).toHaveBeenCalledOnce());
+    expect(mocks.monitorProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: "bot-im-bot",
+        routeAccountId: "leader",
+      }),
+    );
+
+    abortController.abort();
+    resolveMonitor?.();
+    await expect(start).resolves.toBeUndefined();
   });
 
   it("marks an unconfigured account stopped and rejects before contacting the backend", async () => {

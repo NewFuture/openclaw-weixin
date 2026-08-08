@@ -10,6 +10,7 @@ import {
   loadWeixinAccount,
   migrateBoundAccountToAlias,
   persistWeixinLoginAccounts,
+  resolvePrimaryAccountId,
   resolveWeixinAccount,
   triggerWeixinChannelReload,
 } from "./auth/accounts.js";
@@ -109,8 +110,9 @@ async function sendWeixinOutbound(params: {
   contextToken?: string;
 }): Promise<{ channel: string; messageId: string }> {
   const account = resolveWeixinAccount(params.cfg, params.accountId);
-  const aLog = logger.withAccount(account.accountId);
-  assertSessionActive(account.accountId);
+  const storageAccountId = account.primaryId;
+  const aLog = logger.withAccount(storageAccountId);
+  assertSessionActive(storageAccountId);
   if (!account.configured) {
     aLog.error(`sendWeixinOutbound: account not configured`);
     throw new Error("weixin not configured: please run `openclaw channels login --channel openclaw-weixin`");
@@ -228,20 +230,22 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
     },
     sendText: async (ctx) => {
       const accountId = ctx.accountId || resolveOutboundAccountId(ctx.cfg, ctx.to);
+      const account = resolveWeixinAccount(ctx.cfg, accountId);
       const result = await sendWeixinOutbound({
         cfg: ctx.cfg,
         to: ctx.to,
         text: ctx.text,
-        accountId,
-        contextToken: getContextToken(accountId, ctx.to),
+        accountId: account.accountId,
+        contextToken: getContextToken(account.primaryId, ctx.to),
       });
       return result;
     },
     sendMedia: async (ctx) => {
       const accountId = ctx.accountId || resolveOutboundAccountId(ctx.cfg, ctx.to);
       const account = resolveWeixinAccount(ctx.cfg, accountId);
-      const aLog = logger.withAccount(account.accountId);
-      assertSessionActive(account.accountId);
+      const storageAccountId = account.primaryId;
+      const aLog = logger.withAccount(storageAccountId);
+      assertSessionActive(storageAccountId);
       if (!account.configured) {
         aLog.error(`sendMedia: account not configured`);
         throw new Error("weixin not configured: please run `openclaw channels login --channel openclaw-weixin`");
@@ -272,7 +276,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           filePath = await downloadRemoteImageToTemp(mediaUrl, MEDIA_OUTBOUND_TEMP_DIR);
           aLog.debug(`sendMedia: remote image downloaded to ${filePath}`);
         }
-        const contextToken = getContextToken(account.accountId, ctx.to);
+        const contextToken = getContextToken(storageAccountId, ctx.to);
         try {
           const result = await sendWeixinMediaFile({
             filePath,
@@ -295,7 +299,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         }
       }
 
-      const contextToken = getContextToken(account.accountId, ctx.to);
+      const contextToken = getContextToken(storageAccountId, ctx.to);
       try {
         const result = await sendMessageWeixin({
           to: ctx.to,
@@ -380,11 +384,10 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
 
       if (waitResult.connected && waitResult.botToken && waitResult.accountId) {
         try {
-          // Persist under the server bot id and, when CLI/gateway passed a stable
-          // `--account` alias (e.g. collin), also under that alias. Only the
-          // canonical runtime id is indexed (alias preferred) so one bot token
-          // never starts two monitors.
-          const { primaryId, aliasId, canonicalId } = persistWeixinLoginAccounts({
+          // Persist under the server bot-hash. Optional `--account` alias becomes a
+          // 1:1 logical mapping for bindings/outbound; listAccountIds / monitors
+          // stay on the primary hash so the host cannot start a second transport.
+          const { aliasId } = persistWeixinLoginAccounts({
             botAccountId: waitResult.accountId,
             token: waitResult.botToken,
             baseUrl: waitResult.baseUrl,
@@ -395,18 +398,18 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           void triggerWeixinChannelReload();
           log(
             aliasId
-              ? `\n已将此 OpenClaw 连接到微信（账号 ${canonicalId}，凭证兼存 ${primaryId}）。`
+              ? `\n已将此 OpenClaw 连接到微信（已绑定稳定别名；传输层仍使用 bot id）。`
               : `\n已将此 OpenClaw 连接到微信。`,
           );
         } catch (err) {
-          logger.error(`auth.login: failed to save account data accountId=${waitResult.accountId} err=${String(err)}`);
+          logger.error(`auth.login: failed to save account data err=${String(err)}`);
           log(`⚠️  保存账号数据失败: ${String(err)}`);
           throw err;
         }
       } else if (waitResult.alreadyConnected) {
         // Server confirmed this OpenClaw is already bound (binded_redirect). When
-        // the caller asked for a stable --account alias, migrate the unambiguous
-        // local credential onto that alias; otherwise succeed quietly for re-runs.
+        // the caller asked for a stable --account alias, bind it onto the
+        // unambiguous local primary hash without renaming the runtime id.
         try {
           const migrated = migrateBoundAccountToAlias({
             requestedAccountId: account.accountId,
@@ -414,22 +417,18 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           });
           if (migrated) {
             void triggerWeixinChannelReload();
-            log(`\n已将已绑定账号迁移为稳定别名 ${migrated.canonicalId}（凭证兼存 ${migrated.primaryId}）。`);
-            logger.info(
-              `auth.login: migrated already-connected bot to alias=${migrated.canonicalId} from=${migrated.primaryId}`,
-            );
+            log(`\n已为已绑定账号登记稳定别名（传输层仍使用 bot id）。`);
+            logger.info("auth.login: bound already-connected bot to requested alias mapping");
           } else {
-            logger.info(`auth.login: bot already connected to this OpenClaw accountId=${account.accountId}`);
+            logger.info("auth.login: bot already connected to this OpenClaw");
           }
         } catch (err) {
-          logger.error(
-            `auth.login: already-connected alias migration failed accountId=${account.accountId} err=${String(err)}`,
-          );
+          logger.error(`auth.login: already-connected alias binding failed err=${String(err)}`);
           log(`⚠️  ${String(err)}`);
           throw err;
         }
       } else {
-        logger.warn(`auth.login: login did not complete accountId=${account.accountId} message=${waitResult.message}`);
+        logger.warn(`auth.login: login did not complete message=${waitResult.message}`);
         // log(waitResult.message);
         throw new Error(waitResult.message);
       }
@@ -443,13 +442,21 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         return;
       }
       const account = ctx.account;
-      const aLog = logger.withAccount(account.accountId);
+      const primaryId = account.primaryId || account.accountId;
+      // Host may call start(alias) after login; transport must only run for the
+      // primary hash from listAccountIds (prevents dual monitors).
+      if (account.accountId !== primaryId) {
+        logger.info("gateway.startAccount: skipping alias lifecycle task (transport owned by primary)");
+        ctx.setStatus?.({ accountId: account.accountId, running: false });
+        return;
+      }
+      const aLog = logger.withAccount(primaryId);
       aLog.debug(`about to call monitorWeixinProvider`);
-      restoreContextTokens(account.accountId);
+      restoreContextTokens(primaryId);
       aLog.info(`starting weixin webhook`);
 
       ctx.setStatus?.({
-        accountId: account.accountId,
+        accountId: primaryId,
         running: true,
         lastStartAt: Date.now(),
         lastEventAt: Date.now(),
@@ -458,13 +465,13 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       if (!account.configured) {
         aLog.error(`account not configured`);
         ctx.log?.error?.(
-          `[${account.accountId}] weixin not logged in — run: openclaw channels login --channel openclaw-weixin`,
+          `[${primaryId}] weixin not logged in — run: openclaw channels login --channel openclaw-weixin`,
         );
-        ctx.setStatus?.({ accountId: account.accountId, running: false });
+        ctx.setStatus?.({ accountId: primaryId, running: false });
         throw new Error("weixin not configured: missing token");
       }
 
-      ctx.log?.info?.(`[${account.accountId}] starting weixin provider (${DEFAULT_BASE_URL})`);
+      ctx.log?.info?.(`[${primaryId}] starting weixin provider (${DEFAULT_BASE_URL})`);
 
       try {
         const resp = await notifyStart({
@@ -479,7 +486,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       }
 
       const logPath = aLog.getLogFilePath();
-      ctx.log?.info?.(`[${account.accountId}] weixin logs: ${logPath}`);
+      ctx.log?.info?.(`[${primaryId}] weixin logs: ${logPath}`);
 
       // The gateway injects the channel runtime surface per-call (task-scoped). We require it:
       // it carries reply/routing/session/media/commands helpers used by processOneMessage.
@@ -487,8 +494,8 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       if (!ctx.channelRuntime) {
         const msg = `ctx.channelRuntime missing — host too old or plugin SDK contract violated`;
         aLog.error(msg);
-        ctx.log?.error?.(`[${account.accountId}] ${msg}`);
-        ctx.setStatus?.({ accountId: account.accountId, running: false });
+        ctx.log?.error?.(`[${primaryId}] ${msg}`);
+        ctx.setStatus?.({ accountId: primaryId, running: false });
         throw new Error(msg);
       }
 
@@ -497,7 +504,8 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         baseUrl: account.baseUrl,
         cdnBaseUrl: account.cdnBaseUrl,
         token: account.token,
-        accountId: account.accountId,
+        accountId: primaryId,
+        routeAccountId: account.aliasId ?? primaryId,
         config: ctx.cfg,
         runtime: ctx.runtime,
         channelRuntime: ctx.channelRuntime as unknown as PluginRuntime["channel"],
@@ -507,7 +515,12 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
     },
     stopAccount: async (ctx) => {
       const account = ctx.account;
-      const aLog = logger.withAccount(account.accountId);
+      const primaryId = account.primaryId || account.accountId;
+      if (account.accountId !== primaryId) {
+        logger.info("gateway.stopAccount: skipping alias lifecycle task");
+        return;
+      }
+      const aLog = logger.withAccount(primaryId);
       if (!account.configured || !account.token?.trim()) {
         aLog.debug(`gateway.stopAccount: skip notifyStop (not configured or no token)`);
         return;
@@ -526,7 +539,8 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
     },
     loginWithQrStart: async ({ accountId, force, verbose }) => {
       // For re-login: use saved baseUrl from account data; fall back to default for new accounts.
-      const savedBaseUrl = accountId ? loadWeixinAccount(accountId)?.baseUrl?.trim() : "";
+      const storageId = accountId ? resolvePrimaryAccountId(accountId) : "";
+      const savedBaseUrl = storageId ? loadWeixinAccount(storageId)?.baseUrl?.trim() : "";
       const result: WeixinQrStartResult = await startWeixinLoginWithQr({
         accountId: accountId ?? undefined,
         apiBaseUrl: savedBaseUrl || DEFAULT_BASE_URL,
@@ -544,7 +558,8 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
     loginWithQrWait: async (params) => {
       // sessionKey is forwarded by the client after loginWithQrStart (runtime param extension).
       const sessionKey = (params as { sessionKey?: string }).sessionKey || params.accountId || "";
-      const savedBaseUrl = params.accountId ? loadWeixinAccount(params.accountId)?.baseUrl?.trim() : "";
+      const storageId = params.accountId ? resolvePrimaryAccountId(params.accountId) : "";
+      const savedBaseUrl = storageId ? loadWeixinAccount(storageId)?.baseUrl?.trim() : "";
       const result: WeixinQrWaitResult = await waitForWeixinLogin({
         sessionKey,
         apiBaseUrl: savedBaseUrl || DEFAULT_BASE_URL,
@@ -553,7 +568,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
 
       if (result.connected && result.botToken && result.accountId) {
         try {
-          const { primaryId, aliasId, canonicalId } = persistWeixinLoginAccounts({
+          const { aliasId } = persistWeixinLoginAccounts({
             botAccountId: result.accountId,
             token: result.botToken,
             baseUrl: result.baseUrl,
@@ -564,8 +579,8 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           void triggerWeixinChannelReload();
           logger.info(
             aliasId
-              ? `loginWithQrWait: saved account data canonical=${canonicalId} primary=${primaryId}`
-              : `loginWithQrWait: saved account data for accountId=${canonicalId}`,
+              ? "loginWithQrWait: saved account data with alias mapping"
+              : "loginWithQrWait: saved account data for primary bot id",
           );
         } catch (err) {
           logger.error(`loginWithQrWait: failed to save account data err=${String(err)}`);
@@ -579,12 +594,10 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           });
           if (migrated) {
             void triggerWeixinChannelReload();
-            logger.info(
-              `loginWithQrWait: migrated already-connected bot to alias=${migrated.canonicalId} from=${migrated.primaryId}`,
-            );
+            logger.info("loginWithQrWait: bound already-connected bot to requested alias mapping");
           }
         } catch (err) {
-          logger.error(`loginWithQrWait: already-connected alias migration failed err=${String(err)}`);
+          logger.error(`loginWithQrWait: already-connected alias binding failed err=${String(err)}`);
           throw err;
         }
       }
