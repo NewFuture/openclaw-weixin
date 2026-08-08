@@ -99,7 +99,8 @@ override applies.
 
 | Path | Contents |
 | --- | --- |
-| `openclaw-weixin/accounts.json` | Registered normalized account IDs |
+| `openclaw-weixin/accounts.json` | Registered primary bot-hash account IDs (monitors) |
+| `openclaw-weixin/account-aliases.json` | Optional 1:1 `alias → hash` map for bindings / outbound |
 | `openclaw-weixin/accounts/<accountId>.json` | Token, backend URL, save time, and linked user ID |
 | `openclaw-weixin/accounts/<accountId>.sync.json` | `getUpdates` cursor |
 | `openclaw-weixin/accounts/<accountId>.context-tokens.json` | Recipient context tokens for that account |

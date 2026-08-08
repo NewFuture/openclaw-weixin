@@ -21,6 +21,16 @@
 
 ## [未发布]
 
+### 修复
+
+- **QR 登录保留稳定 `--account` 别名（逻辑映射）：** `channels login --account <alias>`
+  成功后凭证与状态仍落在服务端 `ilink_bot_id`（primary hash）下，并写入一对一
+  `alias → hash` 映射供 bindings / 出站解析；`listAccountIds` / monitor 只使用
+  primary；`config.isEnabled` 对别名返回 false，避免宿主 `start(alias)` 建 task
+  后触发重启循环。宿主 `default` 哨兵不会变成别名；`alreadyConnected` 在不歧义时
+  只登记映射，对已有 primary hash 重登为 no-op；拒绝与其它 bot 冲突的别名凭证，
+  不搬迁 sync/context/allow-list；索引原子写入，失败时保留原索引。
+
 ## [3.0.2] - 2026-08-05
 
 ### 变更

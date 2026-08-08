@@ -60,7 +60,13 @@ export type WeixinChannelRuntime = {
 
 /** Dependencies for processOneMessage, injected by the monitor loop. */
 export type ProcessMessageDeps = {
+  /** Primary bot-hash id for state / pairing / outbound context tokens. */
   accountId: string;
+  /**
+   * Public id for `resolveAgentRoute` / bindings (stable alias when mapped).
+   * Defaults to {@link accountId}.
+   */
+  routeAccountId?: string;
   config: import("openclaw/plugin-sdk/core").OpenClawConfig;
   channelRuntime: WeixinChannelRuntime;
   baseUrl: string;
@@ -140,10 +146,11 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   // per-agent subdirectory in the framework media store. Authorization still
   // gates dispatch below; the early route resolution only drives storage scoping.
   const senderId = full.from_user_id ?? "";
+  const routeAccountId = deps.routeAccountId?.trim() || deps.accountId;
   const route = deps.channelRuntime.routing.resolveAgentRoute({
     cfg: deps.config,
     channel: "openclaw-weixin",
-    accountId: deps.accountId,
+    accountId: routeAccountId,
     peer: { kind: "direct", id: senderId },
   });
   logger.debug(

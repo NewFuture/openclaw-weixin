@@ -57,16 +57,158 @@ export function listIndexedWeixinAccountIds(): string[] {
   }
 }
 
+/**
+ * OpenClaw host sentinel passed to `auth.login` when the user omits `--account`.
+ * Must never become a durable runtime / credential alias.
+ */
+export const HOST_DEFAULT_ACCOUNT_ID = "default";
+
+/** Atomically replace a JSON file (temp + rename) so mid-write failures keep the previous file. */
+function writeJsonFileAtomic(filePath: string, value: unknown): void {
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
+  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(value, null, 2), "utf-8");
+  fs.renameSync(tmpPath, filePath);
+}
+
+/** Replace the persistent account index in a single atomic write. */
+function writeAccountIndex(accountIds: string[]): void {
+  writeJsonFileAtomic(resolveAccountIndexPath(), accountIds);
+}
+
+// ---------------------------------------------------------------------------
+// Alias → primary hash map (logical; not a second monitor / state namespace)
+// ---------------------------------------------------------------------------
+
+function resolveAccountAliasMapPath(): string {
+  return path.join(resolveWeixinStateDir(), "account-aliases.json");
+}
+
+type WeixinAccountAliasMap = Record<string, string>;
+
+function loadAccountAliasMap(): WeixinAccountAliasMap {
+  const filePath = resolveAccountAliasMapPath();
+  try {
+    if (!fs.existsSync(filePath)) return {};
+    const parsed = JSON.parse(fs.readFileSync(filePath, "utf-8")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out: WeixinAccountAliasMap = {};
+    for (const [alias, primary] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof alias !== "string" || typeof primary !== "string") continue;
+      const a = alias.trim();
+      const p = primary.trim();
+      if (!a || !p) continue;
+      out[a] = p;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeAccountAliasMap(map: WeixinAccountAliasMap): void {
+  writeJsonFileAtomic(resolveAccountAliasMapPath(), map);
+}
+
+/** Resolve alias → primary hash, or return the id itself when it is already primary. */
+export function resolvePrimaryAccountId(accountId: string): string {
+  const id = normalizeAccountId(accountId.trim());
+  if (!id) return id;
+  const mapped = loadAccountAliasMap()[id];
+  return mapped ? normalizeAccountId(mapped) || id : id;
+}
+
+/** Reverse lookup: primary hash → public alias (if any). */
+export function resolveAliasForPrimaryAccountId(primaryId: string): string | null {
+  const primary = normalizeAccountId(primaryId.trim());
+  if (!primary) return null;
+  for (const [alias, target] of Object.entries(loadAccountAliasMap())) {
+    if (normalizeAccountId(target) === primary) return alias;
+  }
+  return null;
+}
+
+/**
+ * Public account id for bindings / inbound routing: alias when mapped, else primary.
+ * Transport / poll cursor / context tokens / replay dedupe always stay on primary.
+ */
+export function resolvePublicAccountId(accountId: string): string {
+  const primary = resolvePrimaryAccountId(accountId);
+  return resolveAliasForPrimaryAccountId(primary) ?? primary;
+}
+
+/**
+ * Bind a stable alias to a primary bot-hash id (1:1).
+ * Rejects conflicts where the alias or primary is already paired differently.
+ */
+export function bindWeixinAccountAlias(aliasId: string, primaryId: string): void {
+  const alias = normalizeAccountId(aliasId.trim());
+  const primary = normalizeAccountId(primaryId.trim());
+  if (!alias || !primary) {
+    throw new Error("weixin: alias and primary account id are required");
+  }
+  if (alias === primary) {
+    throw new Error("weixin: alias must differ from the primary bot id");
+  }
+  if (alias.toLowerCase() === HOST_DEFAULT_ACCOUNT_ID) {
+    throw new Error("weixin: host default sentinel cannot be used as an alias");
+  }
+
+  const map = loadAccountAliasMap();
+  const existingPrimary = map[alias] ? normalizeAccountId(map[alias]) : null;
+  if (existingPrimary && existingPrimary !== primary) {
+    throw new Error(
+      "weixin: requested --account alias is already bound to a different bot. " +
+        "Choose another alias, or clear the existing alias mapping before rebinding.",
+    );
+  }
+  for (const [otherAlias, target] of Object.entries(map)) {
+    if (otherAlias === alias) continue;
+    if (normalizeAccountId(target) === primary && otherAlias !== alias) {
+      throw new Error(
+        "weixin: this bot already has a different --account alias. " +
+          "Clear the existing alias mapping before assigning a new one.",
+      );
+    }
+  }
+  map[alias] = primary;
+  writeAccountAliasMap(map);
+}
+
+function unbindAliasesForPrimaryIds(primaryIds: Iterable<string>): void {
+  const drop = new Set([...primaryIds].map((id) => normalizeAccountId(id.trim())).filter(Boolean));
+  if (drop.size === 0) return;
+  const map = loadAccountAliasMap();
+  let changed = false;
+  for (const [alias, target] of Object.entries(map)) {
+    if (drop.has(normalizeAccountId(target))) {
+      delete map[alias];
+      changed = true;
+    }
+  }
+  if (changed) writeAccountAliasMap(map);
+}
+
+/**
+ * Reject binding when a leftover alias credential file already holds a different
+ * bot token. Never move sync / context / allow-list state between identities.
+ */
+function assertAliasCredentialCompatible(aliasId: string, primaryToken: string): void {
+  const leftoverToken = loadWeixinAccount(aliasId)?.token?.trim();
+  if (leftoverToken && leftoverToken !== primaryToken.trim()) {
+    throw new Error(
+      "weixin: requested --account alias already has credentials for a different bot. " +
+        "Choose another alias, or clear the existing alias credentials before rebinding.",
+    );
+  }
+}
+
 /** Add accountId to the persistent index (no-op if already present). */
 export function registerWeixinAccountId(accountId: string): void {
-  const dir = resolveWeixinStateDir();
-  fs.mkdirSync(dir, { recursive: true });
-
   const existing = listIndexedWeixinAccountIds();
   if (existing.includes(accountId)) return;
-
-  const updated = [...existing, accountId];
-  fs.writeFileSync(resolveAccountIndexPath(), JSON.stringify(updated, null, 2), "utf-8");
+  writeAccountIndex([...existing, accountId]);
 }
 
 /** Remove accountId from the persistent index. */
@@ -74,7 +216,7 @@ export function unregisterWeixinAccountId(accountId: string): void {
   const existing = listIndexedWeixinAccountIds();
   const updated = existing.filter((id) => id !== accountId);
   if (updated.length !== existing.length) {
-    fs.writeFileSync(resolveAccountIndexPath(), JSON.stringify(updated, null, 2), "utf-8");
+    writeAccountIndex(updated);
   }
 }
 
@@ -83,25 +225,214 @@ export function unregisterWeixinAccountId(accountId: string): void {
  * Called after a successful QR login to ensure only the latest account remains
  * for a given WeChat user, preventing ambiguous contextToken matches.
  *
+ * @param keepAccountIds primary bot-hash ids that must not be deleted
+ * @param userId WeChat user id whose other indexed accounts should be removed
  * @param onClearContextTokens callback to clear context tokens for the removed account
  */
 export function clearStaleAccountsForUserId(
-  currentAccountId: string,
+  keepAccountIds: string | readonly string[],
   userId: string,
   onClearContextTokens?: (accountId: string) => void,
 ): void {
   if (!userId) return;
+  const keep = new Set(
+    (Array.isArray(keepAccountIds) ? keepAccountIds : [keepAccountIds])
+      .map((id) => resolvePrimaryAccountId(id.trim()))
+      .filter(Boolean),
+  );
+  if (keep.size === 0) return;
   const allIds = listIndexedWeixinAccountIds();
+  const removedPrimaries: string[] = [];
   for (const id of allIds) {
-    if (id === currentAccountId) continue;
-    const data = loadWeixinAccount(id);
+    const primary = resolvePrimaryAccountId(id);
+    if (keep.has(primary)) continue;
+    const data = loadWeixinAccount(primary) ?? loadWeixinAccount(id);
     if (data?.userId?.trim() === userId) {
-      logger.info(`clearStaleAccountsForUserId: removing stale account=${id} (same userId=${userId})`);
-      onClearContextTokens?.(id);
-      clearWeixinAccount(id);
+      logger.info("clearStaleAccountsForUserId: removing stale account for same userId");
+      onClearContextTokens?.(primary);
+      if (id !== primary) {
+        onClearContextTokens?.(id);
+        clearWeixinAccount(id);
+      }
+      clearWeixinAccount(primary);
       unregisterWeixinAccountId(id);
+      if (id !== primary) unregisterWeixinAccountId(primary);
+      removedPrimaries.push(primary);
     }
   }
+  unbindAliasesForPrimaryIds(removedPrimaries);
+}
+
+/**
+ * Resolve a stable human alias to persist alongside the primary bot id.
+ * Returns null for missing input, the primary bot id itself, the OpenClaw
+ * `default` host sentinel, or an ephemeral UUID session key.
+ */
+export function resolveLoginAccountAlias(
+  requestedAccountId: string | null | undefined,
+  primaryNormalizedId: string,
+): string | null {
+  const raw = requestedAccountId?.trim();
+  if (!raw) return null;
+  const alias = normalizeAccountId(raw);
+  if (!alias || alias === primaryNormalizedId) return null;
+  if (alias.toLowerCase() === HOST_DEFAULT_ACCOUNT_ID) return null;
+  // Ephemeral login session keys must never become durable account files.
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(alias)) {
+    return null;
+  }
+  return alias;
+}
+
+export type PersistWeixinLoginAccountsResult = {
+  primaryId: string;
+  aliasId: string | null;
+  /**
+   * Sole id registered for gateway `listAccountIds` / monitor startup.
+   * Always the primary bot-hash — aliases are logical only.
+   */
+  canonicalId: string;
+};
+
+/**
+ * Publish the primary bot-hash into the runtime index and drop any leftover
+ * alias ids (or other drop candidates) so one bot token never starts two monitors.
+ */
+function publishPrimaryAccountIndex(primaryId: string, dropFromIndex: readonly string[] = []): void {
+  const aliasKeys = new Set(Object.keys(loadAccountAliasMap()));
+  const drop = new Set([...dropFromIndex, ...aliasKeys].map((id) => id.trim()).filter((id) => id && id !== primaryId));
+  const next = listIndexedWeixinAccountIds()
+    .map((id) => resolvePrimaryAccountId(id))
+    .filter((id) => id && id !== primaryId && !drop.has(id));
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+  for (const id of next) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    deduped.push(id);
+  }
+  deduped.push(primaryId);
+  writeAccountIndex(deduped);
+}
+
+/**
+ * Persist QR-login credentials under the server bot-hash id. When the caller
+ * passed a stable `--account` alias, record a 1:1 alias→hash mapping for
+ * bindings / outbound resolution — without indexing the alias or starting a
+ * second monitor, and without relocating state namespaces onto the alias.
+ */
+export function persistWeixinLoginAccounts(params: {
+  botAccountId: string;
+  token: string;
+  baseUrl?: string;
+  userId?: string;
+  requestedAccountId?: string | null;
+  onClearContextTokens?: (accountId: string) => void;
+}): PersistWeixinLoginAccountsResult {
+  const primaryId = normalizeAccountId(params.botAccountId);
+  if (!primaryId) {
+    throw new Error("weixin: bot accountId is required after login");
+  }
+  const creds = {
+    token: params.token,
+    baseUrl: params.baseUrl,
+    userId: params.userId,
+  };
+  saveWeixinAccount(primaryId, creds);
+
+  const aliasId = resolveLoginAccountAlias(params.requestedAccountId, primaryId);
+  if (aliasId) {
+    assertAliasCredentialCompatible(aliasId, params.token);
+    bindWeixinAccountAlias(aliasId, primaryId);
+    logger.info("persistWeixinLoginAccounts: bound alias mapping to primary bot id");
+  }
+
+  // Publish the primary index entry before destructive stale cleanup so a
+  // later failure cannot leave credentials undiscoverable after restart.
+  publishPrimaryAccountIndex(primaryId, aliasId ? [aliasId] : []);
+
+  if (params.userId?.trim()) {
+    clearStaleAccountsForUserId([primaryId], params.userId.trim(), params.onClearContextTokens);
+  }
+
+  return { primaryId, aliasId, canonicalId: primaryId };
+}
+
+export type MigrateBoundAccountToAliasResult = PersistWeixinLoginAccountsResult;
+
+/**
+ * When QR login returns `alreadyConnected` / `binded_redirect`, bind a requested
+ * stable `--account` alias onto an unambiguous local primary (hash) account.
+ *
+ * Does not rename the runtime account id: the primary hash stays indexed and
+ * owns all state. Returns null when no alias was requested (including the host
+ * `default` sentinel). Throws when the source binding is ambiguous / missing.
+ */
+export function migrateBoundAccountToAlias(params: {
+  requestedAccountId?: string | null;
+  onClearContextTokens?: (accountId: string) => void;
+}): MigrateBoundAccountToAliasResult | null {
+  // primary id unknown until we resolve the source credential; pass "" so only
+  // sentinel / UUID / empty checks apply before we know the hash id.
+  const aliasId = resolveLoginAccountAlias(params.requestedAccountId, "");
+  if (!aliasId) return null;
+
+  const existingPrimary = resolvePrimaryAccountId(aliasId);
+  if (existingPrimary !== aliasId) {
+    // Alias already mapped — ensure the primary remains the sole indexed id.
+    publishPrimaryAccountIndex(existingPrimary, [aliasId]);
+    return { primaryId: existingPrimary, aliasId, canonicalId: existingPrimary };
+  }
+
+  const indexedWithToken = listIndexedWeixinAccountIds()
+    .map((id) => {
+      const primary = resolvePrimaryAccountId(id);
+      return { primary, data: loadWeixinAccount(primary) ?? loadWeixinAccount(id) };
+    })
+    .filter((entry): entry is { primary: string; data: WeixinAccountData } => Boolean(entry.data?.token?.trim()));
+
+  const uniquePrimaries = new Map<string, { primary: string; data: WeixinAccountData }>();
+  for (const entry of indexedWithToken) {
+    uniquePrimaries.set(entry.primary, entry);
+  }
+
+  if (uniquePrimaries.size === 0) {
+    throw new Error(
+      "weixin: already connected, but no local credentials are available to bind the requested --account alias. " +
+        "Clear stale state or re-login with a fresh QR (force) so a token is issued.",
+    );
+  }
+
+  if (uniquePrimaries.size > 1) {
+    throw new Error(
+      `weixin: already connected, but multiple bound accounts are ambiguous (${uniquePrimaries.size}). ` +
+        "Re-login with force for a single account, or remove the extra credentials before binding --account.",
+    );
+  }
+
+  const source = [...uniquePrimaries.values()][0];
+  const token = source.data.token?.trim();
+  if (!token) {
+    throw new Error(
+      "weixin: already connected, but the matched account has no token to bind to the requested --account alias.",
+    );
+  }
+
+  // Rerun with --account <existing-hash>: treat as no-op (not an alias bind).
+  if (aliasId === source.primary) {
+    return null;
+  }
+
+  assertAliasCredentialCompatible(aliasId, token);
+  bindWeixinAccountAlias(aliasId, source.primary);
+  publishPrimaryAccountIndex(source.primary, [aliasId]);
+
+  if (source.data.userId?.trim()) {
+    clearStaleAccountsForUserId([source.primary], source.data.userId.trim(), params.onClearContextTokens);
+  }
+
+  logger.info("migrateBoundAccountToAlias: bound alias mapping onto primary bot id");
+  return { primaryId: source.primary, aliasId, canonicalId: source.primary };
 }
 
 // ---------------------------------------------------------------------------
@@ -326,7 +657,15 @@ export async function triggerWeixinChannelReload(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export type ResolvedWeixinAccount = {
+  /**
+   * Requested / host-facing account id (may be a stable alias).
+   * Gateway status/start/stop for transport use {@link primaryId}.
+   */
   accountId: string;
+  /** Primary bot-hash id: monitor, poll cursor, context tokens, replay dedupe. */
+  primaryId: string;
+  /** Stable alias when one is bound to {@link primaryId}; otherwise null. */
+  aliasId: string | null;
   baseUrl: string;
   cdnBaseUrl: string;
   token?: string;
@@ -350,27 +689,44 @@ type WeixinSectionConfig = WeixinAccountConfig & {
   channelConfigUpdatedAt?: string;
 };
 
-/** List accountIds from the index file (written at QR login). */
+/**
+ * List primary bot-hash account ids for gateway monitors.
+ * Alias keys are never returned — they resolve via {@link resolveWeixinAccount}.
+ */
 export function listWeixinAccountIds(_cfg: OpenClawConfig): string[] {
-  return listIndexedWeixinAccountIds();
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of listIndexedWeixinAccountIds()) {
+    const primary = resolvePrimaryAccountId(id);
+    if (!primary || seen.has(primary)) continue;
+    seen.add(primary);
+    out.push(primary);
+  }
+  return out;
 }
 
-/** Resolve a weixin account by ID, merging config and stored credentials. */
+/** Resolve a weixin account by ID (alias or primary), merging config and stored credentials. */
 export function resolveWeixinAccount(cfg: OpenClawConfig, accountId?: string | null): ResolvedWeixinAccount {
   const raw = accountId?.trim();
   if (!raw) {
     throw new Error("weixin: accountId is required (no default account)");
   }
-  const id = normalizeAccountId(raw);
+  const requestedId = normalizeAccountId(raw);
+  const primaryId = resolvePrimaryAccountId(requestedId);
+  const aliasId = resolveAliasForPrimaryAccountId(primaryId);
   const section = cfg.channels?.["openclaw-weixin"] as WeixinSectionConfig | undefined;
-  const accountCfg: WeixinAccountConfig = section?.accounts?.[id] ?? section ?? {};
+  const accounts = section?.accounts;
+  const accountCfg: WeixinAccountConfig =
+    accounts?.[requestedId] ?? (aliasId ? accounts?.[aliasId] : undefined) ?? accounts?.[primaryId] ?? section ?? {};
 
-  const accountData = loadWeixinAccount(id);
+  const accountData = loadWeixinAccount(primaryId) ?? loadWeixinAccount(requestedId);
   const token = accountData?.token?.trim() || undefined;
   const stateBaseUrl = accountData?.baseUrl?.trim() || "";
 
   return {
-    accountId: id,
+    accountId: requestedId,
+    primaryId,
+    aliasId,
     baseUrl: stateBaseUrl || DEFAULT_BASE_URL,
     cdnBaseUrl: accountCfg.cdnBaseUrl?.trim() || CDN_BASE_URL,
     token,

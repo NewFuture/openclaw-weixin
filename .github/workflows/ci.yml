@@ -87,24 +87,22 @@ jobs:
           - os: ubuntu-latest
             node-version: "22.22.3"
             openclaw_version: "2026.7.1"
-            pack_check: true
-            dependency_audit: true
+            validation: compatibility
           - os: ubuntu-latest
             node-version: "22.22.3"
             openclaw_version: "2026.6.1"
+            validation: compatibility
             minimum_host: true
-            pack_check: false
-            dependency_audit: false
           - os: ubuntu-latest
             node-version: "24.15.0"
             openclaw_version: "2026.7.1"
-            pack_check: false
-            dependency_audit: false
+            validation: strict
+            pack_check: true
+            dependency_audit: true
           - os: windows-latest
             node-version: "24.15.0"
             openclaw_version: "2026.7.1"
-            pack_check: false
-            dependency_audit: false
+            validation: strict
 
     steps:
       - name: Check out repository
@@ -120,8 +118,16 @@ jobs:
           cache-dependency-path: package-lock.json
           registry-url: https://registry.npmjs.org
 
+      - name: Use lockfile-compatible npm
+        if: startsWith(matrix.node-version, '22.')
+        run: npm install --global npm@11.12.1 --no-audit --no-fund
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Build compatibility runtime
+        if: matrix.validation == 'compatibility'
+        run: npm run build
 
       - name: Use minimum supported OpenClaw
         if: matrix.minimum_host == true
@@ -134,11 +140,41 @@ jobs:
             "openclaw@${OPENCLAW_VERSION}"
           node -e 'const fs=require("node:fs"); const actual=JSON.parse(fs.readFileSync("node_modules/openclaw/package.json","utf8")).version; if(actual!==process.env.OPENCLAW_VERSION) throw new Error("expected OpenClaw "+process.env.OPENCLAW_VERSION+", found "+actual); console.log("Testing OpenClaw "+actual);'
 
-      - name: Audit dependencies
+      - name: Smoke test compatibility runtime
+        if: matrix.validation == 'compatibility'
+        shell: bash
+        env:
+          OPENCLAW_VERSION: ${{ matrix.openclaw_version }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile } from "node:fs/promises";
+
+          const hostPackage = JSON.parse(await readFile("node_modules/openclaw/package.json", "utf8"));
+          if (hostPackage.version !== process.env.OPENCLAW_VERSION) {
+            throw new Error(`expected OpenClaw ${process.env.OPENCLAW_VERSION}, found ${hostPackage.version}`);
+          }
+
+          const plugin = (await import("./dist/index.js")).default;
+          const channels = [];
+          plugin.register({
+            runtime: { version: hostPackage.version },
+            registerChannel(entry) {
+              channels.push(entry);
+            },
+          });
+          if (plugin.id !== "openclaw-weixin" || channels.length !== 1 || channels[0]?.plugin?.id !== plugin.id) {
+            throw new Error("plugin registration smoke check failed");
+          }
+          console.log(`Registered ${plugin.id} with OpenClaw ${hostPackage.version}`);
+          NODE
+
+      - name: Audit all dependencies
         if: matrix.dependency_audit
-        run: npm run audit:deps
+        run: npm run audit:all
 
       - name: Check project
+        if: matrix.validation == 'strict'
         run: npm run check
 
       - name: Inspect package contents

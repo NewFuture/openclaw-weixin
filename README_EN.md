@@ -83,11 +83,21 @@ Then follow **Reload check** above.
 
 ## Multiple Accounts
 
-Run the login command again to bind another WeChat account:
+Run the login command again to bind another WeChat account. Prefer a **stable
+alias** per number so `openclaw.json` / bindings can use a readable `accountId`
+instead of only the server hash:
 
 ```bash
-openclaw channels login --channel openclaw-weixin
+openclaw channels login --channel openclaw-weixin --account leader
+openclaw channels login --channel openclaw-weixin --account jinjin
 ```
+
+A successful login writes:
+
+- `openclaw-weixin/accounts/<normalized ilink_bot_id>.json` (credential + state namespace; `listAccountIds` / monitors use only this id)
+- `openclaw-weixin/account-aliases.json` (1:1 `alias → hash` map for bindings / outbound resolution; aliases never start a second transport)
+
+Without `--account` (the host passes its `default` sentinel) only the server bot id is indexed; a `default` account file is never created. Re-running `login --account <alias>` against an already-bound hash-only install records an alias mapping when unambiguous (no online rename, no state-namespace move).
 
 For multiple logged-in accounts, isolate context by account + channel + sender:
 
