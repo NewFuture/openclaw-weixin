@@ -213,6 +213,10 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
   config: {
     listAccountIds: (cfg) => listWeixinAccountIds(cfg),
     resolveAccount: (cfg, accountId) => resolveWeixinAccount(cfg, accountId),
+    // Aliases are logical only. Returning false here rejects host
+    // `channels.start(alias)` before a lifecycle task is created (avoids the
+    // "channel exited without an error" restart loop on OpenClaw 2026.6.1+).
+    isEnabled: (account) => account.enabled !== false && account.accountId === account.primaryId,
     isConfigured: (account) => account.configured,
     describeAccount: (account) => ({
       accountId: account.accountId,

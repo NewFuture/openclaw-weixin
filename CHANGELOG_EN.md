@@ -12,10 +12,12 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
   `channels login --account <alias>` succeeds, credentials and state stay under
   the server `ilink_bot_id` (primary hash) and a 1:1 `alias → hash` map is stored
   for bindings / outbound resolution. `listAccountIds` / monitors use only the
-  primary; host `start/stop` on the alias does not start a second transport. The
-  host `default` sentinel is never treated as an alias; `alreadyConnected` /
-  `binded_redirect` only records the mapping when unambiguous; the account index
-  is written atomically and left intact if publish fails.
+  primary; `config.isEnabled` returns false for aliases so host `start(alias)` is
+  rejected before a lifecycle task (no restart loop). The host `default` sentinel
+  is never treated as an alias; `alreadyConnected` only records the mapping when
+  unambiguous and is a no-op for existing primary-hash relogin; conflicting alias
+  credentials are rejected without moving sync/context/allow-list state; the
+  account index is written atomically and left intact if publish fails.
 
 ## [3.0.2] - 2026-08-05
 

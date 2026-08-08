@@ -341,6 +341,22 @@ describe("persistWeixinLoginAccounts", () => {
       token: "tok-resolve",
     });
   });
+
+  it("rejects persist when a leftover alias credential belongs to another bot", () => {
+    saveWeixinAccount("leader", { token: "tok-other", userId: "user-other@im.wechat" });
+
+    expect(() =>
+      persistWeixinLoginAccounts({
+        botAccountId: "bot@im.bot",
+        token: "tok-fresh",
+        userId: "user-fresh@im.wechat",
+        requestedAccountId: "leader",
+      }),
+    ).toThrow(/different bot/i);
+
+    expect(loadWeixinAccount("leader")?.token).toBe("tok-other");
+    expect(resolveAliasForPrimaryAccountId("bot-im-bot")).toBeNull();
+  });
 });
 
 describe("migrateBoundAccountToAlias", () => {
@@ -401,5 +417,28 @@ describe("migrateBoundAccountToAlias", () => {
 
     expect(() => migrateBoundAccountToAlias({ requestedAccountId: "leader" })).toThrow(/ambiguous|multiple/i);
     expect(listIndexedWeixinAccountIds()).toEqual(["a-im-bot", "b-im-bot"]);
+  });
+
+  it("is a no-op when re-login requests the existing primary hash", () => {
+    saveWeixinAccount("hash-im-bot", { token: "tok", userId: "user-a@im.wechat" });
+    registerWeixinAccountId("hash-im-bot");
+
+    expect(migrateBoundAccountToAlias({ requestedAccountId: "hash-im-bot" })).toBeNull();
+    expect(migrateBoundAccountToAlias({ requestedAccountId: "hash@im.bot" })).toBeNull();
+    expect(listIndexedWeixinAccountIds()).toEqual(["hash-im-bot"]);
+    expect(resolveAliasForPrimaryAccountId("hash-im-bot")).toBeNull();
+  });
+
+  it("rejects binding when a leftover alias credential belongs to another bot", () => {
+    saveWeixinAccount("hash-im-bot", { token: "tok-new", userId: "user-b@im.wechat" });
+    saveWeixinAccount("leader", { token: "tok-old", userId: "user-a@im.wechat" });
+    registerWeixinAccountId("hash-im-bot");
+
+    expect(() => migrateBoundAccountToAlias({ requestedAccountId: "leader" })).toThrow(/different bot/i);
+    expect(listIndexedWeixinAccountIds()).toEqual(["hash-im-bot"]);
+    expect(resolveAliasForPrimaryAccountId("hash-im-bot")).toBeNull();
+    // State namespaces must stay put — no adopt/move.
+    expect(loadWeixinAccount("leader")?.token).toBe("tok-old");
+    expect(loadWeixinAccount("hash-im-bot")?.token).toBe("tok-new");
   });
 });

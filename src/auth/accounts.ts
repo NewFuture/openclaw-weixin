@@ -191,38 +191,16 @@ function unbindAliasesForPrimaryIds(primaryIds: Iterable<string>): void {
 }
 
 /**
- * Move sync / context-token / allow-list state onto the primary when a leftover
- * alias-scoped namespace exists (from the prior online-rename approach).
+ * Reject binding when a leftover alias credential file already holds a different
+ * bot token. Never move sync / context / allow-list state between identities.
  */
-function adoptAccountStateNamespace(fromAccountId: string, primaryId: string): void {
-  if (!fromAccountId || fromAccountId === primaryId) return;
-  const dir = resolveAccountsDir();
-  const moves = [
-    {
-      from: path.join(dir, `${fromAccountId}.sync.json`),
-      to: path.join(dir, `${primaryId}.sync.json`),
-    },
-    {
-      from: path.join(dir, `${fromAccountId}.context-tokens.json`),
-      to: path.join(dir, `${primaryId}.context-tokens.json`),
-    },
-    {
-      from: resolveFrameworkAllowFromPath(fromAccountId),
-      to: resolveFrameworkAllowFromPath(primaryId),
-    },
-  ];
-  for (const { from, to } of moves) {
-    try {
-      if (!fs.existsSync(from)) continue;
-      if (fs.existsSync(to)) {
-        fs.unlinkSync(from);
-        continue;
-      }
-      fs.mkdirSync(path.dirname(to), { recursive: true });
-      fs.renameSync(from, to);
-    } catch {
-      // best-effort
-    }
+function assertAliasCredentialCompatible(aliasId: string, primaryToken: string): void {
+  const leftoverToken = loadWeixinAccount(aliasId)?.token?.trim();
+  if (leftoverToken && leftoverToken !== primaryToken.trim()) {
+    throw new Error(
+      "weixin: requested --account alias already has credentials for a different bot. " +
+        "Choose another alias, or clear the existing alias credentials before rebinding.",
+    );
   }
 }
 
@@ -364,9 +342,7 @@ export function persistWeixinLoginAccounts(params: {
 
   const aliasId = resolveLoginAccountAlias(params.requestedAccountId, primaryId);
   if (aliasId) {
-    // Drop leftover alias-scoped credential/state from the prior rename design.
-    adoptAccountStateNamespace(aliasId, primaryId);
-    clearWeixinAccount(aliasId);
+    assertAliasCredentialCompatible(aliasId, params.token);
     bindWeixinAccountAlias(aliasId, primaryId);
     logger.info("persistWeixinLoginAccounts: bound alias mapping to primary bot id");
   }
@@ -411,22 +387,13 @@ export function migrateBoundAccountToAlias(params: {
   const indexedWithToken = listIndexedWeixinAccountIds()
     .map((id) => {
       const primary = resolvePrimaryAccountId(id);
-      return { id, primary, data: loadWeixinAccount(primary) ?? loadWeixinAccount(id) };
+      return { primary, data: loadWeixinAccount(primary) ?? loadWeixinAccount(id) };
     })
-    .filter((entry): entry is { id: string; primary: string; data: WeixinAccountData } =>
-      Boolean(entry.data?.token?.trim()),
-    );
+    .filter((entry): entry is { primary: string; data: WeixinAccountData } => Boolean(entry.data?.token?.trim()));
 
-  // Prefer a true bot-hash source; fall back to companion lookup when an older
-  // build left only the alias indexed.
   const uniquePrimaries = new Map<string, { primary: string; data: WeixinAccountData }>();
   for (const entry of indexedWithToken) {
-    let primary = entry.primary;
-    if (primary === aliasId || !primary.includes("-im-bot")) {
-      const companion = findCompanionBotAccountId(entry.data.token?.trim() ?? "", primary);
-      if (companion) primary = companion;
-    }
-    uniquePrimaries.set(primary, { primary, data: entry.data });
+    uniquePrimaries.set(entry.primary, entry);
   }
 
   if (uniquePrimaries.size === 0) {
@@ -451,16 +418,12 @@ export function migrateBoundAccountToAlias(params: {
     );
   }
 
-  // Ensure credentials live under the primary hash namespace.
-  saveWeixinAccount(source.primary, {
-    token,
-    baseUrl: source.data.baseUrl,
-    userId: source.data.userId,
-  });
-  adoptAccountStateNamespace(aliasId, source.primary);
-  if (aliasId !== source.primary) {
-    clearWeixinAccount(aliasId);
+  // Rerun with --account <existing-hash>: treat as no-op (not an alias bind).
+  if (aliasId === source.primary) {
+    return null;
   }
+
+  assertAliasCredentialCompatible(aliasId, token);
   bindWeixinAccountAlias(aliasId, source.primary);
   publishPrimaryAccountIndex(source.primary, [aliasId]);
 
@@ -470,29 +433,6 @@ export function migrateBoundAccountToAlias(params: {
 
   logger.info("migrateBoundAccountToAlias: bound alias mapping onto primary bot id");
   return { primaryId: source.primary, aliasId, canonicalId: source.primary };
-}
-
-/** Best-effort companion bot-hash id sharing the same token (unindexed lookup). */
-function findCompanionBotAccountId(token: string, excludeId: string): string | null {
-  if (!token) return null;
-  const dir = resolveAccountsDir();
-  try {
-    if (!fs.existsSync(dir)) return null;
-    for (const name of fs.readdirSync(dir)) {
-      if (!name.endsWith(".json") || name.includes(".sync.") || name.includes(".context-tokens.")) {
-        continue;
-      }
-      const id = name.slice(0, -".json".length);
-      if (!id || id === excludeId) continue;
-      const data = loadWeixinAccount(id);
-      if (data?.token?.trim() === token && id.includes("-im-bot")) {
-        return id;
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------------------

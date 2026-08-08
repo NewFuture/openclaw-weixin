@@ -45,6 +45,7 @@ vi.mock("./auth/accounts.js", () => ({
     canonicalId: "bot-im-bot",
   })),
   migrateBoundAccountToAlias: vi.fn(() => null),
+  resolvePrimaryAccountId: (accountId: string) => accountId,
   resolveWeixinAccount: mocks.resolveAccount,
   triggerWeixinChannelReload: vi.fn(),
 }));
@@ -190,6 +191,17 @@ function makeGatewayContext(account: ResolvedWeixinAccount, overrides: Partial<G
     ...overrides,
   };
 }
+
+describe("weixinPlugin config.isEnabled", () => {
+  it("enables only primary hash accounts so host start(alias) is rejected before a task", () => {
+    const isEnabled = weixinPlugin.config?.isEnabled;
+    if (!isEnabled) throw new Error("Weixin config.isEnabled is missing");
+
+    expect(isEnabled(makeAccount("bot-im-bot", { primaryId: "bot-im-bot", aliasId: "leader" }), cfg)).toBe(true);
+    expect(isEnabled(makeAccount("leader", { primaryId: "bot-im-bot", aliasId: "leader" }), cfg)).toBe(false);
+    expect(isEnabled(makeAccount("bot-im-bot", { primaryId: "bot-im-bot", enabled: false }), cfg)).toBe(false);
+  });
+});
 
 describe("weixinPlugin outbound account resolution", () => {
   beforeEach(() => {
