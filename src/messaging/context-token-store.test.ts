@@ -39,17 +39,39 @@ describe("context-token-store", () => {
     expect(store.getContextToken("account-a", "unknown-user")).toBeUndefined();
   });
 
-  it("restores persisted tokens after a fresh module load", async () => {
+  it("normalizes mixed-case user IDs in memory and on disk", async () => {
+    const store = await loadStore();
+
+    store.setContextToken("account-case", "User-MiXeD@im.wechat", "token-case");
+
+    expect(store.getContextToken("account-case", "user-mixed@im.wechat")).toBe("token-case");
+    expect(store.findAccountIdsByContextToken(["account-case"], "USER-MIXED@im.wechat")).toEqual(["account-case"]);
+    expect(readAccountFile("account-case")).toEqual({ "user-mixed@im.wechat": "token-case" });
+    const debugLogs = mocks.logger.debug.mock.calls.flat().join(" ");
+    expect(debugLogs).not.toContain("account-case");
+    expect(debugLogs).not.toContain("User-MiXeD@im.wechat");
+  });
+
+  it("restores a mixed-case token for lowercase lookup after a fresh module load", async () => {
     const firstStore = await loadStore();
-    firstStore.setContextToken("account-restart", "user-restart", "token-persisted");
+    firstStore.setContextToken("account-restart", "User-Restart@im.wechat", "token-persisted");
 
     vi.resetModules();
     const restartedStore = await loadStore();
-    expect(restartedStore.getContextToken("account-restart", "user-restart")).toBeUndefined();
+    expect(restartedStore.getContextToken("account-restart", "user-restart@im.wechat")).toBeUndefined();
 
     restartedStore.restoreContextTokens("account-restart");
 
-    expect(restartedStore.getContextToken("account-restart", "user-restart")).toBe("token-persisted");
+    expect(restartedStore.getContextToken("account-restart", "user-restart@im.wechat")).toBe("token-persisted");
+  });
+
+  it("restores legacy persisted mixed-case keys", async () => {
+    writeAccountFile("account-legacy", { "User-Legacy@im.wechat": "token-legacy" });
+    const store = await loadStore();
+
+    store.restoreContextTokens("account-legacy");
+
+    expect(store.getContextToken("account-legacy", "user-legacy@im.wechat")).toBe("token-legacy");
   });
 
   it("keeps identical user IDs isolated across accounts on disk and in memory", async () => {
@@ -89,6 +111,7 @@ describe("context-token-store", () => {
     expect(() => store.restoreContextTokens("account-invalid")).not.toThrow();
     expect(store.getContextToken("account-invalid", "user-a")).toBeUndefined();
     expect(mocks.logger.warn).toHaveBeenCalledWith(expect.stringContaining("restoreContextTokens: failed"));
+    expect(mocks.logger.warn.mock.calls.flat().join(" ")).not.toContain("account-invalid");
   });
 });
 
@@ -102,4 +125,10 @@ function accountFilePath(accountId: string): string {
 
 function readAccountFile(accountId: string): Record<string, string> {
   return JSON.parse(fs.readFileSync(accountFilePath(accountId), "utf-8")) as Record<string, string>;
+}
+
+function writeAccountFile(accountId: string, tokens: Record<string, string>): void {
+  const filePath = accountFilePath(accountId);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(tokens), "utf-8");
 }

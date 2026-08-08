@@ -88,11 +88,19 @@ jobs:
             node-version: "22.22.3"
             openclaw_version: "2026.7.1"
             validation: compatibility
+            expected_openclaw_version: "2026.7.1"
+            compatibility_profile: supported
           - os: ubuntu-latest
             node-version: "22.22.3"
             openclaw_version: "2026.6.1"
             validation: compatibility
-            minimum_host: true
+            expected_openclaw_version: "2026.6.1"
+            compatibility_profile: supported
+          - os: ubuntu-latest
+            node-version: "22.22.3"
+            openclaw_version: beta
+            validation: compatibility
+            compatibility_profile: channel-message-only
           - os: ubuntu-latest
             node-version: "24.15.0"
             openclaw_version: "2026.7.1"
@@ -125,49 +133,51 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build compatibility runtime
-        if: matrix.validation == 'compatibility'
+      - name: Build lockfile runtime for modern API smoke
+        if: matrix.compatibility_profile == 'channel-message-only'
         run: npm run build
 
-      - name: Use minimum supported OpenClaw
-        if: matrix.minimum_host == true
+      - name: Install compatibility OpenClaw
+        if: matrix.validation == 'compatibility'
         shell: bash
         env:
-          OPENCLAW_VERSION: ${{ matrix.openclaw_version }}
+          OPENCLAW_SPEC: ${{ matrix.openclaw_version }}
         run: |
           set -euo pipefail
           npm install --no-save --package-lock=false --ignore-scripts \
-            "openclaw@${OPENCLAW_VERSION}"
-          node -e 'const fs=require("node:fs"); const actual=JSON.parse(fs.readFileSync("node_modules/openclaw/package.json","utf8")).version; if(actual!==process.env.OPENCLAW_VERSION) throw new Error("expected OpenClaw "+process.env.OPENCLAW_VERSION+", found "+actual); console.log("Testing OpenClaw "+actual);'
+            "openclaw@${OPENCLAW_SPEC}"
+
+      - name: Typecheck and build supported OpenClaw runtime
+        if: matrix.compatibility_profile == 'supported'
+        run: npm run typecheck && npm run build
+
+      - name: Build channel-message compatibility boundary
+        if: matrix.validation == 'compatibility'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'require("node:fs").rmSync(".host-compat-dist", { recursive: true, force: true })'
+          node node_modules/typescript/bin/tsc \
+            --ignoreConfig \
+            --target ESNext \
+            --module NodeNext \
+            --moduleResolution NodeNext \
+            --strict \
+            --skipLibCheck \
+            --esModuleInterop \
+            --isolatedModules \
+            --resolveJsonModule \
+            --rootDir . \
+            --outDir .host-compat-dist \
+            src/messaging/process-message.ts
 
       - name: Smoke test compatibility runtime
         if: matrix.validation == 'compatibility'
-        shell: bash
         env:
-          OPENCLAW_VERSION: ${{ matrix.openclaw_version }}
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          import { readFile } from "node:fs/promises";
-
-          const hostPackage = JSON.parse(await readFile("node_modules/openclaw/package.json", "utf8"));
-          if (hostPackage.version !== process.env.OPENCLAW_VERSION) {
-            throw new Error(`expected OpenClaw ${process.env.OPENCLAW_VERSION}, found ${hostPackage.version}`);
-          }
-
-          const plugin = (await import("./dist/index.js")).default;
-          const channels = [];
-          plugin.register({
-            runtime: { version: hostPackage.version },
-            registerChannel(entry) {
-              channels.push(entry);
-            },
-          });
-          if (plugin.id !== "openclaw-weixin" || channels.length !== 1 || channels[0]?.plugin?.id !== plugin.id) {
-            throw new Error("plugin registration smoke check failed");
-          }
-          console.log(`Registered ${plugin.id} with OpenClaw ${hostPackage.version}`);
-          NODE
+          OPENCLAW_EXPECTED_VERSION: ${{ matrix.expected_openclaw_version }}
+          OPENCLAW_COMPATIBILITY_PROFILE: ${{ matrix.compatibility_profile }}
+          OPENCLAW_CHANGED_MODULE: .host-compat-dist/src/messaging/process-message.js
+        run: node scripts/check-host-compatibility.mjs
 
       - name: Audit all dependencies
         if: matrix.dependency_audit

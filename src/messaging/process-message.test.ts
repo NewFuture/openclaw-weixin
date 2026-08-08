@@ -7,6 +7,11 @@ import type { ProcessMessageDeps } from "./process-message.js";
 
 const mocks = vi.hoisted(() => ({
   applySendingHook: vi.fn(),
+  createTypingCallbacks: vi.fn(() => ({
+    onReplyStart: vi.fn(),
+    onIdle: vi.fn(),
+    onCleanup: vi.fn(),
+  })),
   directDmOutcome: vi.fn(),
   downloadMedia: vi.fn(),
   emitMessageSent: vi.fn(),
@@ -18,8 +23,8 @@ const mocks = vi.hoisted(() => ({
   sendTyping: vi.fn(),
 }));
 
-vi.mock("openclaw/plugin-sdk/channel-runtime", () => ({
-  createTypingCallbacks: vi.fn(() => ({})),
+vi.mock("openclaw/plugin-sdk/channel-message", () => ({
+  createTypingCallbacks: mocks.createTypingCallbacks,
 }));
 
 vi.mock("openclaw/plugin-sdk/command-auth", () => ({
@@ -189,6 +194,18 @@ describe("processOneMessage", () => {
           CommandAuthorized: true,
           SessionKey: "agent:agent-test:openclaw-weixin:account-test:user-test",
         }),
+      }),
+    );
+    expect(mocks.createTypingCallbacks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start: expect.any(Function),
+        stop: expect.any(Function),
+        keepaliveIntervalMs: 5000,
+      }),
+    );
+    expect(harness.mocks.createReplyDispatcherWithTyping).toHaveBeenCalledWith(
+      expect.objectContaining({
+        typingCallbacks: mocks.createTypingCallbacks.mock.results[0]?.value,
       }),
     );
     expect(onReplyAdmitted).toHaveBeenCalledOnce();

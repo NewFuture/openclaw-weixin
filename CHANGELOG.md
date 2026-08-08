@@ -4,25 +4,18 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/) 格式。
 
-## [3.0.3] - 2026-08-06
-
-### 修复
-
-- **OpenClaw 2026.7.2-beta.x 兼容（channel-runtime 崩溃循环）**：`createTypingCallbacks` 的
-  import 从 `openclaw/plugin-sdk/channel-runtime` 改为 `openclaw/plugin-sdk/channel-message`。
-  2026.7.2-beta 系列从 SDK exports 移除了 `channel-runtime` 入口，导致插件在 beta 宿主上
-  启动即崩溃并无限自动重启；`createTypingCallbacks` 在新入口中签名不变。
-- **context token 用户 ID 大小写规范化（发送 ret=-3）**：`contextTokenKey` 统一对用户 ID
-  做小写规范化。getUpdates 返回混合大小写 OpenID，而 OpenClaw 会话 key 是小写，重启后
-  查询不到 token，所有对外发送报 `sendMessage ret=-3 invalid arguments`
-  （见 Tencent/openclaw-weixin#243）。
-- **sendMessage ret=-2 prepare failed 诊断提示**：错误描述中补充可操作提示（context_token
-  过期或服务端 bot 状态异常，对方重新发消息即可刷新），便于定位 cron 主动发送失败。
-
 ## [未发布]
 
 ### 修复
 
+- **OpenClaw SDK 入口兼容：** `createTypingCallbacks` 改从
+  `openclaw/plugin-sdk/channel-message` 导入，同时兼容仍提供旧入口的最低宿主和已经移除
+  `channel-runtime` 的新版宿主；CI 针对两类实际 SDK 构建并导入该边界，且执行无 mock
+  插件注册冒烟。
+- **context token 用户 ID 大小写规范化（发送 ret=-3）：** context token 的账号级内存键和
+  持久化键统一对用户 ID 做小写规范化；getUpdates 返回混合大小写 ID、OpenClaw 会话目标
+  为小写或重启恢复旧格式文件时，仍能命中正确 token
+  （见 Tencent/openclaw-weixin#243）。
 - **QR 登录保留稳定 `--account` 别名（逻辑映射）：** `channels login --account <alias>`
   成功后凭证与状态仍落在服务端 `ilink_bot_id`（primary hash）下，并写入一对一
   `alias → hash` 映射供 bindings / 出站解析；`listAccountIds` / monitor 只使用

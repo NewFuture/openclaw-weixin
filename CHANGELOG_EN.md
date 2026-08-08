@@ -4,29 +4,20 @@
 
 This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
-## [3.0.3] - 2026-08-06
-
-### Fixed
-
-- **OpenClaw 2026.7.2-beta.x compatibility (channel-runtime crash loop):**
-  `createTypingCallbacks` import moved from `openclaw/plugin-sdk/channel-runtime` to
-  `openclaw/plugin-sdk/channel-message`. The 2026.7.2-beta line removed the
-  `channel-runtime` export from the SDK, crashing the plugin on startup with an
-  infinite auto-restart loop; `createTypingCallbacks` is unchanged at the new entry.
-- **Context token user ID case normalization (outbound ret=-3):** `contextTokenKey` now
-  lowercases the user ID. getUpdates returns mixed-case OpenIDs while OpenClaw session
-  keys are lowercased, so after a gateway restart lookups missed the token and every
-  outbound send failed with `sendMessage ret=-3 invalid arguments`
-  (see Tencent/openclaw-weixin#243).
-- **sendMessage ret=-2 prepare failed diagnostics:** error description now appends an
-  actionable hint (stale/missing context_token or server-side bot state; a fresh inbound
-  message from the recipient refreshes it), making cron-triggered outbound failures
-  easier to diagnose.
-
 ## [Unreleased]
 
 ### Fixed
 
+- **OpenClaw SDK entry compatibility:** `createTypingCallbacks` now imports from
+  `openclaw/plugin-sdk/channel-message`, supporting both the minimum host that
+  still exposes the legacy entry and modern hosts that removed `channel-runtime`.
+  CI builds and imports this boundary and runs an unmocked plugin-registration
+  smoke against both real SDK profiles.
+- **Context-token user ID case normalization (outbound ret=-3):** account-scoped
+  in-memory and persisted context-token keys now lowercase the user ID. Mixed-case
+  IDs from getUpdates, lowercased OpenClaw session targets, and legacy persisted
+  files therefore resolve the same token after restart
+  (see Tencent/openclaw-weixin#243).
 - **Persist stable `--account` aliases on QR login (logical mapping):** after
   `channels login --account <alias>` succeeds, credentials and state stay under
   the server `ilink_bot_id` (primary hash) and a 1:1 `alias → hash` map is stored
