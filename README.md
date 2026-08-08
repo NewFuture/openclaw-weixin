@@ -77,11 +77,20 @@ owner/admin，直接发送：
 
 ## 多账号
 
-再次执行登录命令即可绑定其他微信账号：
+再次执行登录命令即可绑定其他微信账号。建议为每个号使用**稳定别名**，以便
+`openclaw.json` / bindings 用可读 `accountId`（而不是仅服务端 hash）：
 
 ```bash
-openclaw channels login --channel openclaw-weixin
+openclaw channels login --channel openclaw-weixin --account leader
+openclaw channels login --channel openclaw-weixin --account jinjin
 ```
+
+登录成功后会写入：
+
+- `openclaw-weixin/accounts/<ilink_bot_id 规范化>.json`（凭证与状态命名空间；`listAccountIds` / monitor 只用此 id）
+- `openclaw-weixin/account-aliases.json`（一对一 `alias → hash` 逻辑映射，供 bindings / 出站解析；别名不会再起一条 transport）
+
+未传 `--account` 时（宿主会传入 `default` 哨兵）只索引服务端 bot id，不会创建名为 `default` 的账号。已绑定过的 hash 账号再执行 `login --account <alias>` 时，会在不歧义的情况下登记别名映射（不在线改名、不搬迁状态命名空间）。
 
 多个账号同时登录时，建议按「账号 + 渠道 + 对端」隔离上下文：
 

@@ -29,7 +29,13 @@ export type MonitorWeixinOpts = {
   baseUrl: string;
   cdnBaseUrl: string;
   token?: string;
+  /** Primary bot-hash id — owns poll cursor, context tokens, and replay dedupe. */
   accountId: string;
+  /**
+   * Public id for OpenClaw bindings / agent routing (stable alias when mapped).
+   * Defaults to {@link accountId}.
+   */
+  routeAccountId?: string;
   /** When non-empty, only messages whose from_user_id is in this list are processed. */
   allowFrom?: string[];
   config: import("openclaw/plugin-sdk/core").OpenClawConfig;
@@ -52,6 +58,7 @@ export type MonitorWeixinOpts = {
 export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<void> {
   const { baseUrl, cdnBaseUrl, token, accountId, config, channelRuntime, abortSignal, longPollTimeoutMs, setStatus } =
     opts;
+  const routeAccountId = opts.routeAccountId?.trim() || accountId;
   const log = opts.runtime?.log ?? (() => {});
   const errLog = opts.runtime?.error ?? ((m: string) => log(m));
   const aLog: Logger = logger.withAccount(accountId);
@@ -116,6 +123,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
 
       await processOneMessage(full, {
         accountId,
+        routeAccountId,
         config,
         channelRuntime,
         baseUrl,
