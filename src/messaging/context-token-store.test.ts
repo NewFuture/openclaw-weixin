@@ -19,11 +19,13 @@ let stateDir: string;
 beforeEach(() => {
   stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "openclaw-weixin-context-"));
   vi.stubEnv("OPENCLAW_STATE_DIR", stateDir);
+  vi.stubEnv("OPENCLAW_OAUTH_DIR", path.join(stateDir, "oauth"));
   vi.resetModules();
   vi.clearAllMocks();
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllEnvs();
   fs.rmSync(stateDir, { recursive: true, force: true });
 });
@@ -42,14 +44,29 @@ describe("context-token-store", () => {
   it("normalizes mixed-case user IDs in memory and on disk", async () => {
     const store = await loadStore();
 
-    store.setContextToken("account-case", "User-MiXeD@im.wechat", "token-case");
+    store.setContextToken("account-case", "User-MiXeD@im.wechat", "token-old");
+    store.setContextToken("account-case", "USER-MIXED@im.wechat", "token-new");
 
-    expect(store.getContextToken("account-case", "user-mixed@im.wechat")).toBe("token-case");
+    expect(store.getContextToken("account-case", "user-mixed@im.wechat")).toBe("token-new");
     expect(store.findAccountIdsByContextToken(["account-case"], "USER-MIXED@im.wechat")).toEqual(["account-case"]);
-    expect(readAccountFile("account-case")).toEqual({ "user-mixed@im.wechat": "token-case" });
+    expect(readAccountFile("account-case")).toEqual({ "user-mixed@im.wechat": "token-new" });
     const debugLogs = mocks.logger.debug.mock.calls.flat().join(" ");
     expect(debugLogs).not.toContain("account-case");
     expect(debugLogs).not.toContain("User-MiXeD@im.wechat");
+  });
+
+  it("keeps distinct normalized user IDs separate within an account", async () => {
+    const store = await loadStore();
+
+    store.setContextToken("account-users", "User-One@im.wechat", "token-one");
+    store.setContextToken("account-users", "User-Two@im.wechat", "token-two");
+
+    expect(store.getContextToken("account-users", "user-one@im.wechat")).toBe("token-one");
+    expect(store.getContextToken("account-users", "user-two@im.wechat")).toBe("token-two");
+    expect(readAccountFile("account-users")).toEqual({
+      "user-one@im.wechat": "token-one",
+      "user-two@im.wechat": "token-two",
+    });
   });
 
   it("restores a mixed-case token for lowercase lookup after a fresh module load", async () => {
@@ -63,6 +80,9 @@ describe("context-token-store", () => {
     restartedStore.restoreContextTokens("account-restart");
 
     expect(restartedStore.getContextToken("account-restart", "user-restart@im.wechat")).toBe("token-persisted");
+    const logs = [...mocks.logger.debug.mock.calls, ...mocks.logger.info.mock.calls].flat().join(" ");
+    expect(logs).not.toContain("account-restart");
+    expect(logs).not.toContain("User-Restart@im.wechat");
   });
 
   it("restores legacy persisted mixed-case keys", async () => {
@@ -100,6 +120,7 @@ describe("context-token-store", () => {
     expect(store.getContextToken("account-b", "shared-user")).toBe("token-account-b");
     expect(fs.existsSync(accountFilePath("account-a"))).toBe(false);
     expect(fs.existsSync(accountFilePath("account-b"))).toBe(true);
+    expect(mocks.logger.info.mock.calls.flat().join(" ")).not.toContain("account-a");
   });
 
   it("surfaces malformed persisted state through the logger without restoring data", async () => {
@@ -112,6 +133,38 @@ describe("context-token-store", () => {
     expect(store.getContextToken("account-invalid", "user-a")).toBeUndefined();
     expect(mocks.logger.warn).toHaveBeenCalledWith(expect.stringContaining("restoreContextTokens: failed"));
     expect(mocks.logger.warn.mock.calls.flat().join(" ")).not.toContain("account-invalid");
+  });
+
+  it("redacts account-scoped paths from filesystem error logs", async () => {
+    const store = await loadStore();
+    const persistPath = accountFilePath("account-persist-error");
+    vi.spyOn(fs, "writeFileSync").mockImplementationOnce(() => {
+      throw new Error(`denied ${persistPath}`);
+    });
+
+    store.setContextToken("account-persist-error", "user-persist", "token-persist");
+
+    const restorePath = accountFilePath("account-restore-error");
+    writeAccountFile("account-restore-error", { "User-Restore": "token-restore" });
+    vi.spyOn(fs, "readFileSync").mockImplementationOnce(() => {
+      throw new Error(`denied ${restorePath}`);
+    });
+
+    store.restoreContextTokens("account-restore-error");
+
+    const clearPath = accountFilePath("account-clear-error");
+    writeAccountFile("account-clear-error", { "user-clear": "token-clear" });
+    vi.spyOn(fs, "unlinkSync").mockImplementationOnce(() => {
+      throw new Error(`denied ${clearPath}`);
+    });
+
+    store.clearContextTokensForAccount("account-clear-error");
+
+    const warnings = mocks.logger.warn.mock.calls.flat().join(" ");
+    expect(warnings.match(/<state-file>/g)).toHaveLength(3);
+    expect(warnings).not.toContain("account-persist-error");
+    expect(warnings).not.toContain("account-restore-error");
+    expect(warnings).not.toContain("account-clear-error");
   });
 });
 
