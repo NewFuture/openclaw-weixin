@@ -6,11 +6,7 @@ import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { rewriteLinks } from "./.vitepress/links.mjs";
-import {
-  syncContent,
-  withUntranslatedNotice,
-  withoutRepositoryOnlySections,
-} from "./.vitepress/sync.mjs";
+import { syncContent, withoutRepositoryOnlySections, withUntranslatedNotice } from "./.vitepress/sync.mjs";
 
 const SITE_DIR = fileURLToPath(new URL(".", import.meta.url));
 
@@ -20,10 +16,7 @@ describe("rewriteLinks", () => {
   it("resolves links relative to the source document", () => {
     const markdown = "[指南](docs/guide.md)";
     assert.equal(rewriteLinks(markdown, { source: "README.md", resolve }), "[指南](/guide.md)");
-    assert.equal(
-      rewriteLinks("[指南](./guide.md)", { source: "docs/backend-api.md", resolve }),
-      "[指南](/guide.md)",
-    );
+    assert.equal(rewriteLinks("[指南](./guide.md)", { source: "docs/backend-api.md", resolve }), "[指南](/guide.md)");
   });
 
   it("keeps anchors and leaves external links untouched", () => {
@@ -76,21 +69,12 @@ describe("syncContent", () => {
     assert.match(overview, /class="product-tagline">把 OpenClaw 接入微信/);
     assert.match(overview, /<h2 id="connect-wechat">选择一种安装方式/);
     assert.match(overview, /class="install-choice"/);
-    assert.match(
-      overview,
-      /<strong>推荐复制提示词，也可以直接运行命令。<\/strong>/,
-    );
+    assert.match(overview, /<strong>推荐复制提示词，也可以直接运行命令。<\/strong>/);
     assert.match(overview, /两种方式效果相同，任选一种即可，不必重复执行/);
     assert.match(overview, /直接运行命令时，请使用运行 OpenClaw\s*的同一用户和同一环境/);
-    assert.ok(
-      overview.indexOf("同一用户和同一环境") <
-        overview.indexOf('<h3 id="agent-install">'),
-    );
+    assert.ok(overview.indexOf("同一用户和同一环境") < overview.indexOf('<h3 id="agent-install">'));
     assert.match(overview, /openclaw plugins install npm:openclaw-weixin --force/);
-    assert.match(
-      overview,
-      /请使用 OpenClaw 插件安装命令\n`openclaw plugins install npm:openclaw-weixin --force`/,
-    );
+    assert.match(overview, /请使用 OpenClaw 插件安装命令\n`openclaw plugins install npm:openclaw-weixin --force`/);
     assert.match(overview, /不要先卸载或改用普通的 `npm install`/);
     assert.match(overview, /若不能运行\s*终端命令，请直接说明/);
     assert.match(
@@ -114,25 +98,12 @@ describe("syncContent", () => {
     assert.doesNotMatch(overview, /class="connection-path"/);
     assert.doesNotMatch(overview, /id="check-openclaw"/);
     assert.doesNotMatch(overview, /<span id=/);
-    assert.match(
-      overview,
-      /openclaw channels login --channel openclaw-weixin --account wukong/,
-    );
-    assert.match(
-      overview,
-      /openclaw channels login --channel openclaw-weixin --account nezha/,
-    );
-    assert.doesNotMatch(
-      overview,
-      /--account (?:leader|jinjin|personal|work|alice|bob)/,
-    );
+    assert.match(overview, /openclaw channels login --channel openclaw-weixin --account wukong/);
+    assert.match(overview, /openclaw channels login --channel openclaw-weixin --account nezha/);
+    assert.doesNotMatch(overview, /--account (?:leader|jinjin|personal|work|alice|bob)/);
     assert.ok(
-      overview.indexOf(
-        "openclaw config set session.dmScope per-account-channel-peer",
-      ) <
-        overview.indexOf(
-          "openclaw channels login --channel openclaw-weixin --account wukong",
-        ),
+      overview.indexOf("openclaw config set session.dmScope per-account-channel-peer") <
+        overview.indexOf("openclaw channels login --channel openclaw-weixin --account wukong"),
     );
     assert.match(overview, /全局会话设置，会影响所有渠道/);
     assert.ok(
@@ -140,40 +111,19 @@ describe("syncContent", () => {
         overview.indexOf("openclaw plugins install npm:openclaw-weixin --force"),
     );
 
-    const english = await readFile(
-      path.join(contentDir, "en", "index.md"),
-      "utf8",
-    );
-    assert.match(
-      english,
-      /Install or replace the plugin with OpenClaw's plugin installer by running exactly/,
-    );
-    assert.match(
-      english,
-      /<strong>We recommend the prompt; you can also run the command directly.<\/strong>/,
-    );
-    assert.match(
-      english,
-      /If you run the\s+command directly, use the same user and environment that run OpenClaw/,
-    );
-    assert.ok(
-      english.indexOf("same user and environment") <
-        english.indexOf('<h3 id="agent-install">'),
-    );
+    const english = await readFile(path.join(contentDir, "en", "index.md"), "utf8");
+    assert.match(english, /Install or replace the plugin with OpenClaw's plugin installer by running exactly/);
+    assert.match(english, /<strong>We recommend the prompt; you can also run the command directly.<\/strong>/);
+    assert.match(english, /If you run the\s+command directly, use the same user and environment that run OpenClaw/);
+    assert.ok(english.indexOf("same user and environment") < english.indexOf('<h3 id="agent-install">'));
     assert.match(english, /<h3 id="agent-install">Copy the prompt/);
     assert.match(english, /<h3 id="cli-install">Run one command/);
     assert.match(english, /already has a WeChat login,\s+either option is usually all you need/);
     assert.match(english, /For a new installation, open the full\s+check and scan the QR code/);
     assert.doesNotMatch(english, /After completing either option, you are usually done/);
-    assert.match(
-      english,
-      /Do not uninstall first or\s+use plain `npm install`/,
-    );
+    assert.match(english, /Do not uninstall first or\s+use plain `npm install`/);
     assert.match(english, /If you cannot run terminal commands, say so/);
-    assert.match(
-      english,
-      /run\s+`openclaw channels status --probe` if the Gateway restarted automatically/,
-    );
+    assert.match(english, /run\s+`openclaw channels status --probe` if the Gateway restarted automatically/);
     assert.match(
       english,
       /If it\s+did not, ask me whether to restart it and run the probe only after the restart is\s+confirmed complete/,
@@ -182,30 +132,14 @@ describe("syncContent", () => {
       english,
       /If the probe reports that WeChat is not logged in, tell me to run\s+`openclaw channels login --channel openclaw-weixin` and scan the QR code/,
     );
-    assert.doesNotMatch(
-      english,
-      /restart the service that runs OpenClaw if the connection does not return/,
-    );
-    assert.doesNotMatch(
-      english,
-      /Do not restart, check status, or start QR login yourself/,
-    );
-    assert.match(
-      english,
-      /openclaw channels login --channel openclaw-weixin --account alice/,
-    );
-    assert.match(
-      english,
-      /openclaw channels login --channel openclaw-weixin --account bob/,
-    );
+    assert.doesNotMatch(english, /restart the service that runs OpenClaw if the connection does not return/);
+    assert.doesNotMatch(english, /Do not restart, check status, or start QR login yourself/);
+    assert.match(english, /openclaw channels login --channel openclaw-weixin --account alice/);
+    assert.match(english, /openclaw channels login --channel openclaw-weixin --account bob/);
     assert.doesNotMatch(english, /--account (?:leader|jinjin|personal|work)/);
     assert.ok(
-      english.indexOf(
-        "openclaw config set session.dmScope per-account-channel-peer",
-      ) <
-        english.indexOf(
-          "openclaw channels login --channel openclaw-weixin --account alice",
-        ),
+      english.indexOf("openclaw config set session.dmScope per-account-channel-peer") <
+        english.indexOf("openclaw channels login --channel openclaw-weixin --account alice"),
     );
     assert.match(english, /global OpenClaw session setting/);
     assert.doesNotMatch(english, /trust this npm source/i);

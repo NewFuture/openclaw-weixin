@@ -18,10 +18,7 @@ import {
   linkFor,
   sourceFor,
 } from "./.vitepress/docs.mjs";
-import {
-  configureSidebarCaret,
-  labelsForLanguage,
-} from "./.vitepress/theme/accessibility.js";
+import { configureSidebarCaret, labelsForLanguage } from "./.vitepress/theme/accessibility.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 

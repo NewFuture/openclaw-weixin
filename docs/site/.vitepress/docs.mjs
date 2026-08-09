@@ -19,8 +19,7 @@ export const SITE = {
     en: "Connect OpenClaw with WeChat: one-command install, in-place replacement, QR login, and multi-account support.",
     zh: "连接 OpenClaw 与微信：一行命令安装、原位替换、扫码登录，并支持多账号。",
   },
-  summary:
-    "社区维护的 OpenClaw 微信渠道插件。此索引列出每个文档页面的简体中文与英文 Markdown 源文件。",
+  summary: "社区维护的 OpenClaw 微信渠道插件。此索引列出每个文档页面的简体中文与英文 Markdown 源文件。",
 };
 
 /**

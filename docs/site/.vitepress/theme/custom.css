@@ -23,6 +23,7 @@
   --docs-accent-active: rgba(7, 193, 96, 0.17);
   --docs-accent-border: rgba(7, 193, 96, 0.36);
   --docs-shadow: rgba(5, 61, 32, 0.1);
+  --docs-highlight-copy-opacity: 0.62;
   --vp-code-copy-code-border-color: var(--docs-border);
   --vp-code-copy-code-bg: var(--vp-c-bg-elv);
   --vp-code-copy-code-hover-border-color: var(--docs-accent-border);
@@ -208,6 +209,15 @@ html[lang^="zh"] {
   color: var(--vp-c-text-1);
 }
 
+.docs-home div[class*="language-"] {
+  border: 1px solid var(--docs-border);
+  border-radius: 10px;
+}
+
+.docs-home .vp-doc table code {
+  white-space: normal;
+}
+
 .docs-home .prompt-lead + div[class*="language-"] {
   border-color: var(--docs-accent-border);
   background: var(--docs-accent-surface);
@@ -245,7 +255,7 @@ html[lang^="zh"] {
 
 .docs-home .prompt-lead + div[class*="language-"] > button.copy,
 .docs-home #cli-install + div[class*="language-"] > button.copy {
-  opacity: 0.62;
+  opacity: var(--docs-highlight-copy-opacity);
 }
 
 .docs-home .prompt-lead + div[class*="language-"]:hover > button.copy,
@@ -276,6 +286,54 @@ html[lang^="zh"] {
 .docs-home .replacement-note strong {
   color: var(--vp-c-text-1);
   font-weight: 600;
+}
+
+.docs-home details {
+  margin: 0;
+  border-top: 1px solid var(--docs-border);
+}
+
+.docs-home details:last-of-type {
+  border-bottom: 1px solid var(--docs-border);
+}
+
+.docs-home details summary {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 4px;
+  color: var(--vp-c-text-1);
+  font-weight: 650;
+  list-style: none;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.docs-home details summary::-webkit-details-marker {
+  display: none;
+}
+
+.docs-home details summary::after {
+  color: var(--vp-c-brand-1);
+  content: "+";
+  font-size: 1.4rem;
+  font-weight: 400;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.docs-home details summary:hover {
+  color: var(--vp-c-brand-1);
+}
+
+.docs-home details[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.docs-home details[open] {
+  padding-bottom: 20px;
 }
 
 .docs-home details.full-check {
@@ -423,63 +481,6 @@ html[lang^="zh"] {
   border-bottom: 0;
 }
 
-.docs-home .vp-doc table code {
-  white-space: normal;
-}
-
-.docs-home div[class*="language-"] {
-  border: 1px solid var(--docs-border);
-  border-radius: 10px;
-}
-
-.docs-home details {
-  margin: 0;
-  border-top: 1px solid var(--docs-border);
-}
-
-.docs-home details:last-of-type {
-  border-bottom: 1px solid var(--docs-border);
-}
-
-.docs-home details summary {
-  display: flex;
-  min-height: 52px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 4px;
-  color: var(--vp-c-text-1);
-  font-weight: 650;
-  list-style: none;
-  cursor: pointer;
-  transition: color 160ms ease;
-}
-
-.docs-home details summary::-webkit-details-marker {
-  display: none;
-}
-
-.docs-home details summary::after {
-  color: var(--vp-c-brand-1);
-  content: "+";
-  font-size: 1.4rem;
-  font-weight: 400;
-  line-height: 1;
-  transition: transform 160ms ease;
-}
-
-.docs-home details summary:hover {
-  color: var(--vp-c-brand-1);
-}
-
-.docs-home details[open] summary::after {
-  transform: rotate(45deg);
-}
-
-.docs-home details[open] {
-  padding-bottom: 20px;
-}
-
 @media (max-width: 767px) {
   .docs-home .VPDoc {
     padding-top: 28px;
@@ -552,8 +553,10 @@ html[lang^="zh"] {
   .docs-home .prompt-lead + div[class*="language-"],
   .docs-home #cli-install + div[class*="language-"],
   .docs-home details.full-check,
-  .docs-home details summary,
-  .docs-home details summary::after {
+  .docs-home details:not(.full-check) summary,
+  .docs-home details:not(.full-check) summary::after,
+  .docs-home details.full-check > summary,
+  .docs-home details.full-check > summary::after {
     animation: none;
     transition: none;
   }
@@ -564,8 +567,8 @@ html[lang^="zh"] {
 }
 
 @media (hover: none) {
-  div[class*="language-"] > button.copy {
-    opacity: 1;
+  .docs-home {
+    --docs-highlight-copy-opacity: 1;
   }
 }
 

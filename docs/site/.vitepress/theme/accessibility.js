@@ -99,8 +99,7 @@ export function applyThemeAccessibility(root = document) {
   }
 
   for (const button of root.querySelectorAll(".VPSwitchAppearance")) {
-    const label =
-      button.getAttribute("aria-checked") === "true" ? labels.switchToLight : labels.switchToDark;
+    const label = button.getAttribute("aria-checked") === "true" ? labels.switchToLight : labels.switchToDark;
     setLabel(button, label);
     if (button.title !== label) button.title = label;
   }
