@@ -1,5 +1,11 @@
 import DefaultTheme from "vitepress/theme";
 
+import { installThemeAccessibility } from "./accessibility.js";
 import "./custom.css";
 
-export default DefaultTheme;
+export default {
+  extends: DefaultTheme,
+  enhanceApp({ router }) {
+    installThemeAccessibility(router);
+  },
+};

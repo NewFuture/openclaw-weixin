@@ -4,7 +4,8 @@
  *
  * The documents stay where contributors and GitHub expect them; the website
  * consumes a generated copy so that VitePress sees a plain, locale-shaped page
- * tree. Only links are rewritten, never prose.
+ * tree. Links are rewritten and explicitly marked repository-only navigation is
+ * removed; prose remains unchanged.
  */
 
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -17,6 +18,7 @@ import { rewriteLinks } from "./links.mjs";
 const SITE_DIR = fileURLToPath(new URL("..", import.meta.url));
 const REPO_ROOT = path.resolve(SITE_DIR, "..", "..");
 const CONTENT_DIR = path.join(SITE_DIR, "content");
+const REPOSITORY_ONLY = /<!--\s*docs-site:repo-only:start\s*-->[\s\S]*?<!--\s*docs-site:repo-only:end\s*-->\s*/g;
 
 function escapeFrontmatter(value) {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
@@ -34,18 +36,26 @@ export function withUntranslatedNotice(markdown, notice) {
   return `${heading[0]}\n${block}\n${markdown.slice(heading[0].length)}`;
 }
 
+/** Remove repository-only navigation that duplicates the website chrome. */
+export function withoutRepositoryOnlySections(markdown) {
+  return markdown.replace(REPOSITORY_ONLY, "");
+}
+
 export function renderPage(page, markdown, resolvePath = createPathResolver(page.locale)) {
-  const body = rewriteLinks(markdown, {
+  const body = rewriteLinks(withoutRepositoryOnlySections(markdown), {
     source: page.source,
     resolve: (target) => {
       const resolved = resolvePath(target);
       return resolved ? `/${resolved}.md` : undefined;
     },
   });
+  const pageFrontmatter =
+    page.slug === "index" ? ['pageClass: "docs-home"', "sidebar: false", "aside: false"] : [];
   const frontmatter = [
     "---",
     `title: ${escapeFrontmatter(page.title)}`,
     `description: ${escapeFrontmatter(page.description)}`,
+    ...pageFrontmatter,
     "---",
     "",
   ].join("\n");

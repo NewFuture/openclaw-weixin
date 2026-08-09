@@ -47,7 +47,12 @@ export default defineConfig({
         sidebarMenuLabel: "目录",
         returnToTopLabel: "回到顶部",
         langMenuLabel: "切换语言",
+        skipToContentLabel: "跳到正文",
         editLink: { ...editLink, text: "在 GitHub 上编辑此页" },
+        socialLinks: [
+          { icon: "github", link: SITE.repositoryUrl, ariaLabel: "GitHub 仓库" },
+          { icon: "npm", link: SITE.npmUrl, ariaLabel: "npm 软件包" },
+        ],
         footer: {
           message: `${SITE.tagline.zh} · 基于 MIT 许可证发布。`,
           copyright: `衍生自 <a href="${SITE.upstreamUrl}">Tencent/openclaw-weixin</a>`,
@@ -63,7 +68,18 @@ export default defineConfig({
         sidebar: createSidebar("en"),
         outline: { level: [2, 3], label: "On this page" },
         docFooter: { prev: "Previous", next: "Next" },
+        darkModeSwitchLabel: "Appearance",
+        lightModeSwitchTitle: "Switch to light theme",
+        darkModeSwitchTitle: "Switch to dark theme",
+        sidebarMenuLabel: "Menu",
+        returnToTopLabel: "Return to top",
+        langMenuLabel: "Change language",
+        skipToContentLabel: "Skip to content",
         editLink: { ...editLink, text: "Edit this page on GitHub" },
+        socialLinks: [
+          { icon: "github", link: SITE.repositoryUrl, ariaLabel: "GitHub repository" },
+          { icon: "npm", link: SITE.npmUrl, ariaLabel: "npm package" },
+        ],
         footer: {
           message: `${SITE.tagline.en} · Released under the MIT License.`,
           copyright: `Derived from <a href="${SITE.upstreamUrl}">Tencent/openclaw-weixin</a>`,
@@ -73,11 +89,7 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: "/logo.svg",
-    socialLinks: [
-      { icon: "github", link: SITE.repositoryUrl },
-      { icon: "npm", link: SITE.npmUrl },
-    ],
+    logo: { src: "/logo.svg", alt: "openclaw-weixin" },
     search: {
       provider: "local",
       options: {
