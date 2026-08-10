@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-08-10
+
 ### Fixed
 
 - **OpenClaw SDK entry compatibility:** `createTypingCallbacks` now imports from

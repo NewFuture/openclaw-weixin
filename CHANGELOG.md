@@ -6,6 +6,8 @@
 
 ## [未发布]
 
+## [3.1.0] - 2026-08-10
+
 ### 修复
 
 - **OpenClaw SDK 入口兼容：** `createTypingCallbacks` 改从
