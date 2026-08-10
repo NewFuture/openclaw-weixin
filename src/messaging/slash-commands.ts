@@ -95,6 +95,9 @@ export async function handleSlashCommand(
     }
   } catch (err) {
     logger.error(`[weixin] Slash command error: ${String(err)}`);
+    if (!ctx.contextToken) {
+      return { handled: true };
+    }
     try {
       await sendReply(ctx, `❌ 指令执行失败: ${String(err).slice(0, 200)}`);
     } catch {

@@ -3,7 +3,7 @@ import { isDebugMode, _resetForTest as resetDebugMode } from "./debug-mode.js";
 import type { SlashCommandContext } from "./slash-commands.js";
 import { handleSlashCommand } from "./slash-commands.js";
 
-const mockSendMessageWeixin = vi.hoisted(() => vi.fn().mockResolvedValue({ messageId: "test-id" }));
+const mockSendMessageWeixin = vi.hoisted(() => vi.fn());
 
 vi.mock("./send.js", () => ({
   sendMessageWeixin: mockSendMessageWeixin,
@@ -23,6 +23,7 @@ describe("handleSlashCommand", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSendMessageWeixin.mockReset().mockResolvedValue({ messageId: "test-id" });
     resetDebugMode();
     ctx = {
       to: "user123",
@@ -99,6 +100,16 @@ describe("handleSlashCommand", () => {
     expect(mockSendMessageWeixin).toHaveBeenCalledTimes(2);
     const errorCall = mockSendMessageWeixin.mock.calls[1][0];
     expect(errorCall.text).toContain("❌ 指令执行失败");
+  });
+
+  it("does not retry an error reply when contextToken is missing", async () => {
+    ctx.contextToken = undefined;
+    mockSendMessageWeixin.mockRejectedValueOnce(new Error("contextToken missing"));
+
+    const result = await handleSlashCommand("/echo hello", ctx, Date.now());
+
+    expect(result.handled).toBe(true);
+    expect(mockSendMessageWeixin).toHaveBeenCalledOnce();
   });
 
   it("handles error when sending error message also fails", async () => {
