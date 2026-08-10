@@ -1,17 +1,14 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+
+import { assertCanonicalPackageManifest, writePackageManifestSync } from "./package-variant.mjs";
 
 export const GITHUB_PACKAGE_NAME = "@newfuture/openclaw-weixin";
 export const GITHUB_PACKAGE_REGISTRY = "https://npm.pkg.github.com";
 
 export function createGitHubPackageManifest(packageJson) {
-  if (packageJson?.name !== "openclaw-weixin") {
-    throw new Error(`expected canonical package name openclaw-weixin, found ${JSON.stringify(packageJson?.name)}`);
-  }
-  if (packageJson.openclaw?.install?.npmSpec !== packageJson.name) {
-    throw new Error("canonical openclaw.install.npmSpec must match the npmjs package name");
-  }
+  assertCanonicalPackageManifest(packageJson);
 
   const publishConfig = { ...packageJson.publishConfig };
   delete publishConfig.access;
@@ -35,7 +32,7 @@ export function prepareGitHubPackage(packageDirectory) {
   const manifestPath = resolve(packageDirectory, "package.json");
   const packageJson = JSON.parse(readFileSync(manifestPath, "utf8"));
   const githubPackageJson = createGitHubPackageManifest(packageJson);
-  writeFileSync(manifestPath, `${JSON.stringify(githubPackageJson, null, 2)}\n`, "utf8");
+  writePackageManifestSync(packageDirectory, githubPackageJson);
   return githubPackageJson;
 }
 
