@@ -1,5 +1,8 @@
 {
   "id": "openclaw-weixin",
+  "name": "WeChat",
+  "description": "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.",
+  "icon": "https://openclaw-weixin.newfuture.cc/logo.svg",
   "version": "3.1.0",
   "channels": ["openclaw-weixin"],
   "channelConfigs": {

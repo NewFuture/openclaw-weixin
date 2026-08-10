@@ -6,6 +6,15 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- **ClawHub release preparation:** Added a constrained conversion from the
+  canonical npm tarball to an `openclaw-wechat` ClawPack, credential-free PR
+  dry-runs, and a GitHub OIDC trusted-publish workflow that can be manually
+  triggered only from the matching release tag. The npm package and
+  plugin/channel id remain `openclaw-weixin`; a maintainer must still bootstrap
+  the public listing and publisher binding on the next release.
+
 ### Fixed
 
 - **Refuse to send when `contextToken` is missing (avoid silent-drop):** the 5

@@ -133,8 +133,8 @@ export const DOCUMENTS = [
     sources: { en: "RELEASE.md" },
     title: { en: "Release Process", zh: "发布流程" },
     description: {
-      en: "How npmjs, GitHub Packages, and GitHub Releases are published together.",
-      zh: "npmjs、GitHub Packages 与 GitHub Release 的协同发布流程。",
+      en: "How npmjs, GitHub Packages, GitHub Releases, and ClawHub are published.",
+      zh: "npmjs、GitHub Packages、GitHub Release 与 ClawHub 的发布流程。",
     },
   },
   {

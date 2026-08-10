@@ -16,6 +16,11 @@ try {
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const pluginManifest = JSON.parse(readFileSync("openclaw.plugin.json", "utf8"));
+const canonicalPackageName = "openclaw-weixin";
+const displayName = "WeChat";
+const description = "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.";
+const icon = "https://openclaw-weixin.newfuture.cc/logo.svg";
+const repositoryUrl = "git+https://github.com/NewFuture/openclaw-weixin.git";
 const HOST_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 function parseHostVersion(version, label) {
@@ -33,11 +38,23 @@ function compareHostVersions(left, right) {
   return 0;
 }
 
-if (packageJson.name !== "openclaw-weixin") {
-  fail(`expected package name openclaw-weixin, found ${packageJson.name}`);
+if (packageJson.name !== canonicalPackageName) {
+  fail(`expected package name ${canonicalPackageName}, found ${packageJson.name}`);
+}
+if (packageJson.description !== description) {
+  fail(`package description must be ${JSON.stringify(description)}`);
+}
+if (packageJson.repository?.url !== repositoryUrl) {
+  fail(`package repository must remain ${repositoryUrl}`);
 }
 if (packageJson.openclaw?.install?.npmSpec !== packageJson.name) {
   fail("openclaw.install.npmSpec must match the npm package name");
+}
+if (packageJson.openclaw?.install?.defaultChoice !== "npm") {
+  fail("the canonical package openclaw.install.defaultChoice must remain npm");
+}
+if (packageJson.openclaw?.install?.clawhubSpec !== undefined) {
+  fail("the canonical npm package must not declare openclaw.install.clawhubSpec");
 }
 const hostRange = packageJson.peerDependencies?.openclaw;
 const hostRangeMatch = typeof hostRange === "string" ? /^>=(.+)$/.exec(hostRange) : null;
@@ -48,19 +65,45 @@ const minimumHostVersion = parseHostVersion(hostRangeMatch[1], "peerDependencies
 if (packageJson.openclaw?.install?.minHostVersion !== hostRange) {
   fail("openclaw.install.minHostVersion must match peerDependencies.openclaw");
 }
+if (packageJson.openclaw?.compat?.pluginApi !== hostRange) {
+  fail("openclaw.compat.pluginApi must match peerDependencies.openclaw");
+}
 const developmentHostVersion = parseHostVersion(packageJson.devDependencies?.openclaw, "devDependencies.openclaw");
 if (compareHostVersions(developmentHostVersion, minimumHostVersion) < 0) {
   fail("devDependencies.openclaw must not be older than the minimum supported host");
 }
-if (pluginManifest.id !== "openclaw-weixin") {
-  fail("the compatibility plugin id must remain openclaw-weixin");
+if (packageJson.openclaw?.build?.openclawVersion !== packageJson.devDependencies.openclaw) {
+  fail("openclaw.build.openclawVersion must match devDependencies.openclaw");
+}
+if (pluginManifest.id !== canonicalPackageName) {
+  fail(`the compatibility plugin id must remain ${canonicalPackageName}`);
+}
+if (pluginManifest.name !== displayName) {
+  fail(`openclaw.plugin.json name must remain ${displayName}`);
+}
+if (pluginManifest.description !== description) {
+  fail("openclaw.plugin.json description must match package.json");
+}
+if (pluginManifest.icon !== icon) {
+  fail(`openclaw.plugin.json icon must remain ${icon}`);
 }
 if (
   !Array.isArray(pluginManifest.channels) ||
   pluginManifest.channels.length !== 1 ||
-  pluginManifest.channels[0] !== "openclaw-weixin"
+  pluginManifest.channels[0] !== canonicalPackageName
 ) {
-  fail("the compatibility channel id must remain openclaw-weixin");
+  fail(`the compatibility channel id must remain ${canonicalPackageName}`);
+}
+
+const runtimePlugin = (await import(new URL("../dist/index.js", import.meta.url))).default;
+if (runtimePlugin.id !== canonicalPackageName) {
+  fail(`the runtime plugin id must remain ${canonicalPackageName}`);
+}
+if (runtimePlugin.name !== displayName) {
+  fail(`the runtime plugin name must remain ${displayName}`);
+}
+if (runtimePlugin.description !== description) {
+  fail("the runtime plugin description must match package.json");
 }
 const npmExecPath = process.env.npm_execpath;
 const command = npmExecPath ? process.execPath : process.platform === "win32" ? process.env.ComSpec : "npm";
