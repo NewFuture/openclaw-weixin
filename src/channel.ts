@@ -117,9 +117,6 @@ async function sendWeixinOutbound(params: {
     aLog.error(`sendWeixinOutbound: account not configured`);
     throw new Error("weixin not configured: please run `openclaw channels login --channel openclaw-weixin`");
   }
-  if (!params.contextToken) {
-    aLog.warn(`sendWeixinOutbound: contextToken missing for to=${params.to}, sending without context`);
-  }
   const f = new StreamingMarkdownFilter();
   const rawText = params.text ?? "";
   let filteredText = f.feed(rawText) + f.flush();

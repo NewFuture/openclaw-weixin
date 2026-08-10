@@ -15,6 +15,17 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
   plugin/channel id remain `openclaw-weixin`; a maintainer must still bootstrap
   the public listing and publisher binding on the next release.
 
+### Fixed
+
+- **Refuse to send when `contextToken` is missing (avoid silent-drop):** the 5
+  send entry points (`sendMessageWeixin`, `sendMessageItemWeixin`,
+  `sendImageMessageWeixin`, `sendVideoMessageWeixin`, `sendFileMessageWeixin`)
+  now throw before calling the backend instead of `logger.warn`-and-continue when
+  `contextToken` is absent, so missing-token attempts cannot return a locally
+  generated fake-success `messageId`. These helpers redact recipient IDs in their
+  own logs via `redactToken`
+  (see Tencent/openclaw-weixin#247).
+
 ## [3.1.0] - 2026-08-10
 
 ### Fixed

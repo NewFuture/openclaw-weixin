@@ -48,16 +48,17 @@ describe("sendWeixinErrorNotice", () => {
     });
   });
 
-  it("sends even when contextToken is undefined", async () => {
-    mockSendMessageWeixin.mockResolvedValueOnce({ messageId: "m2" });
+  it("skips the error notice when contextToken is undefined", async () => {
+    const errLog = vi.fn();
     await sendWeixinErrorNotice({
       to: "user1",
       contextToken: undefined,
       message: "err",
       baseUrl: "https://api.com",
-      errLog: vi.fn(),
+      errLog,
     });
-    expect(mockSendMessageWeixin).toHaveBeenCalledOnce();
+    expect(mockSendMessageWeixin).not.toHaveBeenCalled();
+    expect(errLog).not.toHaveBeenCalled();
   });
 
   it("catches and logs errors from sendMessageWeixin", async () => {

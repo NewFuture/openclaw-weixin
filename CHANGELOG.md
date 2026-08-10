@@ -13,6 +13,15 @@
   OIDC 可信发布流程；npm 包名和插件/频道 ID 仍为 `openclaw-weixin`。公开 listing
   尚需维护者在下一正式版本完成首次发布与 publisher 绑定。
 
+### 修复
+
+- **缺 contextToken 时拒绝发送（消除静默丢弃）：** 5 个发送入口
+  （`sendMessageWeixin` / `sendMessageItemWeixin` / `sendImageMessageWeixin` /
+  `sendVideoMessageWeixin` / `sendFileMessageWeixin`）在 `contextToken` 缺失时
+  由原先 `logger.warn` 后继续发送改为在调用后端前直接抛出错误，因此不会在缺少
+  token 时返回本地生成的「假成功」`messageId`。这些入口自身的接收方日志改用
+  `redactToken` 脱敏（见 Tencent/openclaw-weixin#247）。
+
 ## [3.1.0] - 2026-08-10
 
 ### 修复
