@@ -6,6 +6,8 @@
 
 ## [未发布]
 
+## [3.1.1] - 2026-08-11
+
 ### 变更
 
 - **ClawHub 发布准备：** 新增从规范 npm tarball 生成 `openclaw-wechat`
