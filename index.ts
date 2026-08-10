@@ -7,8 +7,8 @@ import { WeixinConfigSchema } from "./src/config/config-schema.js";
 
 export default {
   id: "openclaw-weixin",
-  name: "Weixin",
-  description: "Weixin channel (getUpdates long-poll + sendMessage)",
+  name: "WeChat",
+  description: "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.",
   configSchema: buildChannelConfigSchema(WeixinConfigSchema),
   register(api: OpenClawPluginApi) {
     // Fail-fast: reject incompatible host versions before any side-effects.

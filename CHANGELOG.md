@@ -6,6 +6,13 @@
 
 ## [未发布]
 
+### 变更
+
+- **ClawHub 发布准备：** 新增从规范 npm tarball 生成 `openclaw-wechat`
+  ClawPack 的受约束转换、PR dry-run，以及仅允许在匹配 release tag 上手动触发的 GitHub
+  OIDC 可信发布流程；npm 包名和插件/频道 ID 仍为 `openclaw-weixin`。公开 listing
+  尚需维护者在下一正式版本完成首次发布与 publisher 绑定。
+
 ## [3.1.0] - 2026-08-10
 
 ### 修复

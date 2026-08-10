@@ -13,13 +13,22 @@ import {
 interface PackageCompatibility {
   devDependencies: { openclaw: string };
   engines: { node: string };
-  openclaw: { install: { minHostVersion: string } };
+  openclaw: {
+    build: { openclawVersion: string };
+    compat: { pluginApi: string };
+    install: { minHostVersion: string };
+  };
   peerDependencies: { openclaw: string };
 }
 
 const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ) as PackageCompatibility;
+const pluginManifest = JSON.parse(readFileSync(new URL("../openclaw.plugin.json", import.meta.url), "utf8")) as {
+  description: string;
+  icon: string;
+  name: string;
+};
 
 describe("compatibility metadata", () => {
   it("matches the runtime host guard", () => {
@@ -27,7 +36,17 @@ describe("compatibility metadata", () => {
 
     expect(packageJson.peerDependencies.openclaw).toBe(expectedRange);
     expect(packageJson.openclaw.install.minHostVersion).toBe(expectedRange);
+    expect(packageJson.openclaw.compat.pluginApi).toBe(expectedRange);
+    expect(packageJson.openclaw.build.openclawVersion).toBe(packageJson.devDependencies.openclaw);
     expect(isHostVersionSupported(packageJson.devDependencies.openclaw)).toBe(true);
+  });
+
+  it("provides stable ClawHub display metadata", () => {
+    expect(pluginManifest).toMatchObject({
+      name: "WeChat",
+      description: "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.",
+      icon: "https://openclaw-weixin.newfuture.cc/logo.svg",
+    });
   });
 
   it("matches the OpenClaw Node.js engine range", () => {

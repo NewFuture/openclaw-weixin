@@ -78,6 +78,41 @@ The repository's stricter package contract check is:
 npm run pack:check
 ```
 
+## ClawHub package checks
+
+ClawHub uses the package name `openclaw-wechat`; the canonical npm package and
+the plugin/channel id remain `openclaw-weixin`. After `npm run check` and
+`npm run pack:check`, build the ClawPack only from that canonical npm tarball and
+keep all intermediate files outside the repository:
+
+```shell
+npm pack --ignore-scripts --pack-destination <canonical-output>
+node scripts/prepare-clawhub-package.mjs <canonical-output> <clawhub-output>
+mkdir <clawpack-root>
+tar -xzf <clawhub-output>/openclaw-wechat-<version>.tgz -C <clawpack-root>
+```
+
+The source directory must contain exactly one `.tgz`. The converter rejects a
+non-canonical package name or npm install spec and changes only the temporary
+package name and ClawHub install choice.
+
+Run the pinned ClawHub validator with its report directory outside the checkout,
+then preview the publish without credentials:
+
+```shell
+npx --yes clawhub@0.23.3 package validate <clawpack-root>/package \
+  --out <report-output> --openclaw-version 2026.7.1 --json
+npx --yes clawhub@0.23.3 package publish \
+  <clawhub-output>/openclaw-wechat-<version>.tgz \
+  --family code-plugin --owner newfuture --display-name WeChat \
+  --categories channels --topics wechat,weixin,messaging \
+  --source-repo NewFuture/openclaw-weixin --source-commit <commit-sha> \
+  --source-ref <git-ref> --dry-run --json
+```
+
+These commands validate a prospective listing; they do not mean that a public
+ClawHub release already exists.
+
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The
 site is a [VitePress](https://vitepress.dev/) project that keeps its own
