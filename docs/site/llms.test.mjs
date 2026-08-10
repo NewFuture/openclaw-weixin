@@ -41,6 +41,7 @@ describe("emitMachineReadable", () => {
   it("indexes every page in llms.txt, Chinese first", async () => {
     const llms = await readFile(path.join(outDir, "llms.txt"), "utf8");
     assert.match(llms, /^# openclaw-weixin\n/);
+    assert.match(llms, /^# openclaw-weixin\n\n> 社区维护的 OpenClaw 微信渠道插件。/);
     assert.match(llms, /- Generated: 2026-01-02T03:04:05\.000Z\n/);
     assert.ok(llms.indexOf("## Docs (简体中文)\n") < llms.indexOf("## Docs (English)\n"));
     for (const page of result.pages) {
@@ -50,7 +51,8 @@ describe("emitMachineReadable", () => {
 
   it("marks locale pages that still carry the English source", async () => {
     const llms = await readFile(path.join(outDir, "llms.txt"), "utf8");
-    assert.match(llms, /\/architecture\.md\): [^\n]+ \(English source, not translated yet\)\n/);
+    assert.match(llms, /\/contributing\.md\): [^\n]+ \(English source, not translated yet\)\n/);
+    assert.doesNotMatch(llms, /\/architecture\.md\): [^\n]*English source/);
     assert.doesNotMatch(llms, /\/guide\.md\): [^\n]*English source/);
   });
 
@@ -62,7 +64,8 @@ describe("emitMachineReadable", () => {
         `llms-full.txt is missing ${page.source}`,
       );
     }
-    assert.ok(!full.includes(`url: ${BASE_URL}/architecture.md`), "untranslated copies must not be duplicated");
+    assert.ok(full.includes(`url: ${BASE_URL}/architecture.md`), "Chinese architecture must be inlined");
+    assert.ok(!full.includes(`url: ${BASE_URL}/contributing.md`), "untranslated copies must not be duplicated");
   });
 
   it("points robots.txt at the sitemap and disables Jekyll", async () => {

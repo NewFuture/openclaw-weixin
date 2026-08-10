@@ -1,40 +1,35 @@
-# Detailed Guide
+# 详细指南
 
-[Back to README](../README_EN.md) | [简体中文](./guide.zh_CN.md)
+[返回 README](../README.md) | [English](./guide_EN.md)
 
-## Installation Details
+## 安装说明
 
-### Package Names and State
+### 包名与状态兼容性
 
-The npm package, plugin id, and channel id are all `openclaw-weixin`. The
-[install command](../README_EN.md#install-or-replace) preserves the existing
-`channels.openclaw-weixin`, `plugins.entries.openclaw-weixin`, and
-`~/.openclaw/openclaw-weixin/` state paths.
+npm 包、插件 ID 和 channel ID 均为 `openclaw-weixin`。README 中的
+[安装命令](../README.md#connect-wechat)会保留
+`channels.openclaw-weixin`、`plugins.entries.openclaw-weixin` 和
+`~/.openclaw/openclaw-weixin/` 状态路径。
 
-`--force` confirms the npm source and allows OpenClaw to replace a plugin with
-the same internal id. OpenClaw rotates backups of its config automatically; do
-not copy the entire state directory for this replacement.
+`--force` 允许 OpenClaw 覆盖内部 ID 相同的现有插件安装；它不会改变来源信任或
+安全策略。OpenClaw 会自动轮换配置备份；此次替换无需复制整个状态目录。
 
-### Limitations
+### 安装限制
 
-- Use the CLI for this community npm package. OpenClaw's Control UI does not
-  install arbitrary npm, git, or local-path plugin sources.
-- In Nix mode (`OPENCLAW_NIX_MODE=1`), plugin install, update, uninstall,
-  enable, and disable commands are intentionally disabled. Add the package and
-  config to the Nix source, then rebuild instead.
-- OpenClaw installs plugin dependencies with lifecycle scripts disabled. This
-  package therefore ships its compiled `dist/index.js` runtime and does not
-  build on the user's machine.
+- 此社区 npm 包需通过 CLI 安装；OpenClaw Control UI 不能安装任意 npm、git
+  或本地路径来源的插件。
+- Nix 模式（`OPENCLAW_NIX_MODE=1`）会禁止插件安装、更新、卸载、启用和停用
+  命令；请改动 Nix 配置源后重新构建。
+- OpenClaw 安装插件依赖时会禁用生命周期脚本，因此本包直接携带编译后的
+  `dist/index.js`，无需在用户机器上构建。
 
-## Custom BotAgent (optional)
+## 自定义 BotAgent（可选）
 
-Every authenticated post-login request to the WeChat backend carries a
-self-declared `bot_agent` identifier — analogous to an HTTP `User-Agent` — used
-for log attribution and monitoring aggregation. The default is `OpenClaw`.
-Declaring your own app name makes it much easier to trace your traffic in
-backend logs.
+登录后的每条鉴权请求会带一个自我声明的 `bot_agent` 字段——类似 HTTP
+`User-Agent`——用于后台日志归因和监控聚合。**默认值为 `OpenClaw`**。声明自己的
+应用名能让你的流量在后台日志中更容易识别。
 
-Add one line to `openclaw.json`:
+在 `openclaw.json` 中加一行即可：
 
 ```json
 {
@@ -46,64 +41,59 @@ Add one line to `openclaw.json`:
 }
 ```
 
-**Format** (UA-style):
+**格式规范**（UA 风格）：
 
-- One or more `Name/Version` tokens, space-separated
-- Each token may optionally be followed by ` (comment)`
-- ASCII only; total length ≤ 256 bytes
-- Invalid tokens are silently dropped during sanitization; falls back to
-  `OpenClaw` if nothing valid remains
+- 一个或多个 `Name/Version` token，空格分隔
+- 每个 token 可选地跟一个 ` (comment)`
+- 仅允许 ASCII 字符；总长 ≤ 256 字节
+- 不合规的 token 在清洗时静默丢弃；如果最终为空，回退到 `OpenClaw`
 
-Examples that pass through unchanged:
+可直接使用的示例：
 
 - `MyBot/1.2.0`
 - `MyBot/1.2.0 (region=cn;env=prod)`
 - `MyBot/1.2.0 LangChain/0.3.5`
 - `MyBot/1.2.0-rc.1+build.5`
 
-**Note**: `bot_agent` is for observability only — it is not used for
-authentication or routing. All registered agents on this plugin instance
-currently share the same `botAgent` declaration; per-agent overrides may be
-added in a future version if needed.
+**注意**：`bot_agent` 仅用于观测，**不参与鉴权或路由**。当前本插件实例下所有
+已注册的 agent 共享同一个 `botAgent` 声明；如有需要按 agent 单独标识的场景，
+可在后续版本扩展配置。
 
-## Uninstall
+## 卸载
 
 > [!WARNING]
-> Do not uninstall when replacing Tencent's package. Use the
-> [install command](../README_EN.md#install-or-replace) instead.
+> 替换腾讯版时不要卸载，请使用 README 中的
+> [安装命令](../README.md#connect-wechat)原位替换。
 
-Back up `~/.openclaw/openclaw.json` first if you may want to reinstall: current
-OpenClaw versions remove the plugin entry and owned
-`channels.openclaw-weixin` configuration during uninstall.
+如果以后可能重装，请先备份 `~/.openclaw/openclaw.json`：新版 OpenClaw
+卸载时会删除插件条目及其拥有的 `channels.openclaw-weixin` 配置。
 
 ```bash
 openclaw plugins uninstall openclaw-weixin
 ```
 
-## Troubleshooting
+## 故障排查
 
-### "requires OpenClaw >=2026.6.1" error
+### "requires OpenClaw >=2026.6.1" 报错
 
-Your OpenClaw version is too old for this plugin version. Check with:
+你的 OpenClaw 版本太旧，不兼容当前插件版本。检查版本：
 
 ```bash
 openclaw --version
 ```
 
-Upgrade OpenClaw before installing this package. The community package does not
-publish a legacy compatibility line.
+请先升级 OpenClaw。社区包不发布旧宿主兼容版本线。
 
-### Channel shows "OK" but doesn't connect
+### Channel 显示 "OK" 但未连接
 
-Enable the plugin, reload or restart the actual unit that runs OpenClaw, and
-probe the channel again:
+启用插件，重载或重启实际承载 OpenClaw 的运行单元，然后再次探测：
 
 ```bash
 openclaw plugins enable openclaw-weixin
 openclaw channels status --probe
 ```
 
-## Developer Documentation
+## 开发者文档
 
-- [Backend API protocol](./backend-api.md)
-- [Architecture](./architecture.md)
+- [后端 API 协议](./backend-api.md)
+- [架构说明](./architecture.md)

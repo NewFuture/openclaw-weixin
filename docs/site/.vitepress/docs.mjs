@@ -19,8 +19,7 @@ export const SITE = {
     en: "Connect OpenClaw with WeChat: one-command install, in-place replacement, QR login, and multi-account support.",
     zh: "连接 OpenClaw 与微信：一行命令安装、原位替换、扫码登录，并支持多账号。",
   },
-  summary:
-    "Community-maintained OpenClaw WeChat (Weixin) channel plugin. This index lists the Markdown source of every documentation page in Simplified Chinese and English.",
+  summary: "社区维护的 OpenClaw 微信渠道插件。此索引列出每个文档页面的简体中文与英文 Markdown 源文件。",
 };
 
 /**
@@ -77,7 +76,7 @@ export const DOCUMENTS = [
   },
   {
     slug: "guide",
-    sources: { en: "docs/guide.md", zh: "docs/guide.zh_CN.md" },
+    sources: { zh: "docs/guide.md", en: "docs/guide_EN.md" },
     title: { en: "Detailed Guide", zh: "详细指南" },
     description: {
       en: "Installation behavior, custom BotAgent, uninstall, and troubleshooting.",
@@ -86,7 +85,7 @@ export const DOCUMENTS = [
   },
   {
     slug: "architecture",
-    sources: { en: "docs/architecture.md" },
+    sources: { zh: "docs/architecture.md", en: "docs/architecture_EN.md" },
     title: { en: "Architecture", zh: "架构说明" },
     description: {
       en: "Component map, plugin lifecycle, inbound and outbound flows, and persistent state.",
@@ -95,7 +94,7 @@ export const DOCUMENTS = [
   },
   {
     slug: "backend-api",
-    sources: { en: "docs/backend-api.md", zh: "docs/backend-api.zh_CN.md" },
+    sources: { zh: "docs/backend-api.md", en: "docs/backend-api_EN.md" },
     title: { en: "Backend API Protocol", zh: "后端 API 协议" },
     description: {
       en: "Every Weixin backend endpoint used for QR login, lifecycle, messages, and media.",
@@ -151,9 +150,41 @@ export const DOCUMENTS = [
 
 /** Navigation grouping. Every document slug must appear exactly once. */
 export const GROUPS = [
-  { title: { en: "Getting Started", zh: "快速开始" }, documents: ["index", "guide"] },
-  { title: { en: "Reference", zh: "参考文档" }, documents: ["architecture", "backend-api", "changelog"] },
-  { title: { en: "Project", zh: "项目信息" }, documents: ["contributing", "agents", "release", "security"] },
+  { title: { en: "Getting Started", zh: "快速开始" }, documents: ["index", "guide"], collapsed: false },
+  {
+    title: { en: "Reference", zh: "参考文档" },
+    documents: ["architecture", "backend-api", "changelog"],
+    collapsed: true,
+  },
+  {
+    title: { en: "Project", zh: "项目信息" },
+    documents: ["contributing", "agents", "release", "security"],
+    collapsed: true,
+  },
+];
+
+const TASK_NAV = {
+  en: {
+    install: "Install",
+    verify: "Full check",
+    troubleshoot: "Troubleshoot",
+    more: "More",
+    guides: "Guides and reference",
+    project: "Project",
+  },
+  zh: {
+    install: "安装",
+    verify: "完整检查",
+    troubleshoot: "故障排查",
+    more: "更多",
+    guides: "指南与参考",
+    project: "项目信息",
+  },
+};
+
+const MORE_NAV_GROUPS = [
+  { label: "guides", documents: ["guide", "architecture", "backend-api", "changelog"] },
+  { label: "project", documents: ["contributing", "agents", "release", "security"] },
 ];
 
 export function documentBySlug(slug) {
@@ -264,26 +295,42 @@ export function createPageByFile(pages = createPages()) {
   return Object.fromEntries(pages.map((page) => [`${page.path}.md`, page]));
 }
 
+function localizedDocumentTitle(document, locale) {
+  const title = document.title[locale];
+  const sourceLocale = sourceLocaleFor(document, locale);
+  return sourceLocale === locale ? title : `${title}（${localeById(sourceLocale).shortLabel}）`;
+}
+
 export function createNav(locale) {
-  return GROUPS.map((group) => ({
-    text: group.title[locale],
-    items: group.documents.map((slug) => {
-      const document = documentBySlug(slug);
-      return { text: document.title[locale], link: linkFor(document, locale) };
-    }),
-  }));
+  const labels = TASK_NAV[locale];
+  const home = linkFor(documentBySlug("index"), locale);
+  const guide = linkFor(documentBySlug("guide"), locale);
+  const troubleshootingHash = locale === "zh" ? "故障排查" : "troubleshooting";
+  return [
+    { text: labels.install, link: `${home}#connect-wechat` },
+    { text: labels.verify, link: `${home}#verify-connection` },
+    { text: labels.troubleshoot, link: `${guide}#${troubleshootingHash}` },
+    {
+      text: labels.more,
+      items: MORE_NAV_GROUPS.map((group) => ({
+        text: labels[group.label],
+        items: group.documents.map((slug) => {
+          const document = documentBySlug(slug);
+          return { text: localizedDocumentTitle(document, locale), link: linkFor(document, locale) };
+        }),
+      })),
+    },
+  ];
 }
 
 export function createSidebar(locale) {
   return GROUPS.map((group) => ({
     text: group.title[locale],
-    collapsed: false,
+    collapsed: group.collapsed,
     items: group.documents.map((slug) => {
       const document = documentBySlug(slug);
-      const sourceLocale = sourceLocaleFor(document, locale);
-      const title = document.title[locale];
       return {
-        text: sourceLocale === locale ? title : `${title}（${localeById(sourceLocale).shortLabel}）`,
+        text: localizedDocumentTitle(document, locale),
         link: linkFor(document, locale),
       };
     }),

@@ -107,10 +107,11 @@ for (const required of [
   "index.ts",
   "dist/index.js",
   "docs/architecture.md",
+  "docs/architecture_EN.md",
   "docs/guide.md",
-  "docs/guide.zh_CN.md",
+  "docs/guide_EN.md",
   "docs/backend-api.md",
-  "docs/backend-api.zh_CN.md",
+  "docs/backend-api_EN.md",
 ]) {
   if (!files.has(required)) {
     fail(`missing required file ${required}`);
