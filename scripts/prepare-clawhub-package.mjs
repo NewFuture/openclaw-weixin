@@ -1,27 +1,15 @@
-import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { extract, list } from "tar";
 
 import { prepareStagedPackageVariant } from "./package-variant.mjs";
 
 export const CLAWHUB_PACKAGE_NAME = "openclaw-wechat";
 export const CLAWHUB_INSTALL_SPEC = `clawhub:${CLAWHUB_PACKAGE_NAME}`;
 
-function runTar(args) {
-  const result = spawnSync(process.platform === "win32" ? "tar.exe" : "tar", args, {
-    encoding: "utf8",
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  if (result.error) {
-    throw new Error(`could not run tar: ${result.error.message}`);
-  }
-  if (result.status !== 0) {
-    throw new Error(`tar failed: ${result.stderr.trim() || `exit status ${result.status}`}`);
-  }
-  return result.stdout;
-}
+const SAFE_ARCHIVE_ENTRY_TYPES = new Set(["File", "OldFile", "Directory"]);
 
 async function resolveSourceArchive(source) {
   const resolvedSource = path.resolve(source);
@@ -41,20 +29,44 @@ async function resolveSourceArchive(source) {
 }
 
 export async function extractPackageArchive(sourceArchive, outputDirectory) {
-  const entries = runTar(["-tzf", sourceArchive]).split(/\r?\n/).filter(Boolean);
+  const entries = [];
+  let validationError;
+  await list({
+    file: sourceArchive,
+    strict: true,
+    onReadEntry(entry) {
+      if (entry.meta || validationError) return;
+      const normalized = entry.path.replaceAll("\\", "/");
+      const segments = normalized.split("/").filter(Boolean);
+      if (!SAFE_ARCHIVE_ENTRY_TYPES.has(entry.type) || entry.invalid || entry.unsupported) {
+        validationError = new Error(
+          `canonical package archive contains an unsupported entry type ${entry.type}: ${entry.path}`,
+        );
+        return;
+      }
+      if (normalized.startsWith("/") || segments[0] !== "package" || segments.some((segment) => segment === "..")) {
+        validationError = new Error(`canonical package archive contains an unsafe path: ${entry.path}`);
+        return;
+      }
+      entries.push(entry.path);
+    },
+  });
+  if (validationError) {
+    throw validationError;
+  }
   if (entries.length === 0) {
     throw new Error("canonical package archive is empty");
   }
-  for (const entry of entries) {
-    const normalized = entry.replaceAll("\\", "/");
-    const segments = normalized.split("/").filter(Boolean);
-    if (normalized.startsWith("/") || segments[0] !== "package" || segments.some((segment) => segment === "..")) {
-      throw new Error(`canonical package archive contains an unsafe path: ${entry}`);
-    }
-  }
 
   await mkdir(outputDirectory, { recursive: true });
-  runTar(["-xzf", sourceArchive, "-C", outputDirectory]);
+  await extract({
+    cwd: outputDirectory,
+    file: sourceArchive,
+    preserveOwner: false,
+    preservePaths: false,
+    strict: true,
+    unlink: true,
+  });
   return path.join(outputDirectory, "package");
 }
 

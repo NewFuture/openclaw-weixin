@@ -31,7 +31,7 @@ function writeTarField(header, offset, length, value) {
 
 function createTarArchive(entries) {
   const blocks = [];
-  for (const { contents, name } of entries) {
+  for (const { contents = "", linkName = "", name, type = "0" } of entries) {
     const body = Buffer.from(contents, "utf8");
     const header = Buffer.alloc(512);
     writeTarField(header, 0, 100, name);
@@ -41,7 +41,8 @@ function createTarArchive(entries) {
     writeTarField(header, 124, 12, `${body.length.toString(8).padStart(11, "0")}\0`);
     writeTarField(header, 136, 12, "00000000000\0");
     header.fill(0x20, 148, 156);
-    writeTarField(header, 156, 1, "0");
+    writeTarField(header, 156, 1, type);
+    writeTarField(header, 157, 100, linkName);
     writeTarField(header, 257, 6, "ustar\0");
     writeTarField(header, 263, 2, "00");
 
@@ -128,6 +129,7 @@ async function createCanonicalArchive(updateManifest = (manifest) => manifest) {
   writeFileSync(join(packageDirectory, "openclaw.plugin.json"), `${JSON.stringify(pluginManifest, null, 2)}\n`, "utf8");
   return {
     archive: await packPackageDirectory(packageDirectory, archiveDirectory),
+    archiveDirectory,
     packageDirectory,
   };
 }
@@ -158,6 +160,64 @@ describe("ClawHub package preparation", () => {
     expect(existsSync(join(extractionDirectory, "outside.txt"))).toBe(false);
   });
 
+  it("rejects symbolic links before they can modify an external target", async () => {
+    const targetDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-link-target-");
+    const targetPath = join(targetDirectory, "package.json");
+    writeFileSync(targetPath, "original target\n", "utf8");
+    const archive = writeTarArchive([
+      {
+        name: "package/package.json",
+        type: "2",
+        linkName: targetPath.replaceAll("\\", "/"),
+      },
+    ]);
+    const extractionDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-link-extract-");
+
+    await expect(extractPackageArchive(archive, extractionDirectory)).rejects.toThrow(
+      "canonical package archive contains an unsupported entry type SymbolicLink: package/package.json",
+    );
+    expect(readFileSync(targetPath, "utf8")).toBe("original target\n");
+    expect(existsSync(join(extractionDirectory, "package", "package.json"))).toBe(false);
+  });
+
+  for (const [type, entryType] of [
+    ["1", "Link"],
+    ["3", "CharacterDevice"],
+    ["4", "BlockDevice"],
+    ["6", "FIFO"],
+  ]) {
+    it(`rejects ${entryType} archive entries`, async () => {
+      const entryPath = `package/unsafe-${type}`;
+      const archive = writeTarArchive([{ name: entryPath, type, linkName: type === "1" ? "package/target" : "" }]);
+
+      await expect(
+        extractPackageArchive(archive, createTemporaryDirectory("openclaw-weixin-clawhub-type-extract-")),
+      ).rejects.toThrow(`canonical package archive contains an unsupported entry type ${entryType}: ${entryPath}`);
+    });
+  }
+
+  it("rejects an empty archive", async () => {
+    const archive = writeTarArchive([]);
+
+    await expect(
+      extractPackageArchive(archive, createTemporaryDirectory("openclaw-weixin-clawhub-empty-extract-")),
+    ).rejects.toThrow("TAR_BAD_ARCHIVE");
+  });
+
+  it("requires exactly one archive in a source directory", async () => {
+    const emptyDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-empty-source-");
+    await expect(
+      prepareClawHubPackage(emptyDirectory, createTemporaryDirectory("openclaw-weixin-clawhub-output-")),
+    ).rejects.toThrow("canonical package directory must contain exactly one .tgz file, found 0");
+
+    const multipleDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-multiple-source-");
+    writeFileSync(join(multipleDirectory, "first.tgz"), "");
+    writeFileSync(join(multipleDirectory, "second.tgz"), "");
+    await expect(
+      prepareClawHubPackage(multipleDirectory, createTemporaryDirectory("openclaw-weixin-clawhub-output-")),
+    ).rejects.toThrow("canonical package directory must contain exactly one .tgz file, found 2");
+  });
+
   it("changes only the package name and ClawHub install choice", async () => {
     const source = await createCanonicalArchive();
     const outputDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-output-");
@@ -167,7 +227,7 @@ describe("ClawHub package preparation", () => {
     delete process.env.npm_execpath;
     let archive;
     try {
-      archive = await prepareClawHubPackage(source.archive, outputDirectory);
+      archive = await prepareClawHubPackage(source.archiveDirectory, outputDirectory);
     } finally {
       if (npmExecPath === undefined) {
         delete process.env.npm_execpath;
