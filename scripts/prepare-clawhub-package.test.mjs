@@ -1,6 +1,7 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { gzipSync } from "node:zlib";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -18,6 +19,45 @@ function createTemporaryDirectory(label) {
   const directory = mkdtempSync(join(tmpdir(), label));
   temporaryDirectories.push(directory);
   return directory;
+}
+
+function writeTarField(header, offset, length, value) {
+  const field = Buffer.from(value, "utf8");
+  if (field.length > length) {
+    throw new Error(`tar field exceeds ${length} bytes: ${value}`);
+  }
+  field.copy(header, offset);
+}
+
+function createTarArchive(entries) {
+  const blocks = [];
+  for (const { contents, name } of entries) {
+    const body = Buffer.from(contents, "utf8");
+    const header = Buffer.alloc(512);
+    writeTarField(header, 0, 100, name);
+    writeTarField(header, 100, 8, "0000644\0");
+    writeTarField(header, 108, 8, "0000000\0");
+    writeTarField(header, 116, 8, "0000000\0");
+    writeTarField(header, 124, 12, `${body.length.toString(8).padStart(11, "0")}\0`);
+    writeTarField(header, 136, 12, "00000000000\0");
+    header.fill(0x20, 148, 156);
+    writeTarField(header, 156, 1, "0");
+    writeTarField(header, 257, 6, "ustar\0");
+    writeTarField(header, 263, 2, "00");
+
+    const checksum = header.reduce((sum, byte) => sum + byte, 0);
+    writeTarField(header, 148, 8, `${checksum.toString(8).padStart(6, "0")}\0 `);
+    const padding = Buffer.alloc((512 - (body.length % 512)) % 512);
+    blocks.push(header, body, padding);
+  }
+  blocks.push(Buffer.alloc(1024));
+  return gzipSync(Buffer.concat(blocks));
+}
+
+function writeTarArchive(entries) {
+  const archivePath = join(createTemporaryDirectory("openclaw-weixin-clawhub-tar-"), "fixture.tgz");
+  writeFileSync(archivePath, createTarArchive(entries));
+  return archivePath;
 }
 
 function canonicalManifest() {
@@ -99,6 +139,25 @@ afterEach(() => {
 });
 
 describe("ClawHub package preparation", () => {
+  it("extracts valid nested paths below the package root", async () => {
+    const archive = writeTarArchive([{ name: "package/nested/payload.txt", contents: "nested payload\n" }]);
+    const extractionDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-safe-extract-");
+
+    const packageDirectory = await extractPackageArchive(archive, extractionDirectory);
+
+    expect(readFileSync(join(packageDirectory, "nested", "payload.txt"), "utf8")).toBe("nested payload\n");
+  });
+
+  it("rejects parent traversal before extracting the archive", async () => {
+    const archive = writeTarArchive([{ name: "package/../outside.txt", contents: "must not escape\n" }]);
+    const extractionDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-unsafe-extract-");
+
+    await expect(extractPackageArchive(archive, extractionDirectory)).rejects.toThrow(
+      "canonical package archive contains an unsafe path: package/../outside.txt",
+    );
+    expect(existsSync(join(extractionDirectory, "outside.txt"))).toBe(false);
+  });
+
   it("changes only the package name and ClawHub install choice", async () => {
     const source = await createCanonicalArchive();
     const outputDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-output-");
