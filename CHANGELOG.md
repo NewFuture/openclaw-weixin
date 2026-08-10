@@ -6,6 +6,15 @@
 
 ## [未发布]
 
+### 修复
+
+- **缺 contextToken 时拒绝发送（消除静默丢弃）：** 5 个发送入口
+  （`sendMessageWeixin` / `sendMessageItemWeixin` / `sendImageMessageWeixin` /
+  `sendVideoMessageWeixin` / `sendFileMessageWeixin`）在 `contextToken` 缺失时
+  由原先 `logger.warn` 后继续发送改为直接抛出错误，避免 iLink 后端返回空体导致
+  消息被静默丢弃、而调用方却拿到「假成功」（`messageId`）。错误与日志中不再出现
+  明文接收方 ID，改用 `redactToken` 脱敏（见 Tencent/openclaw-weixin#247）。
+
 ## [3.1.0] - 2026-08-10
 
 ### 修复

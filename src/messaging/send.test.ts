@@ -46,19 +46,22 @@ import {
 } from "./send.js";
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  // resetAllMocks (not clearAllMocks) so queued mock*Once values from a
+  // previous test that never called the mock don't leak into the next test.
+  vi.resetAllMocks();
   vi.spyOn(Date, "now").mockReturnValue(1700000000000);
 });
 
 describe("sendMessageWeixin", () => {
-  it("sends without contextToken (no throw)", async () => {
-    mockSendMessageApi.mockResolvedValueOnce(undefined);
-    const result = await sendMessageWeixin({
-      to: "user1",
-      text: "hello",
-      opts: { baseUrl: "https://api.com" },
-    });
-    expect(result.messageId).toBeDefined();
+  it("refuses to send without contextToken (throws)", async () => {
+    await expect(
+      sendMessageWeixin({
+        to: "user1",
+        text: "hello",
+        opts: { baseUrl: "https://api.com" },
+      }),
+    ).rejects.toThrow(/contextToken missing/);
+    expect(mockSendMessageApi).not.toHaveBeenCalled();
   });
 
   it("sends text message successfully", async () => {
@@ -152,15 +155,16 @@ function makeUploadedFileInfo(overrides?: Partial<UploadedFileInfo>): UploadedFi
 }
 
 describe("sendImageMessageWeixin", () => {
-  it("sends without contextToken (no throw)", async () => {
-    mockSendMessageApi.mockResolvedValueOnce(undefined);
-    const result = await sendImageMessageWeixin({
-      to: "u",
-      text: "",
-      uploaded: makeUploadedFileInfo(),
-      opts: { baseUrl: "https://api.com" },
-    });
-    expect(result.messageId).toBeDefined();
+  it("refuses to send without contextToken (throws)", async () => {
+    await expect(
+      sendImageMessageWeixin({
+        to: "u",
+        text: "",
+        uploaded: makeUploadedFileInfo(),
+        opts: { baseUrl: "https://api.com" },
+      }),
+    ).rejects.toThrow(/contextToken missing/);
+    expect(mockSendMessageApi).not.toHaveBeenCalled();
   });
 
   it("sends image caption before the media item", async () => {
@@ -214,15 +218,16 @@ describe("sendImageMessageWeixin", () => {
 });
 
 describe("sendVideoMessageWeixin", () => {
-  it("sends without contextToken (no throw)", async () => {
-    mockSendMessageApi.mockResolvedValueOnce(undefined);
-    const result = await sendVideoMessageWeixin({
-      to: "u",
-      text: "",
-      uploaded: makeUploadedFileInfo(),
-      opts: { baseUrl: "https://api.com" },
-    });
-    expect(result.messageId).toBeDefined();
+  it("refuses to send without contextToken (throws)", async () => {
+    await expect(
+      sendVideoMessageWeixin({
+        to: "u",
+        text: "",
+        uploaded: makeUploadedFileInfo(),
+        opts: { baseUrl: "https://api.com" },
+      }),
+    ).rejects.toThrow(/contextToken missing/);
+    expect(mockSendMessageApi).not.toHaveBeenCalled();
   });
 
   it("sends video message", async () => {
@@ -249,16 +254,17 @@ describe("sendVideoMessageWeixin", () => {
 });
 
 describe("sendFileMessageWeixin", () => {
-  it("sends without contextToken (no throw)", async () => {
-    mockSendMessageApi.mockResolvedValueOnce(undefined);
-    const result = await sendFileMessageWeixin({
-      to: "u",
-      text: "",
-      fileName: "file.pdf",
-      uploaded: makeUploadedFileInfo(),
-      opts: { baseUrl: "https://api.com" },
-    });
-    expect(result.messageId).toBeDefined();
+  it("refuses to send without contextToken (throws)", async () => {
+    await expect(
+      sendFileMessageWeixin({
+        to: "u",
+        text: "",
+        fileName: "file.pdf",
+        uploaded: makeUploadedFileInfo(),
+        opts: { baseUrl: "https://api.com" },
+      }),
+    ).rejects.toThrow(/contextToken missing/);
+    expect(mockSendMessageApi).not.toHaveBeenCalled();
   });
 
   it("sends file message", async () => {
@@ -272,5 +278,93 @@ describe("sendFileMessageWeixin", () => {
     });
     expect(result.messageId).toBeDefined();
     expect(mockSendMessageApi).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("missing contextToken refuses to send (silent-drop fix, upstream #247)", () => {
+  const FULL_ID = "o9cq806PLhqoC5-fjuN63zCyAInQ@im.wechat";
+
+  it("sendMessageWeixin throws and does not call the backend", async () => {
+    await expect(sendMessageWeixin({ to: FULL_ID, text: "hi", opts: { baseUrl: "https://api.com" } })).rejects.toThrow(
+      /contextToken missing/,
+    );
+    expect(mockSendMessageApi).not.toHaveBeenCalled();
+  });
+
+  it("sendMessageItemWeixin throws and does not call the backend", async () => {
+    await expect(
+      sendMessageItemWeixin({
+        to: FULL_ID,
+        item: {
+          type: MessageItemType.TOOL_CALL_START,
+          is_completed: false,
+          tool_call_start_item: { tool_name: "read", tool_call_id: "tool:call-1" },
+        },
+        opts: { baseUrl: "https://api.com" },
+      }),
+    ).rejects.toThrow(/contextToken missing/);
+    expect(mockSendMessageApi).not.toHaveBeenCalled();
+  });
+
+  it("sendImageMessageWeixin throws and does not call the backend", async () => {
+    await expect(
+      sendImageMessageWeixin({
+        to: FULL_ID,
+        text: "",
+        uploaded: makeUploadedFileInfo(),
+        opts: { baseUrl: "https://api.com" },
+      }),
+    ).rejects.toThrow(/contextToken missing/);
+    expect(mockSendMessageApi).not.toHaveBeenCalled();
+  });
+
+  it("sendVideoMessageWeixin throws and does not call the backend", async () => {
+    await expect(
+      sendVideoMessageWeixin({
+        to: FULL_ID,
+        text: "",
+        uploaded: makeUploadedFileInfo(),
+        opts: { baseUrl: "https://api.com" },
+      }),
+    ).rejects.toThrow(/contextToken missing/);
+    expect(mockSendMessageApi).not.toHaveBeenCalled();
+  });
+
+  it("sendFileMessageWeixin throws and does not call the backend", async () => {
+    await expect(
+      sendFileMessageWeixin({
+        to: FULL_ID,
+        text: "",
+        fileName: "f.pdf",
+        uploaded: makeUploadedFileInfo(),
+        opts: { baseUrl: "https://api.com" },
+      }),
+    ).rejects.toThrow(/contextToken missing/);
+    expect(mockSendMessageApi).not.toHaveBeenCalled();
+  });
+
+  it("does not leak the full recipient id in the thrown error (privacy)", async () => {
+    let thrown: unknown;
+    try {
+      await sendMessageWeixin({ to: FULL_ID, text: "hi", opts: { baseUrl: "https://api.com" } });
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    const msg = thrown instanceof Error ? thrown.message : String(thrown);
+    // the recipient peer id must never appear verbatim in the error surface
+    expect(msg).not.toContain(FULL_ID);
+    expect(msg).toMatch(/contextToken missing/);
+  });
+
+  it("counterexample: a valid contextToken sends successfully", async () => {
+    mockSendMessageApi.mockResolvedValueOnce(undefined);
+    const result = await sendMessageWeixin({
+      to: "user1",
+      text: "hi",
+      opts: { baseUrl: "https://api.com", contextToken: "ctx" },
+    });
+    expect(result.messageId).toBeDefined();
+    expect(mockSendMessageApi).toHaveBeenCalledOnce();
   });
 });

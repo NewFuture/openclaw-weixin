@@ -6,6 +6,17 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Refuse to send when `contextToken` is missing (avoid silent-drop):** the 5
+  send entry points (`sendMessageWeixin`, `sendMessageItemWeixin`,
+  `sendImageMessageWeixin`, `sendVideoMessageWeixin`, `sendFileMessageWeixin`)
+  now throw instead of `logger.warn`-and-continue when `contextToken` is absent,
+  preventing iLink from silently dropping the message (empty 200 body) while the
+  caller still receives a fake success (`messageId`). Recipient IDs are no longer
+  logged in plaintext; they are redacted via `redactToken`
+  (see Tencent/openclaw-weixin#247).
+
 ## [3.1.0] - 2026-08-10
 
 ### Fixed
