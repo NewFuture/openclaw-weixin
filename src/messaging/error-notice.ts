@@ -1,4 +1,5 @@
 import { logger } from "../util/logger.js";
+import { redactToken } from "../util/redact.js";
 import { sendMessageWeixin } from "./send.js";
 
 /**
@@ -16,7 +17,7 @@ export async function sendWeixinErrorNotice(params: {
   errLog: (m: string) => void;
 }): Promise<void> {
   if (!params.contextToken) {
-    logger.warn(`sendWeixinErrorNotice: no contextToken for to=${params.to}, skipping error notice`);
+    logger.warn(`sendWeixinErrorNotice: no contextToken for ${redactToken(params.to)}, skipping error notice`);
     return;
   }
   try {
