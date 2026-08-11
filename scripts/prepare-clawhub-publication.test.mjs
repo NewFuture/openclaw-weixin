@@ -10,18 +10,16 @@ const BOUNDARY_NAME = getClawHubPublicationBoundaryName({
   version: VERSION,
 });
 
-function prepare(artifacts, checkRuns = []) {
+function prepare(artifacts, { npmjsPublishedBeforeJob = false, recoveryAuthorized = false, runAttempt = "1" } = {}) {
   return prepareClawHubPublication({
     artifactListing: {
       artifacts,
       total_count: artifacts.length,
     },
     boundaryName: BOUNDARY_NAME,
-    checkListing: {
-      check_runs: checkRuns,
-      total_count: checkRuns.length,
-    },
-    runAttempt: "2",
+    npmjsPublishedBeforeJob,
+    recoveryAuthorized,
+    runAttempt,
     runId: "12345",
     sourceCommit: SOURCE_COMMIT,
     sourceRef: SOURCE_REF,
@@ -53,27 +51,19 @@ describe("ClawHub publication recovery boundary", () => {
     });
   });
 
-  it("blocks after artifact expiry while allowing an authoritatively cleared boundary", () => {
-    const activeBoundary = {
-      app: { slug: "github-actions" },
-      conclusion: null,
-      id: 78901,
-      name: BOUNDARY_NAME,
-      status: "in_progress",
-    };
-    expect(() => prepare([], [activeBoundary])).toThrow(/durable publication boundary/);
-
+  it("requires explicit authorization for a new dispatch of an older partial release", () => {
+    expect(() => prepare([], { npmjsPublishedBeforeJob: true })).toThrow(
+      /dispatch the exact tag with authorize_clawhub_recovery enabled/,
+    );
+    expect(prepare([], { npmjsPublishedBeforeJob: true, runAttempt: "2" })).toMatchObject({
+      sourceCommit: SOURCE_COMMIT,
+      version: VERSION,
+    });
     expect(
-      prepare(
-        [],
-        [
-          {
-            ...activeBoundary,
-            conclusion: "neutral",
-            status: "completed",
-          },
-        ],
-      ),
+      prepare([], {
+        npmjsPublishedBeforeJob: true,
+        recoveryAuthorized: true,
+      }),
     ).toMatchObject({
       sourceCommit: SOURCE_COMMIT,
       version: VERSION,

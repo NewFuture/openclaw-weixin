@@ -77,7 +77,7 @@ their respective jobs.
 | npmjs target | ClawHub target | Protected-job behavior |
 | --- | --- | --- |
 | Missing | Missing | Approve once, publish npmjs, then publish ClawHub |
-| Exact version exists | Missing | Approve once, skip npmjs, publish ClawHub |
+| Exact version exists | Missing | Re-run the original workflow, or explicitly authorize an older recovery dispatch |
 | Missing | Exact matching version exists | Approve once, publish npmjs, skip ClawHub |
 | Exact version exists | Exact matching version exists | Skip approval and continue recovery jobs |
 | Either state | ClawHub missing with prior publication boundary | Recover npmjs if needed, then stop before a duplicate ClawHub request |
@@ -85,15 +85,15 @@ their respective jobs.
 
 CI explicitly dispatches the workflow at its newly created tag because tags
 created with `GITHUB_TOKEN` do not recursively trigger tag-push workflows. A
-maintainer can rerun a failed release by manually dispatching `release.yml`
-from the existing release tag; branch dispatches are rejected, and every
-new npmjs publish attempt requires environment approval. Each package registry
-is checked independently. Before ClawHub publication can start, the workflow
+maintainer recovers a failed release by re-running that original workflow run;
+branch dispatches are rejected, and every new npmjs publish attempt requires
+environment approval. Each package registry is checked independently. Before
+ClawHub publication can start, the workflow
 persists a tag-and-commit-specific boundary artifact. If ClawHub remains absent,
-and the 90-day artifact has expired, the matching durable check run still makes
-later runs fail closed instead of submitting a duplicate. An existing exact
-version is still skipped while a missing npmjs version, GitHub Packages mirror,
-or GitHub Release is reconciled without republishing.
+re-running the original workflow fails closed at that boundary instead of
+submitting a duplicate. An existing exact version is still skipped while a
+missing npmjs version, GitHub Packages mirror, or GitHub Release is reconciled
+without republishing.
 Before npmjs publication, later `main` pushes can reconcile an interrupted tag
 or workflow dispatch. Once npmjs contains the version, the `main` coordinator
 considers that release dispatched; failures in the downstream GitHub Packages
@@ -182,25 +182,25 @@ authority.
 
 The coordinated workflow waits for a definitive ClawHub publication result and
 uploads sanitized inspector and JSON reports. If npmjs succeeds but ClawHub
-fails before the durable publication boundary is created, rerun `release.yml`
-from the same exact tag: after the single approval, the target recheck skips
-npmjs and retries ClawHub. The reverse partial state is handled symmetrically.
-If both exact targets already match, the protected job is skipped while GitHub
-Packages and GitHub Release recovery continues.
+fails before the publication boundary is created, re-run the original workflow:
+after the single approval, the target recheck skips npmjs and retries ClawHub.
+The reverse partial state is handled symmetrically. If both exact targets already
+match, the protected job is skipped while GitHub Packages and GitHub Release
+recovery continues.
 
 ClawHub CLI 0.23.3 has no supported standalone attempt status or resume command.
 Its authenticated attempt endpoint is an internal implementation detail, and
 submitting the same package version while an attempt is active is rejected
-rather than treated as an idempotent resume. Therefore the workflow creates a
-durable GitHub check run and uploads a 90-day
+rather than treated as an idempotent resume. Therefore the workflow uploads a
+90-day
 `clawhub-publication-boundary-v<version>-<commit>` artifact immediately before
-the only real publish command. The check is completed successfully only after
-the exact public version and source/runtime identity are verified. Validation,
-build, dry-run, registry lookup, tag verification, npmjs publication, and npmjs
-verification all happen before that boundary and can be retried safely. A
-failure after the check is created is an unknown ClawHub outcome even if the
-command may not have reached the server; automation must not infer safety from
-an absent public version.
+the only real publish command. GitHub permits re-running the original workflow
+for 30 days, so the artifact outlives the complete automatic re-run window.
+Validation, build, dry-run, registry lookup, tag verification, npmjs publication,
+and npmjs verification all happen before that boundary and can be retried
+safely. A failure after the artifact is created is an unknown ClawHub outcome
+even if the command may not have reached the server; automation must not infer
+safety from an absent public version.
 
 If a run fails, first inspect the package and version history:
 
@@ -210,36 +210,24 @@ npx --yes clawhub@0.23.3 package moderation-status openclaw-wechat --json
 npx --yes clawhub@0.23.3 package readiness openclaw-wechat --json
 ```
 
-If the target version is absent and no publication-boundary check or artifact
-exists, the failure occurred before the irreversible command boundary and the
-exact tag can be rerun. If the boundary exists, inspect its originating run and
-sanitized reports for an attempt ID or terminal status, then obtain authoritative
-ClawHub confirmation that no active or accepted attempt exists. Only after that
-confirmation may a maintainer complete that one check run with the `neutral`
-conclusion and remove its matching artifact before rerunning the exact tag. The
-check remains after artifact retention expires, so expiry alone never authorizes
-a retry. If the version appears with the expected identity, rerun the workflow
-and it will skip ClawHub. If a version exists with different source metadata or
-embedded runtime identity, automation fails instead of claiming success; do not
-republish or rewrite that version. Resolve a rejected artifact in a new release.
+If the target version is absent and no publication-boundary artifact exists,
+the failure occurred before the irreversible command boundary and the original
+workflow run can be re-run. Do not create a new workflow dispatch for this
+routine recovery: the first attempt of a new run fails closed when npmjs already
+contains the release. GitHub allows the original run to be re-run for 30 days,
+while the boundary artifact is retained for 90 days.
 
-After authoritative confirmation, clear only the matching boundary (substitute
-the exact version, commit, check-run ID, and artifact ID reported by the failed
-workflow):
-
-```shell
-boundary=clawhub-publication-boundary-v<version>-<commit>
-gh api "repos/NewFuture/openclaw-weixin/commits/<commit>/check-runs" \
-  -f check_name="$boundary" -f filter=all
-gh api --method PATCH \
-  "repos/NewFuture/openclaw-weixin/check-runs/<check-run-id>" \
-  -f status=completed -f conclusion=neutral \
-  -f completed_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-gh api --method DELETE \
-  "repos/NewFuture/openclaw-weixin/actions/artifacts/<artifact-id>"
-```
-
-Do not clear a check created for another version or commit.
+If a boundary exists, inspect its originating run and sanitized reports for an
+attempt ID or terminal status, then obtain authoritative ClawHub confirmation
+that no active or accepted attempt exists. After confirmation, delete only that
+artifact and re-run the original workflow. For an older partial release whose
+original run can no longer be re-run, dispatch `release.yml` from the exact tag
+with `authorize_clawhub_recovery` enabled; the protected environment still
+requires its single approval. If the version appears with the expected identity,
+the workflow skips ClawHub. If a version exists with different source metadata
+or embedded runtime identity, automation fails instead of claiming success; do
+not republish or rewrite that version. Resolve a rejected artifact in a new
+release.
 Once the public package is ready, install it in an isolated OpenClaw state,
 confirm `openclaw plugins list` still reports the `openclaw-weixin`
 plugin/channel id, and inspect the listing's source commit, icon, summary,

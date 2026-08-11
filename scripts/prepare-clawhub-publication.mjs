@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 
 const CLAWHUB_PACKAGE_NAME = "openclaw-wechat";
 const BOUNDARY_PREFIX = "clawhub-publication-boundary";
-const GITHUB_ACTIONS_APP_SLUG = "github-actions";
 
 function assertMatch(value, pattern, label) {
   if (!pattern.test(value ?? "")) {
@@ -21,7 +20,8 @@ export function getClawHubPublicationBoundaryName({ sourceCommit, version }) {
 export function prepareClawHubPublication({
   artifactListing,
   boundaryName,
-  checkListing,
+  recoveryAuthorized,
+  npmjsPublishedBeforeJob,
   runAttempt,
   runId,
   sourceCommit,
@@ -42,15 +42,6 @@ export function prepareClawHubPublication({
       `GitHub Actions returned an incomplete artifact listing (${artifactListing.artifacts.length} of ${artifactListing.total_count})`,
     );
   }
-  if (!Array.isArray(checkListing?.check_runs) || !Number.isInteger(checkListing?.total_count)) {
-    throw new Error("GitHub returned an invalid check-run listing");
-  }
-  if (checkListing.total_count !== checkListing.check_runs.length) {
-    throw new Error(
-      `GitHub returned an incomplete check-run listing (${checkListing.check_runs.length} of ${checkListing.total_count})`,
-    );
-  }
-
   const priorBoundaries = artifactListing.artifacts.filter((artifact) => artifact?.name === boundaryName);
   if (priorBoundaries.length > 0) {
     const artifactIds = priorBoundaries
@@ -63,21 +54,13 @@ export function prepareClawHubPublication({
       }. A prior run may have submitted this version. Do not publish it again until an authoritative ClawHub attempt/package check confirms no active or accepted attempt; then remove only that boundary artifact before rerunning the exact tag.`,
     );
   }
-  const durableBoundaries = checkListing.check_runs.filter(
-    (checkRun) =>
-      checkRun?.name === boundaryName &&
-      checkRun?.app?.slug === GITHUB_ACTIONS_APP_SLUG &&
-      !(checkRun.status === "completed" && checkRun.conclusion === "neutral"),
-  );
-  if (durableBoundaries.length > 0) {
-    const checkRunIds = durableBoundaries
-      .map((checkRun) => checkRun.id)
-      .filter((id) => Number.isInteger(id))
-      .join(", ");
+  const parsedRunAttempt = Number(runAttempt);
+  if (!Number.isInteger(parsedRunAttempt) || parsedRunAttempt <= 0) {
+    throw new Error(`GitHub run attempt is invalid: ${JSON.stringify(runAttempt)}`);
+  }
+  if (npmjsPublishedBeforeJob && parsedRunAttempt === 1 && !recoveryAuthorized) {
     throw new Error(
-      `ClawHub ${CLAWHUB_PACKAGE_NAME}@${version} is still missing, but durable publication boundary ${boundaryName} already exists${
-        checkRunIds ? ` (check run IDs: ${checkRunIds})` : ""
-      }. A prior run may have submitted this version. Do not publish it again until an authoritative ClawHub attempt/package check confirms no active or accepted attempt; then complete only that check run with a neutral conclusion before rerunning the exact tag.`,
+      `ClawHub ${CLAWHUB_PACKAGE_NAME}@${version} is missing while npmjs already contained the release before this workflow run. Re-run the original failed workflow attempt instead of starting a new dispatch. For an older partial release, first obtain authoritative ClawHub confirmation that no active or accepted attempt exists, then dispatch the exact tag with authorize_clawhub_recovery enabled.`,
     );
   }
 
@@ -85,11 +68,10 @@ export function prepareClawHubPublication({
     throw new Error(`release ref mismatch: expected "refs/tags/v${version}", found ${JSON.stringify(sourceRef)}`);
   }
   assertMatch(String(runId), /^\d+$/, "GitHub run id");
-  assertMatch(String(runAttempt), /^\d+$/, "GitHub run attempt");
   return {
     boundary: "publication-command-may-start",
     packageName: CLAWHUB_PACKAGE_NAME,
-    runAttempt: Number(runAttempt),
+    runAttempt: parsedRunAttempt,
     runId: Number(runId),
     sourceCommit,
     sourceRef,
@@ -110,18 +92,18 @@ function main() {
     const packageJson = parseJsonFile("package.json", "package.json");
     if (
       !process.env.CLAWHUB_BOUNDARY_REPORT ||
-      !process.env.CLAWHUB_BOUNDARY_CHECKS ||
-      !process.env.CLAWHUB_BOUNDARY_MARKER
+      !process.env.CLAWHUB_BOUNDARY_MARKER ||
+      !process.env.NPMJS_PUBLISHED_BEFORE_JOB
     ) {
-      throw new Error("CLAWHUB_BOUNDARY_REPORT, CLAWHUB_BOUNDARY_CHECKS, and CLAWHUB_BOUNDARY_MARKER are required");
+      throw new Error("CLAWHUB_BOUNDARY_REPORT, CLAWHUB_BOUNDARY_MARKER, and NPMJS_PUBLISHED_BEFORE_JOB are required");
     }
     const reportPath = path.resolve(process.env.CLAWHUB_BOUNDARY_REPORT);
-    const checksPath = path.resolve(process.env.CLAWHUB_BOUNDARY_CHECKS);
     const markerPath = path.resolve(process.env.CLAWHUB_BOUNDARY_MARKER);
     const marker = prepareClawHubPublication({
       artifactListing: parseJsonFile(reportPath, "ClawHub publication boundary report"),
       boundaryName: process.env.CLAWHUB_BOUNDARY_NAME,
-      checkListing: parseJsonFile(checksPath, "ClawHub publication boundary checks"),
+      recoveryAuthorized: process.env.CLAWHUB_RECOVERY_AUTHORIZED === "true",
+      npmjsPublishedBeforeJob: process.env.NPMJS_PUBLISHED_BEFORE_JOB === "true",
       runAttempt: process.env.GITHUB_RUN_ATTEMPT,
       runId: process.env.GITHUB_RUN_ID,
       sourceCommit: process.env.GITHUB_SHA,
@@ -132,7 +114,7 @@ function main() {
     if (process.env.GITHUB_OUTPUT) {
       appendFileSync(process.env.GITHUB_OUTPUT, `name=${process.env.CLAWHUB_BOUNDARY_NAME}\n`, "utf8");
     }
-    console.log(`Prepared durable ClawHub publication boundary ${process.env.CLAWHUB_BOUNDARY_NAME}.`);
+    console.log(`Prepared ClawHub publication boundary ${process.env.CLAWHUB_BOUNDARY_NAME}.`);
   } catch (error) {
     console.error(
       `ClawHub publication recovery check failed: ${error instanceof Error ? error.message : String(error)}`,
