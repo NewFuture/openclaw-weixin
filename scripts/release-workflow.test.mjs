@@ -4,118 +4,156 @@ import { describe, expect, it } from "vitest";
 
 import { GITHUB_PACKAGE_NAME, GITHUB_PACKAGE_REGISTRY } from "./prepare-github-package.mjs";
 
-const workflow = readFileSync(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
+const workflowSource = readFileSync(new URL("../.github/workflows/release.yml", import.meta.url), "utf8").replaceAll(
+  "\r\n",
+  "\n",
+);
+
+function jobSource(jobId, nextJobId) {
+  const start = workflowSource.indexOf(`\n  ${jobId}:\n`);
+  const end = nextJobId ? workflowSource.indexOf(`\n  ${nextJobId}:\n`, start + 1) : workflowSource.length;
+  expect(start).toBeGreaterThan(-1);
+  expect(end).toBeGreaterThan(start);
+  return workflowSource.slice(start, end);
+}
 
 function occurrences(value, fragment) {
   return value.split(fragment).length - 1;
 }
 
 describe("release workflow contract", () => {
-  it("skips the protected environment only when both exact registry targets match", () => {
-    expect(workflow).toContain("npmjs_published: $" + "{{ steps.targets.outputs.npmjs_published }}");
-    expect(workflow).toContain("clawhub_published: $" + "{{ steps.targets.outputs.clawhub_published }}");
-    expect(workflow).toContain("publication_required: $" + "{{ steps.targets.outputs.publication_required }}");
-    expect(workflow).toContain("if: needs.validate.outputs.publication_required == 'true'");
-    expect(workflow).toContain("node scripts/resolve-release-targets.mjs");
-    expect(workflow).toContain("Recheck registry publication targets");
-    expect(workflow).toContain("Verify coordinated publication");
-    expect(workflow).toContain("Require both registry versions");
-    expect(workflow).toContain(
-      "coordinated-release-preflight-$" + "{{ github.run_id }}-$" + "{{ github.run_attempt }}",
+  it("requests both missing registry environments concurrently from one validated target resolution", () => {
+    const validateJob = jobSource("validate", "npm-publish");
+    const npmJob = jobSource("npm-publish", "clawhub-publish");
+    const clawHubJob = jobSource("clawhub-publish", "verify-registries");
+
+    expect(validateJob).toContain("clawhub_published: $" + "{{ steps.targets.outputs.clawhub_published }}");
+    expect(validateJob).toContain("npmjs_published: $" + "{{ steps.targets.outputs.npmjs_published }}");
+    expect(npmJob).toContain("needs: validate");
+    expect(clawHubJob).toContain("needs: validate");
+    expect(npmJob).toContain("if: needs.validate.outputs.npmjs_published != 'true'");
+    expect(clawHubJob).toContain("if: needs.validate.outputs.clawhub_published != 'true'");
+    expect(npmJob).toContain("environment:\n      name: npm-publish");
+    expect(clawHubJob).toContain("environment:\n      name: clawhub-publish");
+    expect(npmJob).not.toContain("\n      - clawhub-publish");
+    expect(clawHubJob).not.toContain("\n      - npm-publish");
+  });
+
+  it("isolates registry trust and permissions to two environment-bound OIDC jobs", () => {
+    const npmJob = jobSource("npm-publish", "clawhub-publish");
+    const clawHubJob = jobSource("clawhub-publish", "verify-registries");
+
+    expect(occurrences(workflowSource, "id-token: write")).toBe(2);
+    expect(npmJob).toContain("permissions:\n      contents: read\n      id-token: write");
+    expect(npmJob).not.toContain("checks: write");
+    expect(clawHubJob).toContain(
+      "permissions:\n      actions: read\n      checks: write\n      contents: read\n      id-token: write",
     );
-    expect(workflow).toContain(
-      "coordinated-release-publication-$" + "{{ github.run_id }}-$" + "{{ github.run_attempt }}",
+    expect(workflowSource).not.toContain("actions: write");
+    expect(workflowSource).not.toContain("CLAWHUB_TOKEN");
+  });
+
+  it("rechecks and verifies npm independently after approval", () => {
+    const npmJob = jobSource("npm-publish", "clawhub-publish");
+
+    expect(npmJob).toContain("Recheck npmjs publication target");
+    expect(npmJob).toContain("RELEASE_TARGETS_SCOPE: npmjs");
+    expect(npmJob).toContain("Verify live release tag before npmjs publication");
+    expect(npmJob).toContain("Publish npm package with provenance");
+    expect(npmJob).toContain("Verify exact npmjs publication");
+    expect(npmJob.indexOf("Recheck npmjs publication target")).toBeLessThan(
+      npmJob.indexOf("Publish npm package with provenance"),
+    );
+    expect(npmJob.indexOf("Verify live release tag before npmjs publication")).toBeLessThan(
+      npmJob.indexOf("Publish npm package with provenance"),
+    );
+    expect(npmJob).not.toContain("Publish ClawPack");
+    expect(npmJob).not.toContain("ClawHub publication boundary");
+  });
+
+  it("publishes ClawHub independently while preserving its durable boundary", () => {
+    const clawHubJob = jobSource("clawhub-publish", "verify-registries");
+
+    expect(clawHubJob).toContain("Recheck exact ClawHub publication target");
+    expect(clawHubJob).toContain("RELEASE_TARGETS_SCOPE: clawhub");
+    expect(clawHubJob).toContain("Recheck ClawHub target before publication");
+    expect(clawHubJob).not.toContain("wait-for-npm-publication");
+    expect(clawHubJob).not.toContain("NPMJS_PUBLISHED_BEFORE_JOB");
+    expect(clawHubJob).not.toContain("CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT");
+    expect(clawHubJob).toContain("Check prior ClawHub publication boundary");
+    expect(clawHubJob).toContain("Persist durable ClawHub publication check");
+    expect(clawHubJob).toContain("Persist ClawHub publication boundary artifact");
+    expect(clawHubJob).toContain("checks: write");
+    expect(clawHubJob).toContain("--wait");
+    expect(clawHubJob).toContain("--wait-timeout 2400");
+    expect(clawHubJob).toContain('result.publicationStatus !== "published"');
+    expect(clawHubJob.indexOf("Recheck ClawHub target before publication")).toBeLessThan(
+      clawHubJob.indexOf("Check prior ClawHub publication boundary"),
+    );
+    expect(clawHubJob.indexOf("Persist durable ClawHub publication check")).toBeLessThan(
+      clawHubJob.indexOf("Publish ClawPack"),
+    );
+    expect(clawHubJob.indexOf("Persist ClawHub publication boundary artifact")).toBeLessThan(
+      clawHubJob.indexOf("Publish ClawPack"),
+    );
+    expect(clawHubJob.indexOf("Verify live release tag before ClawHub publication")).toBeLessThan(
+      clawHubJob.indexOf("Check prior ClawHub publication boundary"),
+    );
+    expect(clawHubJob).toContain("retention-days: 90");
+    expect(clawHubJob).toContain(
+      "clawhub-release-publication-$" + "{{ github.run_id }}-$" + "{{ github.run_attempt }}",
     );
   });
 
-  it("uses one approval and one OIDC job for sequential npmjs and ClawHub publication", () => {
-    const validateJobStart = workflow.indexOf("\n  validate:\n");
-    const npmJobStart = workflow.indexOf("\n  publish:\n");
-    const githubPackageJobStart = workflow.indexOf("\n  github-package:\n");
-    const githubJobStart = workflow.indexOf("\n  github-release:\n");
-    expect(validateJobStart).toBeGreaterThan(-1);
-    expect(npmJobStart).toBeGreaterThan(-1);
-    expect(githubPackageJobStart).toBeGreaterThan(npmJobStart);
-    expect(githubJobStart).toBeGreaterThan(githubPackageJobStart);
+  it("blocks downstream after either partial registry failure and keeps recovery jobs least-privilege", () => {
+    const verifyRegistriesJob = jobSource("verify-registries", "github-package");
+    const githubPackageJob = jobSource("github-package", "github-release");
+    const githubReleaseJob = jobSource("github-release");
 
-    const validateJob = workflow.slice(validateJobStart, npmJobStart);
-    const registryJob = workflow.slice(npmJobStart, githubPackageJobStart);
-    const githubPackageJob = workflow.slice(githubPackageJobStart, githubJobStart);
-    const githubJob = workflow.slice(githubJobStart);
-    expect(validateJob).toContain("--dry-run");
-    expect(validateJob).toContain("clawhub@0.23.3 package validate");
-    expect(validateJob).not.toContain("id-token: write");
-    expect(registryJob).toContain("environment:\n      name: npm-publish");
-    expect(registryJob).toContain("actions: read");
-    expect(registryJob).not.toContain("checks: write");
-    expect(registryJob).toContain("id-token: write");
-    expect(registryJob).not.toContain("contents: write");
-    expect(registryJob).not.toContain("packages: write");
-    expect(registryJob).not.toContain("actions: write");
-    expect(occurrences(workflow, "environment:\n      name: npm-publish")).toBe(1);
-    expect(occurrences(workflow, "id-token: write")).toBe(1);
-    expect(registryJob.indexOf("Publish npm package with provenance")).toBeLessThan(
-      registryJob.indexOf("Publish ClawPack"),
+    expect(verifyRegistriesJob).toContain("needs:\n      - validate\n      - npm-publish\n      - clawhub-publish");
+    expect(verifyRegistriesJob).toContain("permissions:\n      contents: read");
+    expect(verifyRegistriesJob).toContain("if: >-\n      $" + "{{\n        !cancelled()");
+    expect(verifyRegistriesJob).not.toContain("if: >-\n      $" + "{{\n        always()");
+    expect(verifyRegistriesJob).toContain("Resolve final registry publication targets");
+    expect(verifyRegistriesJob).toContain("Require both exact registry versions");
+    expect(verifyRegistriesJob).toContain("node scripts/resolve-release-targets.mjs");
+    expect(verifyRegistriesJob).toContain("node scripts/verify-release-tag.mjs");
+    expect(verifyRegistriesJob).not.toContain("id-token: write");
+    expect(githubPackageJob).toContain(
+      "needs:\n      - validate\n      - npm-publish\n      - clawhub-publish\n      - verify-registries",
     );
-    expect(registryJob).toContain("if: steps.targets.outputs.npmjs_published != 'true'");
-    expect(registryJob).toContain("if: steps.targets.outputs.clawhub_published != 'true'");
-    expect(registryJob).toContain('--source-commit "$GITHUB_SHA"');
-    expect(registryJob).toContain('--source-ref "$GITHUB_REF"');
-    expect(registryJob).toContain("--wait");
-    expect(registryJob).toContain("--wait-timeout 2400");
-    expect(registryJob).toContain('result.publicationStatus !== "published"');
-    expect(registryJob).toContain("Check prior ClawHub publication boundary");
-    expect(registryJob).toContain("node scripts/prepare-clawhub-publication.mjs");
-    expect(registryJob).toContain("Persist ClawHub publication boundary");
-    expect(registryJob).toContain("retention-days: 90");
-    expect(registryJob.indexOf("Persist ClawHub publication boundary")).toBeLessThan(
-      registryJob.indexOf("Publish ClawPack"),
+    expect(githubReleaseJob).toContain(
+      "needs:\n      - validate\n      - npm-publish\n      - clawhub-publish\n      - verify-registries\n      - github-package",
     );
-    expect(workflow).toContain("authorize_clawhub_recovery:");
-    expect(registryJob).toContain("NPMJS_PUBLISHED_BEFORE_JOB");
-    expect(registryJob.indexOf("Verify live release tag before npmjs publication")).toBeLessThan(
-      registryJob.indexOf("Publish npm package with provenance"),
-    );
-    expect(registryJob.indexOf("Verify live release tag before ClawHub publication")).toBeLessThan(
-      registryJob.indexOf("Publish ClawPack"),
-    );
-    expect(githubPackageJob).toContain("- publish");
-    expect(githubPackageJob).toContain("packages: write");
-    expect(githubPackageJob).not.toContain("id-token: write");
-    expect(githubPackageJob).not.toContain("contents: write");
+    for (const downstreamJob of [githubPackageJob, githubReleaseJob]) {
+      expect(downstreamJob).toContain(
+        "(needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')",
+      );
+      expect(downstreamJob).toContain(
+        "(needs.clawhub-publish.result == 'success' || needs.clawhub-publish.result == 'skipped')",
+      );
+      expect(downstreamJob).toContain("needs.verify-registries.result == 'success'");
+      expect(downstreamJob).toContain("if: >-\n      $" + "{{\n        !cancelled()");
+      expect(downstreamJob).not.toContain("if: >-\n      $" + "{{\n        always()");
+    }
+
+    expect(githubPackageJob).toContain("permissions:\n      contents: read\n      packages: write");
     expect(githubPackageJob).toContain(`GITHUB_PACKAGE_NAME: "${GITHUB_PACKAGE_NAME}"`);
     expect(githubPackageJob).toContain(`GITHUB_PACKAGE_REGISTRY: ${GITHUB_PACKAGE_REGISTRY}`);
-    expect(githubPackageJob).toContain(`echo "PREVIOUS_RELEASE_VERSION=\${previous_release_version}" >> "$GITHUB_ENV"`);
-    expect(githubPackageJob).toContain('if [[ "$latest_version" != "$PREVIOUS_RELEASE_VERSION" ]]');
-    expect(githubPackageJob).toContain(
-      `GitHub Packages is empty; publish \${GITHUB_PACKAGE_NAME}@\${PREVIOUS_RELEASE_VERSION} before \${target_version}.`,
-    );
-    expect(githubPackageJob).not.toContain("bootstrapping");
     expect(githubPackageJob).toContain("node scripts/prepare-github-package.mjs");
-    expect(githubPackageJob).toContain('cd "$package_root/package"');
-    expect(githubPackageJob).toContain("npm pack --dry-run --ignore-scripts");
-    expect(githubPackageJob).toContain("npm publish --ignore-scripts --registry=https://npm.pkg.github.com");
-    expect(githubPackageJob.indexOf("Verify live release tag before GitHub Packages publication")).toBeLessThan(
-      githubPackageJob.indexOf("Publish GitHub package"),
-    );
-    expect(githubJob).toContain("- github-package");
-    expect(githubJob).toContain("contents: write");
-    expect(githubJob).not.toContain("id-token: write");
-    expect(githubJob).not.toContain("packages: write");
-    expect(githubJob).toContain("needs.github-package.result == 'success'");
-    expect(githubJob).toContain("node scripts/render-release-notes.mjs");
-    expect(githubJob.indexOf("Verify live release tag before GitHub Release publication")).toBeLessThan(
-      githubJob.indexOf("Create or finalize GitHub release"),
-    );
-    expect(githubJob).toContain('gh release create "$RELEASE_TAG"');
+    expect(githubPackageJob).not.toContain("id-token: write");
+    expect(githubReleaseJob).toContain("permissions:\n      contents: write");
+    expect(githubReleaseJob).toContain("node scripts/render-release-notes.mjs");
+    expect(githubReleaseJob).not.toContain("id-token: write");
   });
 
-  it("keeps exact-tag validation and downstream recovery dependencies", () => {
-    expect(occurrences(workflow, 'if [ "$RELEASE_REF_TYPE" != "tag" ]')).toBeGreaterThanOrEqual(3);
-    expect(occurrences(workflow, 'if [[ "$release_commit" != "$GITHUB_SHA" ]]')).toBeGreaterThanOrEqual(3);
-    expect(workflow).toContain("&& (needs.publish.result == 'success' || needs.publish.result == 'skipped')");
-    expect(workflow).not.toContain("actions: write");
-    expect(workflow).not.toContain("CLAWHUB_TOKEN");
-    expect(occurrences(workflow, "node scripts/verify-release-tag.mjs")).toBe(4);
+  it("keeps exact-tag checks and run-attempt-safe reports at every irreversible boundary", () => {
+    expect(occurrences(workflowSource, 'if [ "$RELEASE_REF_TYPE" != "tag" ]')).toBeGreaterThanOrEqual(5);
+    expect(occurrences(workflowSource, 'if [[ "$release_commit" != "$GITHUB_SHA" ]]')).toBeGreaterThanOrEqual(5);
+    expect(occurrences(workflowSource, "node scripts/verify-release-tag.mjs")).toBe(6);
+    expect(workflowSource).toContain(
+      "coordinated-release-preflight-$" + "{{ github.run_id }}-$" + "{{ github.run_attempt }}",
+    );
+    expect(workflowSource).toContain("npmjs-release-$" + "{{ github.run_id }}-$" + "{{ github.run_attempt }}");
   });
 });

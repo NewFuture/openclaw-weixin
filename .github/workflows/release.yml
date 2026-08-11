@@ -140,17 +140,16 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  publish:
-    name: Approve and publish registries
+  npm-publish:
+    name: Approve and publish npmjs
     needs: validate
-    if: needs.validate.outputs.publication_required == 'true'
+    if: needs.validate.outputs.npmjs_published != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     environment:
       name: npm-publish
       url: https://www.npmjs.com/package/openclaw-weixin
     permissions:
-      actions: read
       contents: read
       id-token: write
 
@@ -198,7 +197,121 @@ jobs:
       - name: Inspect package contents
         run: npm run pack:check
 
+      - name: Verify live release tag before npmjs publication
+        run: node scripts/verify-release-tag.mjs
+
+      - name: Recheck npmjs publication target
+        id: targets
+        env:
+          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/npmjs-target-after-approval.json
+          RELEASE_TARGETS_SCOPE: npmjs
+        run: node scripts/resolve-release-targets.mjs
+
+      - name: Publish npm package with provenance
+        if: steps.targets.outputs.npmjs_published != 'true'
+        run: npm publish --ignore-scripts --provenance --access public --registry=https://registry.npmjs.org
+
+      - name: Verify exact npmjs publication
+        id: final-target
+        env:
+          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/npmjs-target-final.json
+          RELEASE_TARGETS_SCOPE: npmjs
+        run: node scripts/resolve-release-targets.mjs
+
+      - name: Require exact npmjs publication
+        env:
+          PUBLICATION_REQUIRED: ${{ steps.final-target.outputs.publication_required }}
+        run: |
+          if [[ "$PUBLICATION_REQUIRED" != "false" ]]; then
+            echo "::error::The exact npmjs target is still missing after publication."
+            exit 1
+          fi
+
+      - name: Upload npmjs publication reports
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: npmjs-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/npmjs-target-after-approval.json
+            ${{ runner.temp }}/npmjs-target-final.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  clawhub-publish:
+    name: Approve and publish ClawHub
+    needs: validate
+    if: needs.validate.outputs.clawhub_published != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: clawhub-publish
+      url: https://clawhub.ai/packages/openclaw-wechat
+    permissions:
+      actions: read
+      checks: write
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+          registry-url: https://registry.npmjs.org
+
+      - name: Verify release metadata
+        env:
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ "$RELEASE_REF_TYPE" != "tag" ]; then
+            echo "::error::Release workflow must run from a tag, not ${RELEASE_REF_TYPE} ${RELEASE_TAG}."
+            exit 1
+          fi
+          npm run check:versions
+          transition_output="$(mktemp)"
+          trap 'rm -f "$transition_output"' EXIT
+          GITHUB_OUTPUT="$transition_output" node scripts/resolve-release-transition.mjs
+          release_commit="$(grep '^release_commit=' "$transition_output" | cut -d= -f2)"
+          if [[ "$release_commit" != "$GITHUB_SHA" ]]; then
+            echo "::error::Tag ${RELEASE_TAG} resolves release commit ${release_commit}, but this run is on ${GITHUB_SHA}. Only the CI coordinator may trigger a release publish; do not push tags manually."
+            exit 1
+          fi
+
+      - name: Verify live release tag after approval
+        run: node scripts/verify-release-tag.mjs
+
+      - name: Recheck exact ClawHub publication target
+        id: targets
+        env:
+          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/clawhub-target-after-approval.json
+          RELEASE_TARGETS_SCOPE: clawhub
+        run: node scripts/resolve-release-targets.mjs
+
+      - name: Install dependencies
+        if: steps.targets.outputs.clawhub_published != 'true'
+        run: npm ci
+
+      - name: Build package
+        if: steps.targets.outputs.clawhub_published != 'true'
+        run: npm run build
+
+      - name: Inspect package contents
+        if: steps.targets.outputs.clawhub_published != 'true'
+        run: npm run pack:check
+
       - name: Build ClawPack
+        if: steps.targets.outputs.clawhub_published != 'true'
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/npm-package" "$RUNNER_TEMP/clawhub-package"
@@ -208,6 +321,7 @@ jobs:
             "$RUNNER_TEMP/clawhub-package"
 
       - name: Validate and dry-run ClawHub publish
+        if: steps.targets.outputs.clawhub_published != 'true'
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -242,44 +356,36 @@ jobs:
             --json |
             tee "$RUNNER_TEMP/clawhub-dry-run.json"
 
-      - name: Recheck registry publication targets
-        id: targets
+      - name: Recheck ClawHub target before publication
+        if: steps.targets.outputs.clawhub_published != 'true'
+        id: ready-target
         env:
-          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/release-targets-after-approval.json
+          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/clawhub-target-before-boundary.json
+          RELEASE_TARGETS_SCOPE: clawhub
         run: node scripts/resolve-release-targets.mjs
 
-      - name: Verify live release tag before npmjs publication
-        run: node scripts/verify-release-tag.mjs
-
-      - name: Publish npm package with provenance
-        if: steps.targets.outputs.npmjs_published != 'true'
-        run: npm publish --ignore-scripts --provenance --access public --registry=https://registry.npmjs.org
-
-      - name: Verify npmjs publication
-        run: |
-          set -euo pipefail
-          target_version="$(node -p "require('./package.json').version")"
-          published_version="$(
-            npm view "openclaw-weixin@${target_version}" version \
-              --registry=https://registry.npmjs.org
-          )"
-          if [[ "$published_version" != "$target_version" ]]; then
-            echo "::error::npm returned unexpected version ${published_version} for ${target_version}."
-            exit 1
-          fi
-
       - name: Verify live release tag before ClawHub publication
+        if: >-
+          ${{
+            steps.targets.outputs.clawhub_published != 'true'
+            && steps.ready-target.outputs.clawhub_published != 'true'
+          }}
         run: node scripts/verify-release-tag.mjs
 
       - name: Check prior ClawHub publication boundary
-        if: steps.targets.outputs.clawhub_published != 'true'
+        if: >-
+          ${{
+            steps.targets.outputs.clawhub_published != 'true'
+            && steps.ready-target.outputs.clawhub_published != 'true'
+          }}
         id: clawhub-boundary
         env:
+          CLAWHUB_BOUNDARY_CHECK_REPORT: ${{ runner.temp }}/clawhub-publication-checks.json
+          CLAWHUB_BOUNDARY_CHECK_REQUEST: ${{ runner.temp }}/clawhub-publication-check-request.json
           CLAWHUB_BOUNDARY_MARKER: ${{ runner.temp }}/clawhub-publication-boundary.json
           CLAWHUB_BOUNDARY_REPORT: ${{ runner.temp }}/clawhub-publication-boundaries.json
           CLAWHUB_RECOVERY_AUTHORIZED: ${{ inputs.authorize_clawhub_recovery || false }}
           GH_TOKEN: ${{ github.token }}
-          NPMJS_PUBLISHED_BEFORE_JOB: ${{ steps.targets.outputs.npmjs_published }}
         run: |
           set -euo pipefail
           target_version="$(node -p "require('./package.json').version")"
@@ -288,11 +394,31 @@ jobs:
             -f name="$boundary_name" \
             -f per_page=100 \
             > "$CLAWHUB_BOUNDARY_REPORT"
+          gh api --method GET "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" \
+            -f check_name="$boundary_name" \
+            -f filter=all \
+            -f per_page=100 \
+            > "$CLAWHUB_BOUNDARY_CHECK_REPORT"
           CLAWHUB_BOUNDARY_NAME="$boundary_name" \
             node scripts/prepare-clawhub-publication.mjs
 
-      - name: Persist ClawHub publication boundary
-        if: steps.targets.outputs.clawhub_published != 'true'
+      - name: Persist durable ClawHub publication check
+        if: >-
+          ${{
+            steps.targets.outputs.clawhub_published != 'true'
+            && steps.ready-target.outputs.clawhub_published != 'true'
+          }}
+        env:
+          CHECK_REQUEST: ${{ runner.temp }}/clawhub-publication-check-request.json
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST "repos/${GITHUB_REPOSITORY}/check-runs" --input "$CHECK_REQUEST"
+
+      - name: Persist ClawHub publication boundary artifact
+        if: >-
+          ${{
+            steps.targets.outputs.clawhub_published != 'true'
+            && steps.ready-target.outputs.clawhub_published != 'true'
+          }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ${{ steps.clawhub-boundary.outputs.name }}
@@ -301,7 +427,11 @@ jobs:
           retention-days: 90
 
       - name: Publish ClawPack
-        if: steps.targets.outputs.clawhub_published != 'true'
+        if: >-
+          ${{
+            steps.targets.outputs.clawhub_published != 'true'
+            && steps.ready-target.outputs.clawhub_published != 'true'
+          }}
         env:
           PUBLISH_RESULT: ${{ runner.temp }}/clawhub-package-publish.json
         run: |
@@ -335,48 +465,133 @@ jobs:
             }
           '
 
-      - name: Verify coordinated publication
-        id: final-targets
+      - name: Verify exact ClawHub publication
+        id: final-target
         env:
-          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/release-targets-final.json
+          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/clawhub-target-final.json
+          RELEASE_TARGETS_SCOPE: clawhub
         run: node scripts/resolve-release-targets.mjs
 
-      - name: Require both registry versions
+      - name: Require exact ClawHub publication
         env:
-          PUBLICATION_REQUIRED: ${{ steps.final-targets.outputs.publication_required }}
+          PUBLICATION_REQUIRED: ${{ steps.final-target.outputs.publication_required }}
         run: |
           if [[ "$PUBLICATION_REQUIRED" != "false" ]]; then
-            echo "::error::A coordinated registry target is still missing after publication."
+            echo "::error::The exact ClawHub target is still missing after publication."
             exit 1
           fi
 
-      - name: Upload coordinated publication reports
+      - name: Upload ClawHub publication reports
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: coordinated-release-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          name: clawhub-release-publication-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/clawhub-inspector
             ${{ runner.temp }}/clawhub-validate.json
             ${{ runner.temp }}/clawhub-dry-run.json
             ${{ runner.temp }}/clawhub-publication-boundaries.json
+            ${{ runner.temp }}/clawhub-publication-checks.json
             ${{ runner.temp }}/clawhub-publication-boundary.json
             ${{ runner.temp }}/clawhub-package-publish.json
-            ${{ runner.temp }}/release-targets-after-approval.json
-            ${{ runner.temp }}/release-targets-final.json
+            ${{ runner.temp }}/clawhub-target-after-approval.json
+            ${{ runner.temp }}/clawhub-target-before-boundary.json
+            ${{ runner.temp }}/clawhub-target-final.json
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 30
+
+  verify-registries:
+    name: Verify coordinated registry publication
+    needs:
+      - validate
+      - npm-publish
+      - clawhub-publish
+    if: >-
+      ${{
+        !cancelled()
+        && needs.validate.result == 'success'
+        && (needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')
+        && (needs.clawhub-publish.result == 'success' || needs.clawhub-publish.result == 'skipped')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          registry-url: https://registry.npmjs.org
+
+      - name: Verify release metadata
+        env:
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ "$RELEASE_REF_TYPE" != "tag" ]; then
+            echo "::error::Release workflow must run from a tag, not ${RELEASE_REF_TYPE} ${RELEASE_TAG}."
+            exit 1
+          fi
+          npm run check:versions
+          transition_output="$(mktemp)"
+          trap 'rm -f "$transition_output"' EXIT
+          GITHUB_OUTPUT="$transition_output" node scripts/resolve-release-transition.mjs
+          release_commit="$(grep '^release_commit=' "$transition_output" | cut -d= -f2)"
+          if [[ "$release_commit" != "$GITHUB_SHA" ]]; then
+            echo "::error::Tag ${RELEASE_TAG} resolves release commit ${release_commit}, but this run is on ${GITHUB_SHA}. Only the CI coordinator may trigger a release publish; do not push tags manually."
+            exit 1
+          fi
+
+      - name: Verify live release tag before downstream publication
+        run: node scripts/verify-release-tag.mjs
+
+      - name: Resolve final registry publication targets
+        id: targets
+        env:
+          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/release-targets-final.json
+        run: node scripts/resolve-release-targets.mjs
+
+      - name: Require both exact registry versions
+        env:
+          PUBLICATION_REQUIRED: ${{ steps.targets.outputs.publication_required }}
+        run: |
+          if [[ "$PUBLICATION_REQUIRED" != "false" ]]; then
+            echo "::error::A coordinated registry target is missing before downstream publication."
+            exit 1
+          fi
+
+      - name: Upload final registry report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coordinated-registry-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-targets-final.json
+          if-no-files-found: ignore
+          retention-days: 30
 
   github-package:
     name: Publish to GitHub Packages
     needs:
       - validate
-      - publish
+      - npm-publish
+      - clawhub-publish
+      - verify-registries
     if: >-
       ${{
-        always()
+        !cancelled()
         && needs.validate.result == 'success'
-        && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+        && (needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')
+        && (needs.clawhub-publish.result == 'success' || needs.clawhub-publish.result == 'skipped')
+        && needs.verify-registries.result == 'success'
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -537,13 +752,17 @@ jobs:
     name: Publish GitHub release
     needs:
       - validate
-      - publish
+      - npm-publish
+      - clawhub-publish
+      - verify-registries
       - github-package
     if: >-
       ${{
-        always()
+        !cancelled()
         && needs.validate.result == 'success'
-        && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+        && (needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')
+        && (needs.clawhub-publish.result == 'success' || needs.clawhub-publish.result == 'skipped')
+        && needs.verify-registries.result == 'success'
         && needs.github-package.result == 'success'
       }}
     runs-on: ubuntu-latest

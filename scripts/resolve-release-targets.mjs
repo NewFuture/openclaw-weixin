@@ -11,7 +11,7 @@ const CLAWHUB_OWNER = "newfuture";
 const PLUGIN_ID = "openclaw-weixin";
 const SOURCE_REPOSITORY = "NewFuture/openclaw-weixin";
 
-function runCommand(command, args, options = {}) {
+export function runReleaseCommand(command, args, options = {}) {
   let executable = command;
   let executableArgs = args;
   if (process.platform === "win32") {
@@ -67,7 +67,7 @@ function assertEqual(actual, expected, label) {
   }
 }
 
-function inspectNpmTarget({ run, version }) {
+function inspectExactNpmTarget({ run, version }) {
   const exactArgs = ["view", `${NPM_PACKAGE_NAME}@${version}`, "version", `--registry=${NPM_REGISTRY}`];
   const exactResult = run("npm", exactArgs);
   if (exactResult.status === 0) {
@@ -80,6 +80,17 @@ function inspectNpmTarget({ run, version }) {
   }
   if (!/E404|404 Not Found/i.test(exactResult.stderr)) {
     throw commandFailure("npm", exactArgs, exactResult);
+  }
+  return {
+    published: false,
+    version: null,
+  };
+}
+
+export function inspectNpmTarget({ run, version }) {
+  const exactTarget = inspectExactNpmTarget({ run, version });
+  if (exactTarget.published) {
+    return exactTarget;
   }
 
   const latestVersion = runRequired(run, "npm", [
@@ -139,7 +150,7 @@ function validateClawHubInspection(inspection, expected) {
   };
 }
 
-function inspectClawHubTarget({ run, sourceCommit, sourceRef, sourceRepo, version }) {
+export function inspectClawHubTarget({ run, sourceCommit, sourceRef, sourceRepo, version }) {
   const baseArgs = ["--yes", `clawhub@${CLAWHUB_CLI_VERSION}`, "package", "inspect", CLAWHUB_PACKAGE_NAME];
   const exactArgs = [...baseArgs, "--version", version, "--file", "openclaw.plugin.json", "--json"];
   const exactResult = run("npx", exactArgs);
@@ -171,7 +182,17 @@ function inspectClawHubTarget({ run, sourceCommit, sourceRef, sourceRepo, versio
   };
 }
 
-export function resolveReleaseTargets({ run = runCommand, sourceCommit, sourceRef, sourceRepo, version }) {
+export function resolveReleaseTargets({
+  run = runReleaseCommand,
+  scope = "all",
+  sourceCommit,
+  sourceRef,
+  sourceRepo,
+  version,
+}) {
+  if (!["all", "clawhub", "npmjs"].includes(scope)) {
+    throw new Error(`release target scope must be all, clawhub, or npmjs, found ${JSON.stringify(scope)}`);
+  }
   if (!/^\d+\.\d+\.\d+$/.test(version ?? "")) {
     throw new Error(`release version must be a stable semantic version, found ${JSON.stringify(version)}`);
   }
@@ -180,18 +201,21 @@ export function resolveReleaseTargets({ run = runCommand, sourceCommit, sourceRe
     throw new Error(`release source commit must be a full lowercase Git SHA, found ${JSON.stringify(sourceCommit)}`);
   }
   assertEqual(sourceRef, `refs/tags/v${version}`, "release ref");
-  const npmjs = inspectNpmTarget({ run, version });
-  const clawHub = inspectClawHubTarget({
-    run,
-    sourceCommit,
-    sourceRef,
-    sourceRepo,
-    version,
-  });
+  const npmjs = scope === "all" || scope === "npmjs" ? inspectNpmTarget({ run, version }) : undefined;
+  const clawHub =
+    scope === "all" || scope === "clawhub"
+      ? inspectClawHubTarget({
+          run,
+          sourceCommit,
+          sourceRef,
+          sourceRepo,
+          version,
+        })
+      : undefined;
   return {
-    clawHub,
-    npmjs,
-    publicationRequired: !npmjs.published || !clawHub.published,
+    ...(clawHub ? { clawHub } : {}),
+    ...(npmjs ? { npmjs } : {}),
+    publicationRequired: (npmjs ? !npmjs.published : false) || (clawHub ? !clawHub.published : false),
     targetVersion: version,
   };
 }
@@ -200,8 +224,8 @@ function appendOutputs(outputPath, result) {
   appendFileSync(
     outputPath,
     [
-      `npmjs_published=${String(result.npmjs.published)}`,
-      `clawhub_published=${String(result.clawHub.published)}`,
+      ...(result.npmjs ? [`npmjs_published=${String(result.npmjs.published)}`] : []),
+      ...(result.clawHub ? [`clawhub_published=${String(result.clawHub.published)}`] : []),
       `publication_required=${String(result.publicationRequired)}`,
       "",
     ].join("\n"),
@@ -213,6 +237,7 @@ function main() {
   try {
     const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
     const result = resolveReleaseTargets({
+      scope: process.env.RELEASE_TARGETS_SCOPE ?? "all",
       sourceCommit: process.env.GITHUB_SHA,
       sourceRef: process.env.GITHUB_REF,
       sourceRepo: process.env.GITHUB_REPOSITORY,
@@ -225,9 +250,14 @@ function main() {
       appendOutputs(process.env.GITHUB_OUTPUT, result);
     }
     console.log(
-      `Release targets: npmjs=${result.npmjs.published ? "published" : "missing"}, ClawHub=${
-        result.clawHub.published ? "published and matched" : "missing"
-      }.`,
+      [
+        result.npmjs ? `npmjs=${result.npmjs.published ? "published" : "missing"}` : null,
+        result.clawHub ? `ClawHub=${result.clawHub.published ? "published and matched" : "missing"}` : null,
+      ]
+        .filter(Boolean)
+        .join(", ")
+        .replace(/^/, "Release targets: ")
+        .concat("."),
     );
   } catch (error) {
     console.error(`Release target resolution failed: ${error instanceof Error ? error.message : String(error)}`);
