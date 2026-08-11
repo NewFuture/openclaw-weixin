@@ -87,12 +87,10 @@ describe("ClawHub publication recovery boundary", () => {
   });
 
   it("does not let another release's boundary block the current exact tag and commit", () => {
-    const marker = prepare([
-      {
-        id: 67890,
-        name: "clawhub-publication-boundary-v3.1.1-abcdef1234567890abcdef1234567890abcdef12",
-      },
-    ]);
+    const unrelatedBoundaryName = "clawhub-publication-boundary-v3.1.1-abcdef1234567890abcdef1234567890abcdef12";
+    const marker = prepare([{ id: 67890, name: unrelatedBoundaryName }], {
+      checkRuns: [{ id: 78901, name: unrelatedBoundaryName }],
+    });
 
     expect(marker).toMatchObject({
       boundary: "publication-command-may-start",
@@ -101,6 +99,12 @@ describe("ClawHub publication recovery boundary", () => {
       sourceRef: SOURCE_REF,
       version: VERSION,
     });
+  });
+
+  it("directs evidence-based artifact recovery through an explicitly authorized dispatch", () => {
+    expect(() => prepare([{ id: 67890, name: BOUNDARY_NAME }])).toThrow(
+      /remove only that boundary artifact and dispatch the exact tag with authorize_clawhub_recovery enabled/,
+    );
   });
 
   it("requires explicit authorization for a new dispatch of an older partial release", () => {

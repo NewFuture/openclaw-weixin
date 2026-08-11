@@ -75,7 +75,8 @@
     "silk-wasm": "^3.7.1",
     "tar": "7.5.22",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "yaml": "2.9.0"
   },
   "overrides": {
     "openclaw@2026.7.1": {

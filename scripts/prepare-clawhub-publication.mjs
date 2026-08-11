@@ -60,7 +60,7 @@ export function prepareClawHubPublication({
     throw new Error(
       `ClawHub ${CLAWHUB_PACKAGE_NAME}@${version} is still missing, but publication boundary ${boundaryName} already exists${
         artifactIds ? ` (artifact IDs: ${artifactIds})` : ""
-      }. A prior run may have submitted this version. Do not publish it again until an authoritative ClawHub attempt/package check confirms no active or accepted attempt; then remove only that boundary artifact before rerunning the exact tag.`,
+      }. A prior run may have submitted this version. Do not publish it again until an authoritative ClawHub attempt/package check confirms no active or accepted attempt; then remove only that boundary artifact and dispatch the exact tag with authorize_clawhub_recovery enabled.`,
     );
   }
   const priorChecks = checkRunListing.check_runs.filter((checkRun) => checkRun?.name === boundaryName);
