@@ -1,36 +1,41 @@
 # npmjs, GitHub Packages, GitHub Release, and ClawHub process
 
 `openclaw-weixin` publishes the canonical package to the official npm registry,
-mirrors it to GitHub Packages as `@newfuture/openclaw-weixin`, and creates a
-matching GitHub Release. A separate ClawPack is prepared for the future ClawHub
-listing `openclaw-wechat`; its embedded plugin/channel id remains
-`openclaw-weixin`. Never commit a registry token. npmjs and post-bootstrap
-ClawHub publishing use GitHub OIDC; the GitHub Packages job exposes only its
+publishes the matching ClawPack to the ClawHub listing `openclaw-wechat`, mirrors
+the package to GitHub Packages as `@newfuture/openclaw-weixin`, and creates a
+matching GitHub Release. The ClawPack's embedded plugin/channel id remains
+`openclaw-weixin`. Never commit a registry token. npmjs and ClawHub publishing
+share one protected GitHub OIDC job; the GitHub Packages job exposes only its
 ephemeral `GITHUB_TOKEN` as `NODE_AUTH_TOKEN`.
 
 ## Release prerequisites
 
 1. Make the GitHub repository public so npm can verify the package provenance.
 2. For a new release, confirm the target version is not already published to
-   npmjs, GitHub Packages, or as a GitHub Release. Recovery runs may reconcile
-   missing destinations.
+   npmjs, ClawHub, GitHub Packages, or as a GitHub Release. Recovery runs may
+   reconcile missing destinations.
 3. Confirm the protected GitHub environment `npm-publish` requires approval from
-   a repository administrator.
-4. Confirm the protected GitHub environment `clawhub-publish` requires approval
-   from a repository administrator and allows deployments only from tags that
-   match `v*`.
+   a repository administrator and allows deployments only from tags that match
+   `v*`.
+4. Confirm a repository tag ruleset permits CI to create `v*` tags but blocks
+   their update and deletion. The workflow also resolves the live remote tag
+   immediately before every irreversible publication.
 5. Confirm the npm package has a GitHub Actions Trusted Publisher for owner
    `NewFuture`, repository `openclaw-weixin`, workflow `release.yml`, and
    environment `npm-publish`. The environment name is case-sensitive.
-6. Confirm the repository permits workflows to write GitHub Packages. The first
+6. Confirm the ClawHub package has a trusted publisher for repository
+   `NewFuture/openclaw-weixin`, workflow `release.yml`, and environment
+   `npm-publish`. Follow the post-merge migration below before the first unified
+   release; do not change the npm trusted publisher.
+7. Confirm the repository permits workflows to write GitHub Packages. The first
    `@newfuture/openclaw-weixin` publication is private by default; set its
    visibility in GitHub package settings if a public listing is desired. npm
    packages on GitHub require authentication even when public.
-7. From the exact clean release commit, run `npm ci`, `npm run check:versions`,
+8. From the exact clean release commit, run `npm ci`, `npm run check:versions`,
    `npm run audit:deps`, `npm run check`, and `npm run pack:check`.
-8. Confirm `package.json`, `package-lock.json`, `openclaw.plugin.json`,
+9. Confirm `package.json`, `package-lock.json`, `openclaw.plugin.json`,
    `CHANGELOG.md`, and `CHANGELOG_EN.md` use the same release version.
-9. Merge release pull requests with a squash or merge commit. Rebase merge is
+10. Merge release pull requests with a squash or merge commit. Rebase merge is
    rejected because its intermediate version-bump commit is not the final tree
    validated on `main`.
 
@@ -48,19 +53,34 @@ After Trusted Publishing is configured:
    and Windows check passes on `main`, CI creates the missing matching tag, for
    example `v3.0.0`, and dispatches its coordinated release.
 
-`.github/workflows/release.yml` verifies the tag, installs from the lockfile,
-runs the dependency audit, type checking, tests, the build, and the
-package-content check before requesting approval for the protected
-`npm-publish` environment. After approval, a separate job rebuilds and
-rechecks the package, then publishes `openclaw-weixin` with npm provenance over
-GitHub OIDC. A least-privilege GitHub Packages job then packs the same validated
-source tree, changes only its package name, install spec, and registry metadata,
-and publishes `@newfuture/openclaw-weixin` with the repository's `GITHUB_TOKEN`.
-Once both registries contain the version, another
-least-privilege job creates the matching GitHub Release with notes rendered
-from the versioned Chinese and English changelog sections. OIDC permission,
-GitHub Packages write permission, and GitHub contents write permission are
-isolated to their respective jobs.
+`.github/workflows/release.yml` verifies the exact tag and release-transition
+commit, installs from the lockfile, runs the dependency audit, type checking,
+tests, build, package-content check, ClawPack structural conversion, ClawHub
+validation, and credential-free publish dry-run. It then checks npmjs and
+ClawHub independently. An existing ClawHub version is accepted only when its
+package, owner, source repository, source commit, source tag, and embedded
+plugin/channel identity match the release exactly.
+
+If either registry target is missing, one job requests approval for the
+protected `npm-publish` environment. It rebuilds and revalidates both artifacts,
+rechecks both registries after approval, publishes npmjs and ClawHub as separate
+sequential steps, waits for a definitive ClawHub result, and verifies both exact
+versions again. This is the only release job with `id-token: write`. A
+least-privilege GitHub Packages job then packs the same validated source tree,
+changes only its package name, install spec, and registry metadata, and
+publishes `@newfuture/openclaw-weixin` with the repository's `GITHUB_TOKEN`.
+Another least-privilege job creates the matching GitHub Release with notes
+rendered from the versioned Chinese and English changelog sections. OIDC,
+GitHub Packages write, and GitHub contents write permissions remain isolated to
+their respective jobs.
+
+| npmjs target | ClawHub target | Protected-job behavior |
+| --- | --- | --- |
+| Missing | Missing | Approve once, publish npmjs, then publish ClawHub |
+| Exact version exists | Missing | Approve once, skip npmjs, publish ClawHub |
+| Missing | Exact matching version exists | Approve once, publish npmjs, skip ClawHub |
+| Exact version exists | Exact matching version exists | Skip approval and continue recovery jobs |
+| Either state | Version exists with mismatched source or runtime identity | Fail; never treat it as recovery success |
 
 CI explicitly dispatches the workflow at its newly created tag because tags
 created with `GITHUB_TOKEN` do not recursively trigger tag-push workflows. A
@@ -108,74 +128,61 @@ copy's default installer. It never modifies the source tarball or creates an
 
 Before any ClawHub release, run `npm ci`, `npm run check`, and
 `npm run pack:check`, then build and validate the ClawPack with the commands in
-[CONTRIBUTING.md](./CONTRIBUTING.md). Do not reuse any existing release tag,
-including `v3.0.2` or `v3.1.0`: the first ClawHub version must come from a later
-release tag that contains this publishing support.
+[CONTRIBUTING.md](./CONTRIBUTING.md).
 
-## First ClawHub publication
+## Post-merge trusted-publisher migration
 
-The first publication is a one-time authenticated bootstrap because GitHub OIDC
-cannot publish a package until that package has a trusted publisher:
+The unified workflow and external trust configuration must change in this order.
+Do not mutate either trusted publisher from an unmerged branch:
 
-1. Reconfirm that `openclaw-wechat` is unclaimed. If it belongs to another
-   publisher, stop rather than overriding or republishing it.
-2. Log in locally with `npx --yes clawhub@0.23.3 login`. Create the publisher
-   once, if needed:
-
-   ```shell
-   npx --yes clawhub@0.23.3 publisher create newfuture \
-     --display-name NewFuture --json
-   ```
-
-3. Check out the next clean release tag, generate the canonical npm tarball and
-   its ClawPack, and repeat validation plus dry-run against that exact commit.
-4. Publish the ClawPack, supplying the real tag and commit:
-
-   ```shell
-   npx --yes clawhub@0.23.3 package publish \
-     <clawpack-path>/openclaw-wechat-<version>.tgz \
-     --family code-plugin --owner newfuture --display-name WeChat \
-     --categories channels --topics wechat,weixin,messaging \
-     --source-repo NewFuture/openclaw-weixin \
-     --source-commit <release-commit-sha> --source-ref refs/tags/v<version> \
-     --wait --wait-timeout 2400 --json
-   ```
-
-5. After ClawHub has created the package, bind its trusted publisher and inspect
-   the saved configuration:
+1. Merge the reviewed workflow to `main`. Until it is present on `main`, keep
+   ClawHub bound to `clawhub-publish.yml` and `clawhub-publish`; do not start
+   another release.
+2. Add the deployment tag policy `v*` to the existing `npm-publish` environment
+   while retaining its required reviewer. This protects both OIDC issuers from
+   branch dispatches.
+3. Add or verify a repository tag ruleset that allows the CI coordinator to
+   create `v*` tags but denies updates and deletions. This makes the exact source
+   ref immutable across approval and publication.
+4. Reconfirm that npm remains bound to `release.yml` and `npm-publish`. Do not
+   replace or otherwise edit the npm trusted publisher.
+5. Rebind the ClawHub package only after steps 1-4:
 
    ```shell
    npx --yes clawhub@0.23.3 package trusted-publisher set openclaw-wechat \
      --repository NewFuture/openclaw-weixin \
-     --workflow-filename clawhub-publish.yml \
-     --environment clawhub-publish
+     --workflow-filename release.yml \
+     --environment npm-publish
    npx --yes clawhub@0.23.3 package trusted-publisher get openclaw-wechat --json
    ```
 
-Configure and protect the `clawhub-publish` environment before saving this
-trusted publisher. Without the environment binding, a workflow modified on
-another ref could request a publish token. Do not add a long-lived
-`CLAWHUB_TOKEN` GitHub secret. Categories and topics are set during bootstrap;
-later publishes preserve them.
+6. Verify that the saved ClawHub repository, workflow filename, and environment
+   match exactly before starting the next coordinated release. The `set` command
+   replaces the old ClawHub binding; the old environment is deliberately kept
+   as a recovery reference at this stage.
+7. Run the next release only through the CI-created exact tag and explicit
+   `release.yml` dispatch. Approve `npm-publish` once and verify npmjs, ClawHub,
+   GitHub Packages, the GitHub Release, and the sanitized workflow reports.
+8. Retire the now-unused `clawhub-publish` environment only after a successful
+   unified release. It no longer grants workflow authority after step 5, but
+   keeping it until verification avoids destroying the previous protection
+   record prematurely.
 
-## Trusted ClawHub releases and recovery
+Never add a long-lived `CLAWHUB_TOKEN` secret. The standalone
+`.github/workflows/clawhub-publish.yml` remains only for credential-free pull
+request ClawPack validation and dry-run; it has no production dispatch or OIDC
+authority.
 
-`.github/workflows/clawhub-publish.yml` runs a credential-free ClawHub dry-run
-for pull requests. A real publish runs only through `workflow_dispatch` from the
-matching `v<package-version>` release tag. The prepare job repeats the full
-project and package checks, uploads the generated ClawPack, and has read-only
-repository access. Only the publish job protected by the `clawhub-publish`
-environment receives `id-token: write`.
+## Trusted ClawHub release recovery
 
-After the normal coordinated release has completed, select the exact tag in the
-GitHub Actions **ClawHub Publish** workflow or run:
+The coordinated workflow waits for a definitive ClawHub publication result and
+uploads sanitized inspector and JSON reports. If npmjs succeeds but ClawHub
+fails, rerun `release.yml` from the same exact tag: after the single approval,
+the target recheck skips npmjs and resumes ClawHub. The reverse partial state is
+handled symmetrically. If both exact targets already match, the protected job is
+skipped while GitHub Packages and GitHub Release recovery continues.
 
-```shell
-gh workflow run clawhub-publish.yml --ref v<version>
-```
-
-The workflow waits for a definitive publication result and uploads its inspector
-and JSON reports. If a run fails, first inspect the package and version history:
+If a run fails, first inspect the package and version history:
 
 ```shell
 npx --yes clawhub@0.23.3 package inspect openclaw-wechat --versions --json
@@ -183,10 +190,11 @@ npx --yes clawhub@0.23.3 package moderation-status openclaw-wechat --json
 npx --yes clawhub@0.23.3 package readiness openclaw-wechat --json
 ```
 
-If the target version was not created, rerun the workflow from the same tag. If
-it exists or is still being scanned, do not republish or rewrite that version;
-resolve a rejected artifact in a new release. Once the public package is ready,
-install it in an isolated OpenClaw state, confirm `openclaw plugins list` still
-reports the `openclaw-weixin` plugin/channel id, and inspect the listing's source
-commit, icon, summary, compatibility, and scan status. Only then change the
-bilingual README installation path from npm-first to ClawHub-first.
+If the target version was not created, rerun the coordinated workflow from the
+same tag. If a target version exists with different source metadata or embedded
+runtime identity, automation fails instead of claiming success; do not
+republish or rewrite that version. Resolve a rejected artifact in a new release.
+Once the public package is ready, install it in an isolated OpenClaw state,
+confirm `openclaw plugins list` still reports the `openclaw-weixin`
+plugin/channel id, and inspect the listing's source commit, icon, summary,
+compatibility, and scan status.
