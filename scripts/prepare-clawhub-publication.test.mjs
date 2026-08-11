@@ -29,7 +29,9 @@ function prepare(artifacts, { npmjsPublishedBeforeJob = false, recoveryAuthorize
 
 describe("ClawHub publication recovery boundary", () => {
   it("blocks a duplicate publish after a prior run crossed the command boundary", () => {
-    expect(() => prepare([{ id: 67890, name: BOUNDARY_NAME }])).toThrow(
+    const boundary = [{ id: 67890, name: BOUNDARY_NAME }];
+    expect(() => prepare(boundary)).toThrow(/A prior run may have submitted this version\. Do not publish it again/);
+    expect(() => prepare(boundary, { recoveryAuthorized: true })).toThrow(
       /A prior run may have submitted this version\. Do not publish it again/,
     );
   });
