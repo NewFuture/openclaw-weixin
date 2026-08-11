@@ -391,6 +391,7 @@ jobs:
           CLAWHUB_BOUNDARY_CHECK_REQUEST: ${{ runner.temp }}/clawhub-publication-check-request.json
           CLAWHUB_BOUNDARY_MARKER: ${{ runner.temp }}/clawhub-publication-boundary.json
           CLAWHUB_BOUNDARY_REPORT: ${{ runner.temp }}/clawhub-publication-boundaries.json
+          CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT: ${{ runner.temp }}/clawhub-first-attempt-jobs.json
           CLAWHUB_RECOVERY_AUTHORIZED: ${{ inputs.authorize_clawhub_recovery || false }}
           GH_TOKEN: ${{ github.token }}
           NPMJS_PUBLISHED_BEFORE_JOB: ${{ needs.validate.outputs.npmjs_published }}
@@ -407,6 +408,14 @@ jobs:
             -f filter=all \
             -f per_page=100 \
             > "$CLAWHUB_BOUNDARY_CHECK_REPORT"
+          if [[ "$GITHUB_RUN_ATTEMPT" == "1" ]]; then
+            printf '{"total_count":0,"jobs":[]}\n' > "$CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT"
+          else
+            gh api --method GET \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/1/jobs" \
+              -f per_page=100 \
+              > "$CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT"
+          fi
           CLAWHUB_BOUNDARY_NAME="$boundary_name" \
             node scripts/prepare-clawhub-publication.mjs
 
@@ -500,6 +509,7 @@ jobs:
             ${{ runner.temp }}/clawhub-dry-run.json
             ${{ runner.temp }}/clawhub-publication-boundaries.json
             ${{ runner.temp }}/clawhub-publication-checks.json
+            ${{ runner.temp }}/clawhub-first-attempt-jobs.json
             ${{ runner.temp }}/clawhub-publication-boundary.json
             ${{ runner.temp }}/clawhub-package-publish.json
             ${{ runner.temp }}/clawhub-target-after-approval.json

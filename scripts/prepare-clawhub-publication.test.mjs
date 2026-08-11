@@ -16,7 +16,13 @@ const BOUNDARY_NAME = getClawHubPublicationBoundaryName({
 
 function prepare(
   artifacts,
-  { checkRuns = [], npmjsPublishedBeforeJob = false, recoveryAuthorized = false, runAttempt = "1" } = {},
+  {
+    checkRuns = [],
+    firstAttemptJobs = [],
+    npmjsPublishedBeforeJob = false,
+    recoveryAuthorized = false,
+    runAttempt = "1",
+  } = {},
 ) {
   return prepareClawHubPublication({
     artifactListing: {
@@ -27,6 +33,10 @@ function prepare(
     checkRunListing: {
       check_runs: checkRuns,
       total_count: checkRuns.length,
+    },
+    firstAttemptJobListing: {
+      jobs: firstAttemptJobs,
+      total_count: firstAttemptJobs.length,
     },
     npmjsPublishedBeforeJob,
     recoveryAuthorized,
@@ -111,7 +121,13 @@ describe("ClawHub publication recovery boundary", () => {
     expect(() => prepare([], { npmjsPublishedBeforeJob: true })).toThrow(
       /dispatch the exact tag with authorize_clawhub_recovery enabled/,
     );
-    expect(prepare([], { npmjsPublishedBeforeJob: true, runAttempt: "2" })).toMatchObject({
+    expect(
+      prepare([], {
+        firstAttemptJobs: [{ conclusion: "success", name: "Approve and publish npmjs" }],
+        npmjsPublishedBeforeJob: true,
+        runAttempt: "2",
+      }),
+    ).toMatchObject({
       sourceCommit: SOURCE_COMMIT,
       version: VERSION,
     });
@@ -124,6 +140,16 @@ describe("ClawHub publication recovery boundary", () => {
       sourceCommit: SOURCE_COMMIT,
       version: VERSION,
     });
+  });
+
+  it("does not let a rerun turn an unauthorized npm-only dispatch into recovery", () => {
+    expect(() =>
+      prepare([], {
+        firstAttemptJobs: [{ conclusion: "skipped", name: "Approve and publish npmjs" }],
+        npmjsPublishedBeforeJob: true,
+        runAttempt: "2",
+      }),
+    ).toThrow(/dispatch the exact tag with authorize_clawhub_recovery enabled/);
   });
 
   it("creates a run-attempt-specific durable check request for the exact boundary", () => {

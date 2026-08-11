@@ -79,6 +79,8 @@ describe("release workflow contract", () => {
     expect(clawHubJob).toContain("Wait for exact npmjs publication");
     expect(clawHubJob).toContain("node scripts/wait-for-npm-publication.mjs");
     expect(clawHubJob).toContain("Check prior ClawHub publication boundary");
+    expect(clawHubJob).toContain("CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT");
+    expect(clawHubJob).toContain("actions/runs/$" + "{GITHUB_RUN_ID}/attempts/1/jobs");
     expect(clawHubJob).toContain("Persist durable ClawHub publication check");
     expect(clawHubJob).toContain("Persist ClawHub publication boundary artifact");
     expect(clawHubJob).toContain("checks: write");

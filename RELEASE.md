@@ -229,7 +229,9 @@ If the target version is absent and neither a publication-boundary check nor
 artifact exists, the failure occurred before the irreversible command boundary
 and the original workflow run can be re-run. Do not create a new workflow
 dispatch for this routine recovery: the first attempt of a new run fails closed
-when npmjs already contains the release.
+when npmjs already contains the release, and rerunning that unauthorized
+dispatch remains blocked unless its first attempt entered the npm publication
+job.
 
 If either boundary exists, inspect its originating run and sanitized reports
 for an attempt ID or terminal status, then obtain authoritative ClawHub
