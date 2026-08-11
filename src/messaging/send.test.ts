@@ -282,7 +282,7 @@ describe("sendFileMessageWeixin", () => {
 });
 
 describe("missing contextToken refuses to send (silent-drop fix, upstream #247)", () => {
-  const FULL_ID = "o9cq806PLhqoC5-fjuN63zCyAInQ@im.wechat";
+  const FULL_ID = "oSYNTH0000000000000000000000@im.wechat";
 
   it("sendMessageWeixin throws and does not call the backend", async () => {
     await expect(sendMessageWeixin({ to: FULL_ID, text: "hi", opts: { baseUrl: "https://api.com" } })).rejects.toThrow(

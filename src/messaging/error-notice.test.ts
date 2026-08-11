@@ -17,6 +17,7 @@ vi.mock("./send.js", () => ({
   sendMessageWeixin: mockSendMessageWeixin,
 }));
 
+import { logger } from "../util/logger.js";
 import { sendWeixinErrorNotice } from "./error-notice.js";
 
 beforeEach(() => {
@@ -73,5 +74,23 @@ describe("sendWeixinErrorNotice", () => {
     });
     // Should not throw
     expect(errLog).toHaveBeenCalledWith(expect.stringContaining("sendWeixinErrorNotice failed"));
+  });
+
+  it("does not leak the full recipient ID when contextToken is missing", async () => {
+    const fullId = "oSYNTH0000000000000000000000@im.wechat"; // synthetic, realistic weixin id format
+    const errLog = vi.fn();
+    await sendWeixinErrorNotice({
+      to: fullId,
+      contextToken: undefined,
+      message: "err",
+      baseUrl: "https://api.com",
+      errLog,
+    });
+    expect(mockSendMessageWeixin).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalled();
+    const warnArg = (logger.warn as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    // privacy boundary: full recipient id must never appear in logs (redacted to prefix+len)
+    expect(warnArg).not.toContain(fullId);
+    expect(warnArg).toContain("contextToken");
   });
 });
