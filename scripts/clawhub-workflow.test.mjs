@@ -6,6 +6,8 @@ const workflow = readFileSync(new URL("../.github/workflows/clawhub-publish.yml"
   "\r\n",
   "\n",
 );
+const releaseGuide = readFileSync(new URL("../RELEASE.md", import.meta.url), "utf8").replaceAll("\r\n", "\n");
+
 describe("ClawHub publish workflow contract", () => {
   it("limits the standalone workflow to a pinned credential-free PR dry-run", () => {
     const prepareJobStart = workflow.indexOf("\n  prepare:\n");
@@ -26,6 +28,13 @@ describe("ClawHub publish workflow contract", () => {
     expect(workflow).not.toContain("environment:");
     expect(workflow).not.toContain("id-token: write");
     expect(workflow).not.toContain("--wait");
+    expect(releaseGuide).toContain("uses the English source for its primary `README.md`");
+    expect(releaseGuide).toContain("changes\nall staged README titles to `openclaw-wechat`");
+    expect(releaseGuide).toContain("preserves one identical shared");
+    expect(releaseGuide).toContain("prefers OpenClaw's internal installer when");
+    expect(releaseGuide).toMatch(/direct-source blocks\s+from npm-first to\s+ClawHub-first/);
+    expect(releaseGuide).toMatch(/repository\s+READMEs must remain titled\s+`openclaw-weixin` and npm-first/);
+    expect(releaseGuide).not.toContain("## First ClawHub publication");
     expect(workflow).not.toContain("clawhub_token:");
   });
 });

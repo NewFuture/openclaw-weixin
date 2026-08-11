@@ -2,6 +2,14 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 import { checkVersionFiles } from "./check-versions.mjs";
+import {
+  assertRegistryPrompt,
+  assertRegistryReadmeInstallCommands,
+  assertRegistryReadmeLinksAbsolute,
+  assertRegistryReadmeOrder,
+  assertRegistryReadmeTitle,
+  REGISTRY_README_FILES,
+} from "./registry-readme.mjs";
 
 function fail(message) {
   console.error(`Package check failed: ${message}`);
@@ -21,6 +29,7 @@ const compatibilityAlias = "openclaw-wechat";
 const displayName = "WeChat";
 const description = "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.";
 const icon = "https://openclaw-weixin.newfuture.cc/logo.svg";
+const docsUrl = "https://openclaw-weixin.newfuture.cc/";
 const repositoryUrl = "git+https://github.com/NewFuture/openclaw-weixin.git";
 const HOST_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
@@ -62,6 +71,21 @@ if (packageJson.openclaw?.install?.defaultChoice !== "npm") {
 }
 if (packageJson.openclaw?.install?.clawhubSpec !== undefined) {
   fail("the canonical npm package must not declare openclaw.install.clawhubSpec");
+}
+if (packageJson.openclaw?.channel?.docsPath !== docsUrl) {
+  fail(`openclaw.channel.docsPath must remain ${docsUrl}`);
+}
+for (const fileName of REGISTRY_README_FILES) {
+  const markdown = readFileSync(fileName, "utf8");
+  try {
+    assertRegistryReadmeTitle(markdown, "npm", { fileName });
+    assertRegistryReadmeOrder(markdown, "npm", { fileName });
+    assertRegistryPrompt(markdown, { fileName });
+    assertRegistryReadmeInstallCommands(markdown, { fileName });
+    assertRegistryReadmeLinksAbsolute(markdown, { fileName });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
 }
 const hostRange = packageJson.peerDependencies?.openclaw;
 const hostRangeMatch = typeof hostRange === "string" ? /^>=(.+)$/.exec(hostRange) : null;
@@ -117,6 +141,10 @@ if (runtimePlugin.name !== displayName) {
 }
 if (runtimePlugin.description !== description) {
   fail("the runtime plugin description must match package.json");
+}
+const { weixinPlugin } = await import(new URL("../dist/src/channel.js", import.meta.url));
+if (weixinPlugin.meta.docsPath !== docsUrl) {
+  fail(`the runtime channel docsPath must remain ${docsUrl}`);
 }
 const npmExecPath = process.env.npm_execpath;
 const command = npmExecPath ? process.execPath : process.platform === "win32" ? process.env.ComSpec : "npm";

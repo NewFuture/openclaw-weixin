@@ -24,6 +24,7 @@ export function renderLlmsTxt({ baseUrl, version, generatedAt, pages }) {
     `- Generated: ${generatedAt}`,
     `- Repository: ${SITE.repositoryUrl}`,
     `- npm: ${SITE.npmUrl}`,
+    `- ClawHub: ${SITE.clawHubUrl}`,
     `- Full text: ${baseUrl}/llms-full.txt`,
     "",
   ];

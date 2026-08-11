@@ -8,6 +8,7 @@ export const SITE = {
   name: "openclaw-weixin",
   repositoryUrl: "https://github.com/NewFuture/openclaw-weixin",
   npmUrl: "https://www.npmjs.com/package/openclaw-weixin",
+  clawHubUrl: "https://clawhub.ai/newfuture/plugins/openclaw-wechat",
   upstreamUrl: "https://github.com/Tencent/openclaw-weixin",
   defaultBaseUrl: "https://openclaw-weixin.newfuture.cc",
   defaultBranch: "main",

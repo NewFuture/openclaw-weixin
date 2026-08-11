@@ -16,6 +16,7 @@ import {
   htmlPathFor,
   LOCALES,
   linkFor,
+  SITE,
   sourceFor,
 } from "./.vitepress/docs.mjs";
 import { configureSidebarCaret, labelsForLanguage } from "./.vitepress/theme/accessibility.js";
@@ -32,6 +33,11 @@ describe("documentation map", () => {
         ["en", "/en/"],
       ],
     );
+  });
+
+  it("publishes both community package sources", () => {
+    assert.equal(SITE.npmUrl, "https://www.npmjs.com/package/openclaw-weixin");
+    assert.equal(SITE.clawHubUrl, "https://clawhub.ai/newfuture/plugins/openclaw-wechat");
   });
 
   it("points every document at Markdown that exists in the repository", async () => {

@@ -142,14 +142,24 @@ ClawHub distribution is intentionally separate from npm identity:
 `scripts/prepare-clawhub-package.mjs` accepts a directory containing exactly one
 canonical npm tarball (or the tarball path itself). It validates the canonical
 name, npm fallback, entry points, host metadata, manifest version, and
-plugin/channel identity. In a temporary extracted copy it changes only
-`package.json.name`, adds `clawhub:openclaw-wechat`, and selects ClawHub as that
-copy's default installer. It never modifies the source tarball or creates an
+plugin/channel identity. It also requires one adjacent npm and ClawHub install
+block in each localized README, with the matching exact command and no relative
+registry link. In a temporary extracted copy it changes
+`package.json.name`, adds `clawhub:openclaw-wechat`, selects ClawHub as that
+copy's default installer, uses the English source for its primary `README.md`
+and `README_EN.md`, writes the full Chinese source to `README.zh_CN.md`, changes
+all staged README titles to `openclaw-wechat`, preserves one identical shared
+prompt that names both source specs, prefers OpenClaw's internal installer when
+it can perform the replacement, and delegates the exactly-one choice to
+OpenClaw, then reorders the direct-source blocks from npm-first to
+ClawHub-first. It never modifies the source tarball or creates an
 `openclaw-wechat` npm package.
 
 Before any ClawHub release, run `npm ci`, `npm run check`, and
 `npm run pack:check`, then build and validate the ClawPack with the commands in
-[CONTRIBUTING.md](./CONTRIBUTING.md).
+[CONTRIBUTING.md](./CONTRIBUTING.md). Never reuse or overwrite an existing
+ClawHub version. Each new ClawHub version must come from the matching new
+canonical npm/GitHub release tag.
 
 ## Post-merge trusted-publisher migration
 
@@ -240,7 +250,14 @@ the expected identity, the workflow skips ClawHub. If a version exists with
 different source metadata or embedded runtime identity, automation fails
 instead of claiming success; do not republish or rewrite that version. Resolve
 a rejected artifact in a new release.
+
 Once the public package is ready, install it in an isolated OpenClaw state,
 confirm `openclaw plugins list` still reports the `openclaw-weixin`
 plugin/channel id, and inspect the listing's source commit, icon, summary,
-compatibility, and scan status.
+compatibility, and scan status. Inspect both rendered
+README languages as well: the primary README must be English, the title must be
+`openclaw-wechat`, the shared prompt must match the canonical prompt, name both
+source specs once, and describe `--force` once. ClawHub must be the first marked
+source, npm must remain available, and every language or documentation link must
+be absolute. The canonical npm tarball and repository READMEs must remain titled
+`openclaw-weixin` and npm-first.

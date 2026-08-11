@@ -34,8 +34,8 @@ describe("emitMachineReadable", () => {
       assert.ok(markdown.trim().length > 0);
     }
     const overview = await readFile(path.join(outDir, "index.md"), "utf8");
-    assert.match(overview, /\[详细指南\]\(https:\/\/example\.test\/openclaw-weixin\/guide\.md\)/);
-    assert.match(overview, /\[架构说明\]\(https:\/\/example\.test\/openclaw-weixin\/architecture\.md\)/);
+    assert.match(overview, /\[详细指南\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/guide\.html\)/);
+    assert.match(overview, /\[架构说明\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/architecture\.html\)/);
   });
 
   it("indexes every page in llms.txt, Chinese first", async () => {
@@ -43,6 +43,8 @@ describe("emitMachineReadable", () => {
     assert.match(llms, /^# openclaw-weixin\n/);
     assert.match(llms, /^# openclaw-weixin\n\n> 社区维护的 OpenClaw 微信渠道插件。/);
     assert.match(llms, /- Generated: 2026-01-02T03:04:05\.000Z\n/);
+    assert.match(llms, /- npm: https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\n/);
+    assert.match(llms, /- ClawHub: https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\n/);
     assert.ok(llms.indexOf("## Docs (简体中文)\n") < llms.indexOf("## Docs (English)\n"));
     for (const page of result.pages) {
       assert.ok(llms.includes(`(${BASE_URL}/${page.path}.md)`), `llms.txt is missing ${page.path}`);
