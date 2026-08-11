@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from "node:util";
 
 export const CANONICAL_PACKAGE_NAME = "openclaw-weixin";
 export const CANONICAL_PLUGIN_ID = "openclaw-weixin";
+export const COMPATIBILITY_ALIAS = "openclaw-wechat";
 export const CANONICAL_REPOSITORY_URL = "git+https://github.com/NewFuture/openclaw-weixin.git";
 export const SOURCE_EXTENSION = "./index.ts";
 export const RUNTIME_EXTENSION = "./dist/index.js";
@@ -70,6 +71,10 @@ export function assertCanonicalPackageMetadata({ packageJson, pluginManifest }) 
   assert(
     packageJson.openclaw?.channel?.id === CANONICAL_PLUGIN_ID,
     `openclaw.channel.id must remain ${CANONICAL_PLUGIN_ID}`,
+  );
+  assert(
+    hasExactItems(packageJson.openclaw?.channel?.aliases, [COMPATIBILITY_ALIAS]),
+    `openclaw.channel.aliases must contain only ${COMPATIBILITY_ALIAS}`,
   );
   assert(
     packageJson.openclaw?.install?.minHostVersion === packageJson.peerDependencies?.openclaw,

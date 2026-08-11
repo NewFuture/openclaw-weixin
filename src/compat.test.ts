@@ -15,6 +15,7 @@ interface PackageCompatibility {
   engines: { node: string };
   openclaw: {
     build: { openclawVersion: string };
+    channel: { aliases: string[]; id: string };
     compat: { pluginApi: string };
     install: { minHostVersion: string };
   };
@@ -25,8 +26,10 @@ const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ) as PackageCompatibility;
 const pluginManifest = JSON.parse(readFileSync(new URL("../openclaw.plugin.json", import.meta.url), "utf8")) as {
+  channels: string[];
   description: string;
   icon: string;
+  id: string;
   name: string;
 };
 
@@ -47,6 +50,13 @@ describe("compatibility metadata", () => {
       description: "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.",
       icon: "https://openclaw-weixin.newfuture.cc/logo.svg",
     });
+  });
+
+  it("accepts the ClawHub package name as a channel alias without changing canonical identities", () => {
+    expect(pluginManifest.id).toBe("openclaw-weixin");
+    expect(pluginManifest.channels).toEqual(["openclaw-weixin"]);
+    expect(packageJson.openclaw.channel.id).toBe("openclaw-weixin");
+    expect(packageJson.openclaw.channel.aliases).toEqual(["openclaw-wechat"]);
   });
 
   it("matches the OpenClaw Node.js engine range", () => {

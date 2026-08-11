@@ -120,6 +120,14 @@ type StartAccount = NonNullable<GatewayAdapter["startAccount"]>;
 type StopAccount = NonNullable<GatewayAdapter["stopAccount"]>;
 type GatewayContext = Parameters<StartAccount>[0];
 
+describe("weixinPlugin identity", () => {
+  it("exposes openclaw-wechat only as an alias of the canonical channel", () => {
+    expect(weixinPlugin.id).toBe("openclaw-weixin");
+    expect(weixinPlugin.meta.id).toBe("openclaw-weixin");
+    expect(weixinPlugin.meta.aliases).toEqual(["openclaw-wechat"]);
+  });
+});
+
 const cfg: OpenClawConfig = {};
 const recipient = "user-test@im.wechat";
 

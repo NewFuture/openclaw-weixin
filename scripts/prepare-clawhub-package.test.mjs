@@ -88,6 +88,7 @@ function canonicalManifest() {
       runtimeExtensions: ["./dist/index.js"],
       channel: {
         id: "openclaw-weixin",
+        aliases: ["openclaw-wechat"],
       },
       install: {
         npmSpec: "openclaw-weixin",
@@ -247,6 +248,7 @@ describe("ClawHub package preparation", () => {
     expect(JSON.parse(readFileSync(join(extractedPackage, "openclaw.plugin.json"), "utf8"))).toEqual(pluginManifest);
     expect(variantManifest.openclaw.install.npmSpec).toBe("openclaw-weixin");
     expect(variantManifest.openclaw.channel.id).toBe("openclaw-weixin");
+    expect(variantManifest.openclaw.channel.aliases).toEqual(["openclaw-wechat"]);
     expect(JSON.parse(readFileSync(join(source.packageDirectory, "package.json"), "utf8"))).toEqual(
       canonicalManifest(),
     );
