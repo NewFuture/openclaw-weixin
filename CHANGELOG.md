@@ -8,8 +8,9 @@
 
 ### 变更
 
-- **ID 别名兼容：** 将 `openclaw-wechat` 声明为旧 plugin ID 和 channel
-  别名，同时继续以 `openclaw-weixin` 作为唯一规范 ID、配置键和状态命名空间。
+- **Channel ID 别名兼容：** 在 OpenClaw 2026.7.1 及以上版本，将
+  `openclaw-wechat` 声明为 channel 别名；`openclaw-weixin` 继续作为唯一规范
+  plugin/channel ID、配置键和状态命名空间。
 
 ## [3.1.1] - 2026-08-11
 

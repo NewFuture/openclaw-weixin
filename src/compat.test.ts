@@ -30,7 +30,6 @@ const pluginManifest = JSON.parse(readFileSync(new URL("../openclaw.plugin.json"
   description: string;
   icon: string;
   id: string;
-  legacyPluginIds: string[];
   name: string;
 };
 
@@ -53,9 +52,8 @@ describe("compatibility metadata", () => {
     });
   });
 
-  it("accepts the ClawHub package name as an alias without changing canonical identities", () => {
+  it("accepts the ClawHub package name as a channel alias without changing canonical identities", () => {
     expect(pluginManifest.id).toBe("openclaw-weixin");
-    expect(pluginManifest.legacyPluginIds).toEqual(["openclaw-wechat"]);
     expect(pluginManifest.channels).toEqual(["openclaw-weixin"]);
     expect(packageJson.openclaw.channel.id).toBe("openclaw-weixin");
     expect(packageJson.openclaw.channel.aliases).toEqual(["openclaw-wechat"]);

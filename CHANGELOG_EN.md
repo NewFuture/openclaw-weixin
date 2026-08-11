@@ -8,9 +8,9 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Changed
 
-- **ID alias compatibility:** Declared `openclaw-wechat` as a legacy plugin ID
-  and channel alias while keeping `openclaw-weixin` as the sole canonical ID,
-  config key, and state namespace.
+- **Channel ID alias compatibility:** On OpenClaw 2026.7.1 and later, declared
+  `openclaw-wechat` as a channel alias while keeping `openclaw-weixin` as the
+  sole canonical plugin/channel ID, config key, and state namespace.
 
 ## [3.1.1] - 2026-08-11
 

@@ -90,10 +90,6 @@ export function assertCanonicalPackageMetadata({ packageJson, pluginManifest }) 
   );
   assert(pluginManifest.id === CANONICAL_PLUGIN_ID, `openclaw.plugin.json id must remain ${CANONICAL_PLUGIN_ID}`);
   assert(
-    hasExactItems(pluginManifest.legacyPluginIds, [COMPATIBILITY_ALIAS]),
-    `openclaw.plugin.json legacyPluginIds must contain only ${COMPATIBILITY_ALIAS}`,
-  );
-  assert(
     hasExactItems(pluginManifest.channels, [CANONICAL_PLUGIN_ID]),
     `openclaw.plugin.json channels must contain only ${CANONICAL_PLUGIN_ID}`,
   );

@@ -91,9 +91,6 @@ if (!hasExactItems(packageJson.openclaw?.channel?.aliases, [compatibilityAlias])
 if (pluginManifest.id !== canonicalPackageName) {
   fail(`the compatibility plugin id must remain ${canonicalPackageName}`);
 }
-if (!hasExactItems(pluginManifest.legacyPluginIds, [compatibilityAlias])) {
-  fail(`openclaw.plugin.json legacyPluginIds must contain only ${compatibilityAlias}`);
-}
 if (pluginManifest.name !== displayName) {
   fail(`openclaw.plugin.json name must remain ${displayName}`);
 }

@@ -105,7 +105,6 @@ function canonicalManifest() {
 
 const pluginManifest = {
   id: "openclaw-weixin",
-  legacyPluginIds: ["openclaw-wechat"],
   name: "WeChat",
   version: "3.1.0",
   channels: ["openclaw-weixin"],
