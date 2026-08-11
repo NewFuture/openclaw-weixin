@@ -93,5 +93,4 @@ describe("sendWeixinErrorNotice", () => {
     expect(warnArg).not.toContain(fullId);
     expect(warnArg).toContain("contextToken");
   });
-
 });
