@@ -116,7 +116,11 @@ this credential-free validation for pull requests only. Production npmjs and
 ClawHub publication is coordinated by `.github/workflows/release.yml` from an
 exact release tag, with one protected `npm-publish` environment approval. Do not
 add production dispatch, `id-token: write`, or a long-lived registry credential
-to the pull-request workflow.
+to the pull-request workflow. Before the real ClawHub command can start, the
+release workflow persists a tag-and-commit-specific check run plus a 90-day
+Actions artifact. If the exact version is still absent on a later run, the
+durable check blocks another publish attempt until a maintainer authoritatively
+verifies the prior ClawHub attempt and clears only that check.
 
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The

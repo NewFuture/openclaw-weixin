@@ -46,6 +46,8 @@ describe("release workflow contract", () => {
     expect(validateJob).toContain("clawhub@0.23.3 package validate");
     expect(validateJob).not.toContain("id-token: write");
     expect(registryJob).toContain("environment:\n      name: npm-publish");
+    expect(registryJob).toContain("actions: read");
+    expect(registryJob).toContain("checks: write");
     expect(registryJob).toContain("id-token: write");
     expect(registryJob).not.toContain("contents: write");
     expect(registryJob).not.toContain("packages: write");
@@ -62,6 +64,21 @@ describe("release workflow contract", () => {
     expect(registryJob).toContain("--wait");
     expect(registryJob).toContain("--wait-timeout 2400");
     expect(registryJob).toContain('result.publicationStatus !== "published"');
+    expect(registryJob).toContain("Check prior ClawHub publication boundary");
+    expect(registryJob).toContain("node scripts/prepare-clawhub-publication.mjs");
+    expect(registryJob).toContain("Create durable ClawHub publication boundary");
+    expect(registryJob).toContain("Persist ClawHub publication boundary");
+    expect(registryJob).toContain("Complete durable ClawHub publication boundary");
+    expect(registryJob).toContain("retention-days: 90");
+    expect(registryJob.indexOf("Create durable ClawHub publication boundary")).toBeLessThan(
+      registryJob.indexOf("Persist ClawHub publication boundary"),
+    );
+    expect(registryJob.indexOf("Persist ClawHub publication boundary")).toBeLessThan(
+      registryJob.indexOf("Publish ClawPack"),
+    );
+    expect(registryJob.indexOf("Publish ClawPack")).toBeLessThan(
+      registryJob.indexOf("Complete durable ClawHub publication boundary"),
+    );
     expect(registryJob.indexOf("Verify live release tag before npmjs publication")).toBeLessThan(
       registryJob.indexOf("Publish npm package with provenance"),
     );

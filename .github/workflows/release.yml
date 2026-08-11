@@ -144,6 +144,8 @@ jobs:
       name: npm-publish
       url: https://www.npmjs.com/package/openclaw-weixin
     permissions:
+      actions: read
+      checks: write
       contents: read
       id-token: write
 
@@ -264,6 +266,64 @@ jobs:
       - name: Verify live release tag before ClawHub publication
         run: node scripts/verify-release-tag.mjs
 
+      - name: Check prior ClawHub publication boundary
+        if: steps.targets.outputs.clawhub_published != 'true'
+        id: clawhub-boundary
+        env:
+          CLAWHUB_BOUNDARY_CHECKS: ${{ runner.temp }}/clawhub-publication-boundary-checks.json
+          CLAWHUB_BOUNDARY_MARKER: ${{ runner.temp }}/clawhub-publication-boundary.json
+          CLAWHUB_BOUNDARY_REPORT: ${{ runner.temp }}/clawhub-publication-boundaries.json
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          target_version="$(node -p "require('./package.json').version")"
+          boundary_name="clawhub-publication-boundary-v${target_version}-${GITHUB_SHA}"
+          gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/artifacts" \
+            -f name="$boundary_name" \
+            -f per_page=100 \
+            > "$CLAWHUB_BOUNDARY_REPORT"
+          gh api --method GET "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" \
+            -f check_name="$boundary_name" \
+            -f filter=all \
+            -f per_page=100 \
+            > "$CLAWHUB_BOUNDARY_CHECKS"
+          CLAWHUB_BOUNDARY_NAME="$boundary_name" \
+            node scripts/prepare-clawhub-publication.mjs
+
+      - name: Create durable ClawHub publication boundary
+        if: steps.targets.outputs.clawhub_published != 'true'
+        id: clawhub-boundary-check
+        env:
+          BOUNDARY_NAME: ${{ steps.clawhub-boundary.outputs.name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          response="$(
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/check-runs" \
+              -f name="$BOUNDARY_NAME" \
+              -f head_sha="$GITHUB_SHA" \
+              -f status=in_progress \
+              -f started_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+              -f details_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              -f 'output[title]=ClawHub publication boundary active' \
+              -f 'output[summary]=The exact ClawHub version must be verified before this boundary is cleared or retried.'
+          )"
+          check_run_id="$(jq -r '.id // empty' <<<"$response")"
+          if [[ ! "$check_run_id" =~ ^[0-9]+$ ]]; then
+            echo "::error::GitHub did not return the durable ClawHub boundary check-run ID."
+            exit 1
+          fi
+          echo "id=$check_run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Persist ClawHub publication boundary
+        if: steps.targets.outputs.clawhub_published != 'true'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ steps.clawhub-boundary.outputs.name }}
+          path: ${{ runner.temp }}/clawhub-publication-boundary.json
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Publish ClawPack
         if: steps.targets.outputs.clawhub_published != 'true'
         env:
@@ -314,6 +374,21 @@ jobs:
             exit 1
           fi
 
+      - name: Complete durable ClawHub publication boundary
+        if: steps.targets.outputs.clawhub_published != 'true'
+        env:
+          CHECK_RUN_ID: ${{ steps.clawhub-boundary-check.outputs.id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/check-runs/${CHECK_RUN_ID}" \
+            -f status=completed \
+            -f conclusion=success \
+            -f completed_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            -f 'output[title]=ClawHub publication verified' \
+            -f 'output[summary]=The exact ClawHub version and source/runtime identity were verified.'
+
       - name: Upload coordinated publication reports
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -323,6 +398,9 @@ jobs:
             ${{ runner.temp }}/clawhub-inspector
             ${{ runner.temp }}/clawhub-validate.json
             ${{ runner.temp }}/clawhub-dry-run.json
+            ${{ runner.temp }}/clawhub-publication-boundaries.json
+            ${{ runner.temp }}/clawhub-publication-boundary-checks.json
+            ${{ runner.temp }}/clawhub-publication-boundary.json
             ${{ runner.temp }}/clawhub-package-publish.json
             ${{ runner.temp }}/release-targets-after-approval.json
             ${{ runner.temp }}/release-targets-final.json
