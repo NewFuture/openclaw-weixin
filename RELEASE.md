@@ -82,9 +82,10 @@ any ClawHub publication boundary or request. A failed or unavailable npm
 publication therefore leaves ClawHub automatically retryable. These are the
 only two jobs with `id-token: write`.
 
-A least-privilege GitHub Packages job runs only after both registry jobs succeed
-or are correctly skipped, packs the same validated source tree, changes only
-its package name, install spec, and registry metadata, and publishes
+A read-only reconciliation job rechecks both exact registry targets after the
+publication jobs succeed or are correctly skipped. Only then does a
+least-privilege GitHub Packages job pack the same validated source tree, change
+only its package name, install spec, and registry metadata, and publish
 `@newfuture/openclaw-weixin` with the repository's `GITHUB_TOKEN`. Another
 least-privilege job creates the matching GitHub Release with notes rendered
 from the versioned Chinese and English changelog sections. OIDC, GitHub

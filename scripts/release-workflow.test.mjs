@@ -140,11 +140,27 @@ describe("release workflow contract", () => {
   });
 
   it("keeps GitHub Packages and GitHub Release least-privilege and dependent on both registries", () => {
+    const verifyRegistriesJob = jobSource("verify-registries", "github-package");
     const githubPackageJob = jobSource("github-package", "github-release");
     const githubReleaseJob = jobSource("github-release");
 
-    expect(jobs["github-package"].needs).toEqual(["validate", "npm-publish", "clawhub-publish"]);
-    expect(jobs["github-release"].needs).toEqual(["validate", "npm-publish", "clawhub-publish", "github-package"]);
+    expect(jobs["verify-registries"].needs).toEqual(["validate", "npm-publish", "clawhub-publish"]);
+    expect(jobs["verify-registries"].permissions).toEqual({ contents: "read" });
+    expect(jobs["verify-registries"].if).toContain("!cancelled()");
+    expect(jobs["verify-registries"].if).not.toContain("always()");
+    expect(verifyRegistriesJob).toContain("Resolve final registry publication targets");
+    expect(verifyRegistriesJob).toContain("Require both exact registry versions");
+    expect(verifyRegistriesJob).toContain("node scripts/resolve-release-targets.mjs");
+    expect(verifyRegistriesJob).toContain("node scripts/verify-release-tag.mjs");
+    expect(verifyRegistriesJob).not.toContain("id-token: write");
+    expect(jobs["github-package"].needs).toEqual(["validate", "npm-publish", "clawhub-publish", "verify-registries"]);
+    expect(jobs["github-release"].needs).toEqual([
+      "validate",
+      "npm-publish",
+      "clawhub-publish",
+      "verify-registries",
+      "github-package",
+    ]);
     for (const downstreamJob of [jobs["github-package"], jobs["github-release"]]) {
       expect(downstreamJob.if).toContain(
         "(needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')",
@@ -152,6 +168,9 @@ describe("release workflow contract", () => {
       expect(downstreamJob.if).toContain(
         "(needs.clawhub-publish.result == 'success' || needs.clawhub-publish.result == 'skipped')",
       );
+      expect(downstreamJob.if).toContain("needs.verify-registries.result == 'success'");
+      expect(downstreamJob.if).toContain("!cancelled()");
+      expect(downstreamJob.if).not.toContain("always()");
     }
 
     expect(jobs["github-package"].permissions).toEqual({
@@ -168,9 +187,9 @@ describe("release workflow contract", () => {
   });
 
   it("keeps exact-tag checks and run-attempt-safe reports at every irreversible boundary", () => {
-    expect(occurrences(workflowSource, 'if [ "$RELEASE_REF_TYPE" != "tag" ]')).toBeGreaterThanOrEqual(4);
-    expect(occurrences(workflowSource, 'if [[ "$release_commit" != "$GITHUB_SHA" ]]')).toBeGreaterThanOrEqual(4);
-    expect(occurrences(workflowSource, "node scripts/verify-release-tag.mjs")).toBe(5);
+    expect(occurrences(workflowSource, 'if [ "$RELEASE_REF_TYPE" != "tag" ]')).toBeGreaterThanOrEqual(5);
+    expect(occurrences(workflowSource, 'if [[ "$release_commit" != "$GITHUB_SHA" ]]')).toBeGreaterThanOrEqual(5);
+    expect(occurrences(workflowSource, "node scripts/verify-release-tag.mjs")).toBe(6);
     expect(workflowSource).toContain(
       "coordinated-release-preflight-$" + "{{ github.run_id }}-$" + "{{ github.run_attempt }}",
     );
