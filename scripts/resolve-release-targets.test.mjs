@@ -166,4 +166,42 @@ describe("release target resolution", () => {
 
     expect(() => resolveWith(run)).toThrow("registry request timed out");
   });
+
+  it("supports independent exact-target rechecks without touching the other registry", () => {
+    const npmRun = createRunner({ clawHubPublished: false, npmjsPublished: true }).run;
+    const npmOnly = resolveReleaseTargets({
+      run: npmRun,
+      scope: "npmjs",
+      sourceCommit: SOURCE_COMMIT,
+      sourceRef: SOURCE_REF,
+      sourceRepo: SOURCE_REPO,
+      version: VERSION,
+    });
+    expect(npmOnly).toEqual({
+      npmjs: {
+        published: true,
+        version: VERSION,
+      },
+      publicationRequired: false,
+      targetVersion: VERSION,
+    });
+
+    const clawHubRun = createRunner({ clawHubPublished: true, npmjsPublished: false }).run;
+    const clawHubOnly = resolveReleaseTargets({
+      run: clawHubRun,
+      scope: "clawhub",
+      sourceCommit: SOURCE_COMMIT,
+      sourceRef: SOURCE_REF,
+      sourceRepo: SOURCE_REPO,
+      version: VERSION,
+    });
+    expect(clawHubOnly).toMatchObject({
+      clawHub: {
+        published: true,
+        version: VERSION,
+      },
+      publicationRequired: false,
+      targetVersion: VERSION,
+    });
+  });
 });

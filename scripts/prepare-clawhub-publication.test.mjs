@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getClawHubPublicationBoundaryName, prepareClawHubPublication } from "./prepare-clawhub-publication.mjs";
+import {
+  getClawHubPublicationBoundaryName,
+  getClawHubPublicationCheckRequest,
+  prepareClawHubPublication,
+} from "./prepare-clawhub-publication.mjs";
 
 const VERSION = "3.2.0";
 const SOURCE_COMMIT = "1234567890abcdef1234567890abcdef12345678";
@@ -10,13 +14,20 @@ const BOUNDARY_NAME = getClawHubPublicationBoundaryName({
   version: VERSION,
 });
 
-function prepare(artifacts, { npmjsPublishedBeforeJob = false, recoveryAuthorized = false, runAttempt = "1" } = {}) {
+function prepare(
+  artifacts,
+  { checkRuns = [], npmjsPublishedBeforeJob = false, recoveryAuthorized = false, runAttempt = "1" } = {},
+) {
   return prepareClawHubPublication({
     artifactListing: {
       artifacts,
       total_count: artifacts.length,
     },
     boundaryName: BOUNDARY_NAME,
+    checkRunListing: {
+      check_runs: checkRuns,
+      total_count: checkRuns.length,
+    },
     npmjsPublishedBeforeJob,
     recoveryAuthorized,
     runAttempt,
@@ -34,6 +45,45 @@ describe("ClawHub publication recovery boundary", () => {
     expect(() => prepare(boundary, { recoveryAuthorized: true })).toThrow(
       /A prior run may have submitted this version\. Do not publish it again/,
     );
+  });
+
+  it("blocks a duplicate publish after the boundary artifact expires", () => {
+    const checkRuns = [{ id: 78901, name: BOUNDARY_NAME }];
+    expect(() => prepare([], { checkRuns })).toThrow(
+      /durable publication check .* already exists.*A prior run may have submitted this version/,
+    );
+  });
+
+  it("requires explicit recovery authorization to cross a prior durable check", () => {
+    const checkRuns = [{ id: 78901, name: BOUNDARY_NAME }];
+
+    expect(prepare([], { checkRuns, recoveryAuthorized: true })).toMatchObject({
+      sourceCommit: SOURCE_COMMIT,
+      version: VERSION,
+    });
+  });
+
+  it("fails closed when the durable check listing is incomplete", () => {
+    expect(() =>
+      prepareClawHubPublication({
+        artifactListing: {
+          artifacts: [],
+          total_count: 0,
+        },
+        boundaryName: BOUNDARY_NAME,
+        checkRunListing: {
+          check_runs: [],
+          total_count: 1,
+        },
+        npmjsPublishedBeforeJob: false,
+        recoveryAuthorized: false,
+        runAttempt: "1",
+        runId: "12345",
+        sourceCommit: SOURCE_COMMIT,
+        sourceRef: SOURCE_REF,
+        version: VERSION,
+      }),
+    ).toThrow("incomplete check-run listing");
   });
 
   it("does not let another release's boundary block the current exact tag and commit", () => {
@@ -69,6 +119,30 @@ describe("ClawHub publication recovery boundary", () => {
     ).toMatchObject({
       sourceCommit: SOURCE_COMMIT,
       version: VERSION,
+    });
+  });
+
+  it("creates a run-attempt-specific durable check request for the exact boundary", () => {
+    expect(
+      getClawHubPublicationCheckRequest({
+        boundaryName: BOUNDARY_NAME,
+        repository: "NewFuture/openclaw-weixin",
+        runAttempt: "2",
+        runId: "12345",
+        sourceCommit: SOURCE_COMMIT,
+      }),
+    ).toEqual({
+      name: BOUNDARY_NAME,
+      head_sha: SOURCE_COMMIT,
+      status: "completed",
+      conclusion: "neutral",
+      external_id: "release-12345-2",
+      details_url: "https://github.com/NewFuture/openclaw-weixin/actions/runs/12345/attempts/2",
+      output: {
+        title: "ClawHub publication boundary recorded",
+        summary:
+          "A ClawHub request may start after this durable marker. If the version remains absent, require authoritative attempt evidence before authorizing another request.",
+      },
     });
   });
 });
