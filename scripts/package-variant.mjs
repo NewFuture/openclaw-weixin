@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from "node:util";
 
 export const CANONICAL_PACKAGE_NAME = "openclaw-weixin";
 export const CANONICAL_PLUGIN_ID = "openclaw-weixin";
+export const COMPATIBILITY_ALIAS = "openclaw-wechat";
 export const CANONICAL_REPOSITORY_URL = "git+https://github.com/NewFuture/openclaw-weixin.git";
 export const SOURCE_EXTENSION = "./index.ts";
 export const RUNTIME_EXTENSION = "./dist/index.js";
@@ -72,6 +73,10 @@ export function assertCanonicalPackageMetadata({ packageJson, pluginManifest }) 
     `openclaw.channel.id must remain ${CANONICAL_PLUGIN_ID}`,
   );
   assert(
+    hasExactItems(packageJson.openclaw?.channel?.aliases, [COMPATIBILITY_ALIAS]),
+    `openclaw.channel.aliases must contain only ${COMPATIBILITY_ALIAS}`,
+  );
+  assert(
     packageJson.openclaw?.install?.minHostVersion === packageJson.peerDependencies?.openclaw,
     "openclaw.install.minHostVersion must match peerDependencies.openclaw",
   );
@@ -84,6 +89,10 @@ export function assertCanonicalPackageMetadata({ packageJson, pluginManifest }) 
     "openclaw.build.openclawVersion must match devDependencies.openclaw",
   );
   assert(pluginManifest.id === CANONICAL_PLUGIN_ID, `openclaw.plugin.json id must remain ${CANONICAL_PLUGIN_ID}`);
+  assert(
+    hasExactItems(pluginManifest.legacyPluginIds, [COMPATIBILITY_ALIAS]),
+    `openclaw.plugin.json legacyPluginIds must contain only ${COMPATIBILITY_ALIAS}`,
+  );
   assert(
     hasExactItems(pluginManifest.channels, [CANONICAL_PLUGIN_ID]),
     `openclaw.plugin.json channels must contain only ${CANONICAL_PLUGIN_ID}`,

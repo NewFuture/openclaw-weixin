@@ -48,6 +48,11 @@ openclaw plugins install npm:openclaw-weixin --force
 不改变来源信任或安全策略。
 OpenClaw 会自动轮换配置备份。</p>
 
+> **名称兼容：** `openclaw-wechat` 是 ClawHub 包名及兼容别名，
+> `openclaw-weixin` 仍是规范 plugin/channel ID。可以使用
+> `--channel openclaw-wechat` 选择同一 channel；插件启停命令、配置和状态路径继续使用
+> `openclaw-weixin`，并且不要同时安装两个发行包。
+
 <p class="install-done"><strong>如果当前 OpenClaw 已有微信登录状态，完成任一种方式后通常即可使用。</strong>
 全新安装需要展开完整检查并扫码绑定；安装报错、未自动恢复连接或需要确认目标账号时，
 也在此检查。</p>

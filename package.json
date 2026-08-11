@@ -99,6 +99,9 @@
     ],
     "channel": {
       "id": "openclaw-weixin",
+      "aliases": [
+        "openclaw-wechat"
+      ],
       "label": "WeChat",
       "selectionLabel": "WeChat",
       "docsPath": "/channels/openclaw-weixin",

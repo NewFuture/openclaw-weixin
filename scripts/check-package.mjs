@@ -17,6 +17,7 @@ try {
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const pluginManifest = JSON.parse(readFileSync("openclaw.plugin.json", "utf8"));
 const canonicalPackageName = "openclaw-weixin";
+const compatibilityAlias = "openclaw-wechat";
 const displayName = "WeChat";
 const description = "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.";
 const icon = "https://openclaw-weixin.newfuture.cc/logo.svg";
@@ -36,6 +37,12 @@ function compareHostVersions(left, right) {
     if (left[index] > right[index]) return 1;
   }
   return 0;
+}
+
+function hasExactItems(value, expected) {
+  return (
+    Array.isArray(value) && value.length === expected.length && value.every((item, index) => item === expected[index])
+  );
 }
 
 if (packageJson.name !== canonicalPackageName) {
@@ -75,8 +82,17 @@ if (compareHostVersions(developmentHostVersion, minimumHostVersion) < 0) {
 if (packageJson.openclaw?.build?.openclawVersion !== packageJson.devDependencies.openclaw) {
   fail("openclaw.build.openclawVersion must match devDependencies.openclaw");
 }
+if (packageJson.openclaw?.channel?.id !== canonicalPackageName) {
+  fail(`openclaw.channel.id must remain ${canonicalPackageName}`);
+}
+if (!hasExactItems(packageJson.openclaw?.channel?.aliases, [compatibilityAlias])) {
+  fail(`openclaw.channel.aliases must contain only ${compatibilityAlias}`);
+}
 if (pluginManifest.id !== canonicalPackageName) {
   fail(`the compatibility plugin id must remain ${canonicalPackageName}`);
+}
+if (!hasExactItems(pluginManifest.legacyPluginIds, [compatibilityAlias])) {
+  fail(`openclaw.plugin.json legacyPluginIds must contain only ${compatibilityAlias}`);
 }
 if (pluginManifest.name !== displayName) {
   fail(`openclaw.plugin.json name must remain ${displayName}`);

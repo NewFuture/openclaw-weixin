@@ -160,6 +160,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
   id: "openclaw-weixin",
   meta: {
     id: "openclaw-weixin",
+    aliases: ["openclaw-wechat"],
     label: "WeChat",
     selectionLabel: "WeChat (long-poll)",
     docsPath: "/channels/openclaw-weixin",

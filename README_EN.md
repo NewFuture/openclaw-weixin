@@ -52,6 +52,12 @@ Installing directly preserves the existing configuration and login state.
 change source-trust or security policy. OpenClaw rotates configuration backups
 automatically.</p>
 
+> **Name compatibility:** `openclaw-wechat` is the ClawHub package name and
+> compatibility alias; `openclaw-weixin` remains the canonical plugin/channel
+> ID. `--channel openclaw-wechat` selects the same channel, while plugin
+> enable/disable commands, config, and state paths continue to use
+> `openclaw-weixin`. Do not install both distributions at once.
+
 <p class="install-done"><strong>If this OpenClaw instance already has a WeChat login,
 either option is usually all you need.</strong> For a new installation, open the full
 check and scan the QR code. Use it as well when installation fails, the connection

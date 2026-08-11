@@ -58,7 +58,13 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
       channels.push(entry);
     },
   });
-  if (plugin.id !== "openclaw-weixin" || channels.length !== 1 || channels[0]?.plugin?.id !== plugin.id) {
+  if (
+    plugin.id !== "openclaw-weixin" ||
+    channels.length !== 1 ||
+    channels[0]?.plugin?.id !== plugin.id ||
+    channels[0]?.plugin?.meta?.aliases?.length !== 1 ||
+    channels[0]?.plugin?.meta?.aliases?.[0] !== "openclaw-wechat"
+  ) {
     throw new Error("plugin registration smoke check failed");
   }
 
