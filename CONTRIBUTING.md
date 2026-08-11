@@ -111,7 +111,16 @@ npx --yes clawhub@0.23.3 package publish \
 ```
 
 These commands validate a prospective listing; they do not mean that a public
-ClawHub release already exists.
+ClawHub release already exists. `.github/workflows/clawhub-publish.yml` performs
+this credential-free validation for pull requests only. Production npmjs and
+ClawHub publication is coordinated by `.github/workflows/release.yml` from an
+exact release tag, with one protected `npm-publish` environment approval. Do not
+add production dispatch, `id-token: write`, or a long-lived registry credential
+to the pull-request workflow. Before the real ClawHub command can start, the
+release workflow persists a tag-and-commit-specific 90-day Actions artifact.
+Recovery re-runs are available for 30 days, so the artifact covers their full
+lifetime. A new dispatch for an older npmjs-only release requires explicit
+authorization after authoritative ClawHub attempt verification.
 
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The

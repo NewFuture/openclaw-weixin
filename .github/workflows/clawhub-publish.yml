@@ -2,7 +2,6 @@ name: ClawHub Publish
 
 on:
   pull_request:
-  workflow_dispatch:
 
 permissions: {}
 
@@ -29,32 +28,6 @@ jobs:
         with:
           node-version: "24.15.0"
           cache: npm
-
-      - name: Resolve release transition
-        if: github.event_name == 'workflow_dispatch'
-        id: release
-        run: node scripts/resolve-release-transition.mjs
-
-      - name: Verify release tag
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          EXPECTED_TAG: ${{ steps.release.outputs.tag }}
-          RELEASE_COMMIT: ${{ steps.release.outputs.release_commit }}
-        run: |
-          set -euo pipefail
-          if [[ "$GITHUB_REF" != "refs/tags/$EXPECTED_TAG" ]]; then
-            echo "::error::ClawHub publishing must run from $EXPECTED_TAG, not $GITHUB_REF."
-            exit 1
-          fi
-          tag_commit="$(git rev-parse "${EXPECTED_TAG}^{commit}")"
-          if [[ "$tag_commit" != "$GITHUB_SHA" ]]; then
-            echo "::error::$EXPECTED_TAG resolves to $tag_commit, not workflow commit $GITHUB_SHA."
-            exit 1
-          fi
-          if [[ "$GITHUB_SHA" != "$RELEASE_COMMIT" ]]; then
-            echo "::error::$EXPECTED_TAG must point to release transition $RELEASE_COMMIT."
-            exit 1
-          fi
 
       - name: Install dependencies
         run: npm ci
@@ -126,70 +99,5 @@ jobs:
             ${{ runner.temp }}/clawhub-inspector
             ${{ runner.temp }}/clawhub-validate.json
             ${{ runner.temp }}/clawhub-dry-run.json
-          if-no-files-found: ignore
-          retention-days: 7
-
-  publish:
-    name: Publish to ClawHub
-    if: github.event_name == 'workflow_dispatch'
-    needs: prepare
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    environment:
-      name: clawhub-publish
-    permissions:
-      actions: read
-      contents: read
-      id-token: write
-
-    steps:
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24.15.0"
-
-      - name: Download ClawPack
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: clawhub-package
-          path: ${{ runner.temp }}/clawhub-package
-
-      - name: Publish ClawPack
-        env:
-          PUBLISH_RESULT: ${{ runner.temp }}/clawhub-package-publish.json
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          clawpacks=("$RUNNER_TEMP/clawhub-package/"*.tgz)
-          if (( ${#clawpacks[@]} != 1 )); then
-            echo "::error::Expected exactly one ClawPack, found ${#clawpacks[@]}."
-            exit 1
-          fi
-          npx --yes clawhub@0.23.3 package publish "${clawpacks[0]}" \
-            --family code-plugin \
-            --owner newfuture \
-            --source-repo "$GITHUB_REPOSITORY" \
-            --source-commit "$GITHUB_SHA" \
-            --source-ref "$GITHUB_REF" \
-            --wait \
-            --wait-timeout 2400 \
-            --json |
-            tee "$PUBLISH_RESULT"
-          node --input-type=module -e '
-            import { readFileSync } from "node:fs";
-            const result = JSON.parse(readFileSync(process.env.PUBLISH_RESULT, "utf8"));
-            if (result.publicationStatus !== "published") {
-              throw new Error(
-                `ClawHub publication did not complete: ${result.publicationStatus ?? "unknown"}`,
-              );
-            }
-          '
-
-      - name: Upload publication report
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: clawhub-package-publish-json
-          path: ${{ runner.temp }}/clawhub-package-publish.json
           if-no-files-found: ignore
           retention-days: 7
