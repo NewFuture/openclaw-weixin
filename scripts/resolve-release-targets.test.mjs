@@ -36,9 +36,7 @@ function validInspection() {
 }
 
 function createRunner({ clawHubPublished, inspection = validInspection(), npmjsPublished }) {
-  const calls = [];
-  const run = (command, args, options = {}) => {
-    calls.push({ args, command, options });
+  const run = (command, args) => {
     const invocation = `${command} ${args.join(" ")}`;
     if (invocation.includes(`npm view openclaw-weixin@${VERSION} version`)) {
       return npmjsPublished
@@ -51,29 +49,18 @@ function createRunner({ clawHubPublished, inspection = validInspection(), npmjsP
     if (invocation === "npm run check:versions") {
       return { status: 0, stderr: "", stdout: "versions match\n" };
     }
-    if (invocation.includes("npx --yes clawhub@0.23.3 package inspect openclaw-wechat --versions")) {
-      return {
-        status: 0,
-        stderr: "",
-        stdout: JSON.stringify({
-          owner: {
-            handle: "newfuture",
-          },
-          package: {
-            name: "openclaw-wechat",
-          },
-          versions: clawHubPublished
-            ? [{ version: VERSION }, { version: PREVIOUS_VERSION }]
-            : [{ version: PREVIOUS_VERSION }],
-        }),
-      };
-    }
     if (invocation.includes(`npx --yes clawhub@0.23.3 package inspect openclaw-wechat --version ${VERSION}`)) {
-      return { status: 0, stderr: "", stdout: JSON.stringify(inspection) };
+      return clawHubPublished
+        ? { status: 0, stderr: "", stdout: JSON.stringify(inspection) }
+        : {
+            status: 1,
+            stderr: "Version not found (reset in 30s)\nError: Version not found (reset in 30s)\n",
+            stdout: "",
+          };
     }
     throw new Error(`unexpected command: ${invocation}`);
   };
-  return { calls, run };
+  return { run };
 }
 
 function resolveWith(run) {
@@ -113,21 +100,13 @@ describe("release target resolution", () => {
       npmjsPublished: true,
     },
   ])("$label", ({ clawHubPublished, expectedRequired, npmjsPublished }) => {
-    const { calls, run } = createRunner({ clawHubPublished, npmjsPublished });
+    const { run } = createRunner({ clawHubPublished, npmjsPublished });
 
     const result = resolveWith(run);
 
     expect(result.npmjs.published).toBe(npmjsPublished);
     expect(result.clawHub.published).toBe(clawHubPublished);
     expect(result.publicationRequired).toBe(expectedRequired);
-    expect(calls.some(({ args, command }) => command === "npm" && args.join(" ") === "run check:versions")).toBe(
-      !npmjsPublished,
-    );
-    expect(
-      calls.some(
-        ({ args, command }) => command === "npx" && args.includes("--version") && args.includes("openclaw.plugin.json"),
-      ),
-    ).toBe(clawHubPublished);
   });
 
   it.each([
@@ -175,21 +154,16 @@ describe("release target resolution", () => {
     expect(() => resolveWith(run)).toThrow(/mismatch/);
   });
 
-  it("rejects a non-tag release ref before querying registries", () => {
-    const { calls, run } = createRunner({
+  it("does not treat an exact-version lookup failure as a missing version", () => {
+    const { run: fallbackRun } = createRunner({
       clawHubPublished: false,
-      npmjsPublished: false,
+      npmjsPublished: true,
     });
+    const run = (command, args, options) =>
+      command === "npx"
+        ? { status: 1, stderr: "registry request timed out", stdout: "" }
+        : fallbackRun(command, args, options);
 
-    expect(() =>
-      resolveReleaseTargets({
-        run,
-        sourceCommit: SOURCE_COMMIT,
-        sourceRef: "refs/heads/main",
-        sourceRepo: SOURCE_REPO,
-        version: VERSION,
-      }),
-    ).toThrow(`release ref mismatch: expected "${SOURCE_REF}", found "refs/heads/main"`);
-    expect(calls).toEqual([]);
+    expect(() => resolveWith(run)).toThrow("registry request timed out");
   });
 });

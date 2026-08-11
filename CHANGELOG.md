@@ -6,14 +6,6 @@
 
 ## [未发布]
 
-### 变更
-
-- **统一可信发布审批：** npmjs 与 ClawHub 的 OIDC 发布合并到 `release.yml` 中同一个受
-  `npm-publish` environment 保护的 job；审批后按顺序独立检查和发布，部分成功时可从同一
-  release tag 重跑并仅补齐缺失目标。两个精确版本及 ClawHub source commit/ref、
-  插件/频道身份都匹配时跳过审批；已存在但来源或运行时身份不匹配的 ClawHub 版本会失败。
-  独立的 `clawhub-publish.yml` 仅保留无凭证 PR 校验和 dry-run。
-
 ## [3.1.1] - 2026-08-11
 
 ### 变更

@@ -141,17 +141,17 @@ function validateClawHubInspection(inspection, expected) {
 
 function inspectClawHubTarget({ run, sourceCommit, sourceRef, sourceRepo, version }) {
   const baseArgs = ["--yes", `clawhub@${CLAWHUB_CLI_VERSION}`, "package", "inspect", CLAWHUB_PACKAGE_NAME];
-  const versions = parseJson(
-    runRequired(run, "npx", [...baseArgs, "--versions", "--limit", "100", "--json"]),
-    "ClawHub version inspection",
-  );
-  assertEqual(versions.package?.name, CLAWHUB_PACKAGE_NAME, "ClawHub package name");
-  assertEqual(versions.owner?.handle, CLAWHUB_OWNER, "ClawHub owner");
-  if (!Array.isArray(versions.versions)) {
-    throw new Error("ClawHub version inspection did not return a version list");
-  }
-  const targetExists = versions.versions?.some((item) => item?.version === version) === true;
-  if (!targetExists) {
+  const exactArgs = [...baseArgs, "--version", version, "--file", "openclaw.plugin.json", "--json"];
+  const exactResult = run("npx", exactArgs);
+  if (exactResult.status !== 0) {
+    const errorLines = `${exactResult.stderr}\n${exactResult.stdout}`
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => line.replace(/^Error:\s*/, "").replace(/\s+\(reset in \d+s\)$/, ""));
+    if (errorLines.length === 0 || errorLines.some((line) => line !== "Version not found")) {
+      throw commandFailure("npx", exactArgs, exactResult);
+    }
     return {
       packageName: CLAWHUB_PACKAGE_NAME,
       published: false,
@@ -159,10 +159,7 @@ function inspectClawHubTarget({ run, sourceCommit, sourceRef, sourceRepo, versio
     };
   }
 
-  const inspection = parseJson(
-    runRequired(run, "npx", [...baseArgs, "--version", version, "--file", "openclaw.plugin.json", "--json"]),
-    "ClawHub exact-version inspection",
-  );
+  const inspection = parseJson(exactResult.stdout.trim(), "ClawHub exact-version inspection");
   return {
     ...validateClawHubInspection(inspection, {
       sourceCommit,

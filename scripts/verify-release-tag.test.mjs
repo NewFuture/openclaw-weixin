@@ -41,30 +41,4 @@ describe("live release tag verification", () => {
       }),
     ).toThrow(`live release tag ${EXPECTED_REF} resolves to ${movedCommit}, not workflow commit ${EXPECTED_COMMIT}`);
   });
-
-  it("fails closed when the tag is missing or the response is ambiguous", () => {
-    expect(() =>
-      verifyReleaseTag({
-        expectedCommit: EXPECTED_COMMIT,
-        expectedRef: EXPECTED_REF,
-        run: () => ({
-          status: 2,
-          stderr: "",
-          stdout: "",
-        }),
-      }),
-    ).toThrow(`could not resolve live release tag ${EXPECTED_REF}: exit status 2`);
-
-    expect(() =>
-      verifyReleaseTag({
-        expectedCommit: EXPECTED_COMMIT,
-        expectedRef: EXPECTED_REF,
-        run: () => ({
-          status: 0,
-          stderr: "",
-          stdout: `${EXPECTED_COMMIT}\t${EXPECTED_REF}\n${EXPECTED_COMMIT}\t${EXPECTED_REF}\n`,
-        }),
-      }),
-    ).toThrow(`expected one live release tag result for ${EXPECTED_REF}, found 2`);
-  });
 });

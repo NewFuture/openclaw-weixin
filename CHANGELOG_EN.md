@@ -6,17 +6,6 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
-### Changed
-
-- **Unified trusted-publish approval:** npmjs and ClawHub OIDC publication now
-  share one `npm-publish` environment-protected job in `release.yml`, with
-  independent sequential checks and publishes after approval. A partial success
-  can be rerun from the same release tag to fill only the missing target.
-  Approval is skipped when both exact versions and the ClawHub source
-  commit/ref plus plugin/channel identity match; a conflicting existing ClawHub
-  version fails closed. The standalone `clawhub-publish.yml` now retains only
-  credential-free PR validation and dry-run.
-
 ## [3.1.1] - 2026-08-11
 
 ### Changed
