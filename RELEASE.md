@@ -76,11 +76,9 @@ appears. If both exact targets exist, neither environment requests approval.
 After approval, each job verifies the live tag and independently rechecks only
 its exact target. The npm job publishes and verifies npmjs only when missing.
 The ClawHub job publishes only when its exact source and runtime identity remain
-missing. If npmjs was missing during preflight, the ClawHub job performs a
-bounded exact-version wait against the official npm registry before creating
-any ClawHub publication boundary or request. A failed or unavailable npm
-publication therefore leaves ClawHub automatically retryable. These are the
-only two jobs with `id-token: write`.
+missing. Neither registry job waits for the other: ClawHub stores its uploaded
+ClawPack, and the package's default `clawhub:` installer downloads that artifact
+directly. These are the only two jobs with `id-token: write`.
 
 A read-only reconciliation job rechecks both exact registry targets after the
 publication jobs succeed or are correctly skipped. Only then does a
@@ -94,8 +92,8 @@ respective jobs.
 
 | npmjs target | ClawHub target | Protected-job behavior |
 | --- | --- | --- |
-| Missing | Missing | Wait for both environments, select both, approve once; ClawHub waits for exact npmjs availability before its boundary |
-| Exact version exists | Missing | Only `clawhub-publish` requests approval; re-run the original workflow or explicitly authorize an older recovery dispatch |
+| Missing | Missing | Wait for both environments, select both, approve once; both jobs publish independently |
+| Exact version exists | Missing | Only `clawhub-publish` requests approval; publish and verify ClawHub independently |
 | Missing | Exact matching version exists | Only `npm-publish` requests approval; publish and verify npmjs without a ClawHub request |
 | Exact version exists | Exact matching version exists | Neither environment requests approval; continue recovery jobs |
 | Either state | ClawHub missing with prior publication boundary | Recover npmjs independently if needed, then stop before a duplicate ClawHub request |
@@ -212,10 +210,10 @@ durable check run and then uploads a 90-day
 the only real publish command. The check run preserves the boundary after
 artifact expiry; the artifact provides a directly downloadable marker during
 the complete 30-day workflow re-run window. Validation, build, dry-run, exact
-npmjs availability, registry lookup, and tag verification all happen before
-either boundary and can be retried safely. A failure after the check run is
-created is an unknown ClawHub outcome even if the command may not have reached
-the server; automation must not infer safety from an absent public version.
+ClawHub registry lookup, and tag verification all happen before either boundary
+and can be retried safely. A failure after the check run is created is an
+unknown ClawHub outcome even if the command may not have reached the server;
+automation must not infer safety from an absent public version.
 
 If a run fails, first inspect the package and version history:
 
@@ -227,11 +225,9 @@ npx --yes clawhub@0.23.3 package readiness openclaw-wechat --json
 
 If the target version is absent and neither a publication-boundary check nor
 artifact exists, the failure occurred before the irreversible command boundary
-and the original workflow run can be re-run. Do not create a new workflow
-dispatch for this routine recovery: the first attempt of a new run fails closed
-when npmjs already contains the release, and rerunning that unauthorized
-dispatch remains blocked unless its first attempt entered the npm publication
-job.
+and the exact-tag workflow can safely retry ClawHub. The explicit recovery input
+is required only after a durable boundary exists and authoritative review has
+confirmed another request is safe.
 
 If either boundary exists, inspect its originating run and sanitized reports
 for an attempt ID or terminal status, then obtain authoritative ClawHub

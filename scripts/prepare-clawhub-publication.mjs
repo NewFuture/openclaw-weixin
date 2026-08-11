@@ -4,24 +4,11 @@ import { fileURLToPath } from "node:url";
 
 const CLAWHUB_PACKAGE_NAME = "openclaw-wechat";
 const BOUNDARY_PREFIX = "clawhub-publication-boundary";
-const NPM_PUBLICATION_JOB_NAME = "Approve and publish npmjs";
 
 function assertMatch(value, pattern, label) {
   if (!pattern.test(value ?? "")) {
     throw new Error(`${label} is invalid: ${JSON.stringify(value)}`);
   }
-}
-
-function validateFirstAttemptJobListing(listing) {
-  if (!Array.isArray(listing?.jobs) || !Number.isInteger(listing?.total_count)) {
-    throw new Error("GitHub Actions returned an invalid first-attempt job listing");
-  }
-  if (listing.total_count !== listing.jobs.length) {
-    throw new Error(
-      `GitHub Actions returned an incomplete first-attempt job listing (${listing.jobs.length} of ${listing.total_count})`,
-    );
-  }
-  return listing.jobs;
 }
 
 export function getClawHubPublicationBoundaryName({ sourceCommit, version }) {
@@ -34,9 +21,7 @@ export function prepareClawHubPublication({
   artifactListing,
   boundaryName,
   checkRunListing,
-  firstAttemptJobListing,
   recoveryAuthorized,
-  npmjsPublishedBeforeJob,
   runAttempt,
   runId,
   sourceCommit,
@@ -93,21 +78,6 @@ export function prepareClawHubPublication({
   if (!Number.isInteger(parsedRunAttempt) || parsedRunAttempt <= 0) {
     throw new Error(`GitHub run attempt is invalid: ${JSON.stringify(runAttempt)}`);
   }
-  if (npmjsPublishedBeforeJob && !recoveryAuthorized) {
-    const npmJobFromFirstAttempt =
-      parsedRunAttempt > 1
-        ? validateFirstAttemptJobListing(firstAttemptJobListing).find((job) => job?.name === NPM_PUBLICATION_JOB_NAME)
-        : undefined;
-    if (
-      !npmJobFromFirstAttempt ||
-      typeof npmJobFromFirstAttempt.conclusion !== "string" ||
-      npmJobFromFirstAttempt.conclusion === "skipped"
-    ) {
-      throw new Error(
-        `ClawHub ${CLAWHUB_PACKAGE_NAME}@${version} is missing while npmjs already contained the release before this workflow run. Re-run the original failed workflow only when its first attempt entered the npm publication job. For an older partial release, first obtain authoritative ClawHub confirmation that no active or accepted attempt exists, then dispatch the exact tag with authorize_clawhub_recovery enabled.`,
-      );
-    }
-  }
 
   if (sourceRef !== `refs/tags/v${version}`) {
     throw new Error(`release ref mismatch: expected "refs/tags/v${version}", found ${JSON.stringify(sourceRef)}`);
@@ -161,12 +131,10 @@ function main() {
       !process.env.CLAWHUB_BOUNDARY_REPORT ||
       !process.env.CLAWHUB_BOUNDARY_CHECK_REPORT ||
       !process.env.CLAWHUB_BOUNDARY_CHECK_REQUEST ||
-      !process.env.CLAWHUB_BOUNDARY_MARKER ||
-      !process.env.CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT ||
-      !process.env.NPMJS_PUBLISHED_BEFORE_JOB
+      !process.env.CLAWHUB_BOUNDARY_MARKER
     ) {
       throw new Error(
-        "CLAWHUB_BOUNDARY_REPORT, CLAWHUB_BOUNDARY_CHECK_REPORT, CLAWHUB_BOUNDARY_CHECK_REQUEST, CLAWHUB_BOUNDARY_MARKER, CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT, and NPMJS_PUBLISHED_BEFORE_JOB are required",
+        "CLAWHUB_BOUNDARY_REPORT, CLAWHUB_BOUNDARY_CHECK_REPORT, CLAWHUB_BOUNDARY_CHECK_REQUEST, and CLAWHUB_BOUNDARY_MARKER are required",
       );
     }
     const reportPath = path.resolve(process.env.CLAWHUB_BOUNDARY_REPORT);
@@ -177,12 +145,7 @@ function main() {
       artifactListing: parseJsonFile(reportPath, "ClawHub publication boundary report"),
       boundaryName: process.env.CLAWHUB_BOUNDARY_NAME,
       checkRunListing: parseJsonFile(checkReportPath, "ClawHub publication boundary check report"),
-      firstAttemptJobListing: parseJsonFile(
-        path.resolve(process.env.CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT),
-        "first-attempt GitHub Actions jobs report",
-      ),
       recoveryAuthorized: process.env.CLAWHUB_RECOVERY_AUTHORIZED === "true",
-      npmjsPublishedBeforeJob: process.env.NPMJS_PUBLISHED_BEFORE_JOB === "true",
       runAttempt: process.env.GITHUB_RUN_ATTEMPT,
       runId: process.env.GITHUB_RUN_ID,
       sourceCommit: process.env.GITHUB_SHA,

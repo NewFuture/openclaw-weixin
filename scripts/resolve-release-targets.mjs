@@ -67,7 +67,7 @@ function assertEqual(actual, expected, label) {
   }
 }
 
-export function inspectExactNpmTarget({ run, version }) {
+function inspectExactNpmTarget({ run, version }) {
   const exactArgs = ["view", `${NPM_PACKAGE_NAME}@${version}`, "version", `--registry=${NPM_REGISTRY}`];
   const exactResult = run("npm", exactArgs);
   if (exactResult.status === 0) {

@@ -84,13 +84,13 @@ describe("release target resolution", () => {
     {
       clawHubPublished: false,
       expectedRequired: true,
-      label: "resumes ClawHub after npmjs succeeds",
+      label: "requests only ClawHub when npmjs already exists",
       npmjsPublished: true,
     },
     {
       clawHubPublished: true,
       expectedRequired: true,
-      label: "resumes npmjs when ClawHub already matches",
+      label: "requests only npmjs when ClawHub already matches",
       npmjsPublished: false,
     },
     {

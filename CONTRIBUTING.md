@@ -120,10 +120,11 @@ to become Pending, select both in **Review deployments**, and click **Approve
 and deploy** once; the UI action is shared, but OIDC trust remains isolated. Do
 not add production dispatch, `id-token: write`, or a long-lived registry
 credential to the pull-request workflow. Before the real ClawHub command can
-start, the release workflow verifies exact npmjs availability and persists a
-durable check run plus a tag-and-commit-specific 90-day Actions artifact. A new
-ClawHub request after either boundary requires authoritative attempt evidence
-and explicit recovery authorization.
+start, the release workflow persists a durable check run plus a
+tag-and-commit-specific 90-day Actions artifact. ClawHub uploads and stores its
+own ClawPack independently of npmjs; the explicit `clawhub:` installer downloads
+that artifact directly. A new ClawHub request after either boundary requires
+authoritative attempt evidence and explicit recovery authorization.
 
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The

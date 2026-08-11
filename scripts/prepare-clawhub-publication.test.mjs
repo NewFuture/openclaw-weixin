@@ -14,16 +14,7 @@ const BOUNDARY_NAME = getClawHubPublicationBoundaryName({
   version: VERSION,
 });
 
-function prepare(
-  artifacts,
-  {
-    checkRuns = [],
-    firstAttemptJobs = [],
-    npmjsPublishedBeforeJob = false,
-    recoveryAuthorized = false,
-    runAttempt = "1",
-  } = {},
-) {
+function prepare(artifacts, { checkRuns = [], recoveryAuthorized = false, runAttempt = "1" } = {}) {
   return prepareClawHubPublication({
     artifactListing: {
       artifacts,
@@ -34,11 +25,6 @@ function prepare(
       check_runs: checkRuns,
       total_count: checkRuns.length,
     },
-    firstAttemptJobListing: {
-      jobs: firstAttemptJobs,
-      total_count: firstAttemptJobs.length,
-    },
-    npmjsPublishedBeforeJob,
     recoveryAuthorized,
     runAttempt,
     runId: "12345",
@@ -85,7 +71,6 @@ describe("ClawHub publication recovery boundary", () => {
           check_runs: [],
           total_count: 1,
         },
-        npmjsPublishedBeforeJob: false,
         recoveryAuthorized: false,
         runAttempt: "1",
         runId: "12345",
@@ -117,39 +102,11 @@ describe("ClawHub publication recovery boundary", () => {
     );
   });
 
-  it("requires explicit authorization for a new dispatch of an older partial release", () => {
-    expect(() => prepare([], { npmjsPublishedBeforeJob: true })).toThrow(
-      /dispatch the exact tag with authorize_clawhub_recovery enabled/,
-    );
-    expect(
-      prepare([], {
-        firstAttemptJobs: [{ conclusion: "success", name: "Approve and publish npmjs" }],
-        npmjsPublishedBeforeJob: true,
-        runAttempt: "2",
-      }),
-    ).toMatchObject({
+  it("does not require npm publication evidence before a ClawHub boundary", () => {
+    expect(prepare([], { runAttempt: "1" })).toMatchObject({
       sourceCommit: SOURCE_COMMIT,
       version: VERSION,
     });
-    expect(
-      prepare([], {
-        npmjsPublishedBeforeJob: true,
-        recoveryAuthorized: true,
-      }),
-    ).toMatchObject({
-      sourceCommit: SOURCE_COMMIT,
-      version: VERSION,
-    });
-  });
-
-  it("does not let a rerun turn an unauthorized npm-only dispatch into recovery", () => {
-    expect(() =>
-      prepare([], {
-        firstAttemptJobs: [{ conclusion: "skipped", name: "Approve and publish npmjs" }],
-        npmjsPublishedBeforeJob: true,
-        runAttempt: "2",
-      }),
-    ).toThrow(/dispatch the exact tag with authorize_clawhub_recovery enabled/);
   });
 
   it("creates a run-attempt-specific durable check request for the exact boundary", () => {

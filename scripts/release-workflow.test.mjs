@@ -71,23 +71,23 @@ describe("release workflow contract", () => {
     expect(npmJob).not.toContain("ClawHub publication boundary");
   });
 
-  it("waits for exact npm availability before creating the durable ClawHub boundary", () => {
+  it("publishes ClawHub independently while preserving its durable boundary", () => {
     const clawHubJob = jobSource("clawhub-publish", "verify-registries");
 
     expect(clawHubJob).toContain("Recheck exact ClawHub publication target");
     expect(clawHubJob).toContain("RELEASE_TARGETS_SCOPE: clawhub");
-    expect(clawHubJob).toContain("Wait for exact npmjs publication");
-    expect(clawHubJob).toContain("node scripts/wait-for-npm-publication.mjs");
+    expect(clawHubJob).toContain("Recheck ClawHub target before publication");
+    expect(clawHubJob).not.toContain("wait-for-npm-publication");
+    expect(clawHubJob).not.toContain("NPMJS_PUBLISHED_BEFORE_JOB");
+    expect(clawHubJob).not.toContain("CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT");
     expect(clawHubJob).toContain("Check prior ClawHub publication boundary");
-    expect(clawHubJob).toContain("CLAWHUB_FIRST_ATTEMPT_JOBS_REPORT");
-    expect(clawHubJob).toContain("actions/runs/$" + "{GITHUB_RUN_ID}/attempts/1/jobs");
     expect(clawHubJob).toContain("Persist durable ClawHub publication check");
     expect(clawHubJob).toContain("Persist ClawHub publication boundary artifact");
     expect(clawHubJob).toContain("checks: write");
     expect(clawHubJob).toContain("--wait");
     expect(clawHubJob).toContain("--wait-timeout 2400");
     expect(clawHubJob).toContain('result.publicationStatus !== "published"');
-    expect(clawHubJob.indexOf("Wait for exact npmjs publication")).toBeLessThan(
+    expect(clawHubJob.indexOf("Recheck ClawHub target before publication")).toBeLessThan(
       clawHubJob.indexOf("Check prior ClawHub publication boundary"),
     );
     expect(clawHubJob.indexOf("Persist durable ClawHub publication check")).toBeLessThan(
@@ -105,7 +105,7 @@ describe("release workflow contract", () => {
     );
   });
 
-  it("keeps GitHub Packages and GitHub Release least-privilege and dependent on both registries", () => {
+  it("blocks downstream after either partial registry failure and keeps recovery jobs least-privilege", () => {
     const verifyRegistriesJob = jobSource("verify-registries", "github-package");
     const githubPackageJob = jobSource("github-package", "github-release");
     const githubReleaseJob = jobSource("github-release");
