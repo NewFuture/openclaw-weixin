@@ -17,6 +17,7 @@ vi.mock("./send.js", () => ({
   sendMessageWeixin: mockSendMessageWeixin,
 }));
 
+import { logger } from "../util/logger.js";
 import { sendWeixinErrorNotice } from "./error-notice.js";
 
 beforeEach(() => {
@@ -49,9 +50,10 @@ describe("sendWeixinErrorNotice", () => {
   });
 
   it("skips the error notice when contextToken is undefined", async () => {
+    const recipientId = "oSYNTH0000000000000000000000@im.wechat";
     const errLog = vi.fn();
     await sendWeixinErrorNotice({
-      to: "user1",
+      to: recipientId,
       contextToken: undefined,
       message: "err",
       baseUrl: "https://api.com",
@@ -59,6 +61,10 @@ describe("sendWeixinErrorNotice", () => {
     });
     expect(mockSendMessageWeixin).not.toHaveBeenCalled();
     expect(errLog).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendWeixinErrorNotice: no contextToken for oSYNTH…(len=38), skipping error notice",
+    );
+    expect(vi.mocked(logger.warn).mock.calls.flat().join(" ")).not.toContain(recipientId);
   });
 
   it("catches and logs errors from sendMessageWeixin", async () => {
