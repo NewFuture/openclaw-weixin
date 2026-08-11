@@ -20,6 +20,12 @@ describe("release workflow contract", () => {
     expect(workflow).toContain("Recheck registry publication targets");
     expect(workflow).toContain("Verify coordinated publication");
     expect(workflow).toContain("Require both registry versions");
+    expect(workflow).toContain(
+      "coordinated-release-preflight-$" + "{{ github.run_id }}-$" + "{{ github.run_attempt }}",
+    );
+    expect(workflow).toContain(
+      "coordinated-release-publication-$" + "{{ github.run_id }}-$" + "{{ github.run_attempt }}",
+    );
   });
 
   it("uses one approval and one OIDC job for sequential npmjs and ClawHub publication", () => {
