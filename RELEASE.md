@@ -148,12 +148,12 @@ registry link. In a temporary extracted copy it changes
 `package.json.name`, adds `clawhub:openclaw-wechat`, selects ClawHub as that
 copy's default installer, uses the English source for its primary `README.md`
 and `README_EN.md`, writes the full Chinese source to `README.zh_CN.md`, changes
-all staged README titles to `openclaw-wechat`, preserves one identical shared
-prompt that names both source specs, prefers OpenClaw's internal installer when
-it can perform the replacement, and delegates the exactly-one choice to
-OpenClaw, then reorders the direct-source blocks from npm-first to
-ClawHub-first. It never modifies the source tarball or creates an
-`openclaw-wechat` npm package.
+all staged README titles to `openclaw-wechat`, and preserves each localized
+prompt. The Chinese prompt tries npm before ClawHub, while the English prompt
+tries ClawHub before npm, aligning each package's primary README with its default
+source. The converter then reorders the direct-source blocks from npm-first to
+ClawHub-first.
+It never modifies the source tarball or creates an `openclaw-wechat` npm package.
 
 Before any ClawHub release, run `npm ci`, `npm run check`, and
 `npm run pack:check`, then build and validate the ClawPack with the commands in
@@ -256,8 +256,9 @@ confirm `openclaw plugins list` still reports the `openclaw-weixin`
 plugin/channel id, and inspect the listing's source commit, icon, summary,
 compatibility, and scan status. Inspect both rendered
 README languages as well: the primary README must be English, the title must be
-`openclaw-wechat`, the shared prompt must match the canonical prompt, name both
-source specs once, and describe `--force` once. ClawHub must be the first marked
-source, npm must remain available, and every language or documentation link must
-be absolute. The canonical npm tarball and repository READMEs must remain titled
+`openclaw-wechat`, and its prompt must try ClawHub before npm. The Chinese prompt
+must try npm before ClawHub. Each prompt must name both source specs once and
+describe `--force` once. ClawHub must be the first marked source, npm must
+remain available, and every language or documentation link must be absolute. The
+canonical npm tarball and repository READMEs must remain titled
 `openclaw-weixin` and npm-first.

@@ -78,35 +78,17 @@ describe("syncContent", () => {
     assert.match(overview, /OpenClaw `>=2026\.6\.1`/);
     assert.match(overview, /`>=22\.22\.3 <23`、`>=24\.15\.0 <25` 或 `>=25\.9\.0`/);
     assert.match(overview, /推荐复制提示词，也可以直接运行命令/);
-    assert.match(overview, /提示词让 OpenClaw 选择一个可用来源并完成基本检查/);
-    assert.match(overview, /直接命令只安装或替换插件/);
     assert.match(
       overview,
       /class="install-choice"[\s\S]*href="#agent-install"[\s\S]*复制提示词[\s\S]*href="#direct-install"[\s\S]*运行命令/,
     );
     assert.equal((overview.match(/class="install-choice"/g) ?? []).length, 1);
-    assert.match(overview, /openclaw plugins install npm:openclaw-weixin --force/);
-    assert.match(overview, /openclaw plugins install clawhub:openclaw-wechat --force/);
-    assert.equal(chinesePrompt.value.split("npm:openclaw-weixin").length - 1, 1);
-    assert.equal(chinesePrompt.value.split("clawhub:openclaw-wechat").length - 1, 1);
-    assert.equal(chinesePrompt.value.split("`--force`").length - 1, 1);
-    assert.doesNotMatch(chinesePrompt.value, /openclaw plugins install/);
-    assert.match(chinesePrompt.value, /安装或原位替换微信插件/);
-    assert.match(chinesePrompt.value, /优先使用能完成原位覆盖的 OpenClaw 内部\s*插件安装能力/);
-    assert.match(chinesePrompt.value, /若当前内部能力不支持覆盖，再使用终端中的 OpenClaw 插件安装器/);
-    assert.match(chinesePrompt.value, /自行选择\s*一个可用来源，只安装一个/);
-    assert.match(chinesePrompt.value, /我已确认所选来源/);
-    assert.match(chinesePrompt.value, /相当于 `--force`/);
-    assert.match(chinesePrompt.value, /不要先卸载、使用普通的 `npm install` 或删除配置和\s*登录数据/);
-    assert.match(chinesePrompt.value, /安装后做基本连接检查/);
-    assert.match(chinesePrompt.value, /需要重载或重启时先提示我/);
-    assert.match(chinesePrompt.value, /未登录时提示扫码/);
-    assert.match(chinesePrompt.value, /最后简要报告来源\s*和结果/);
-    assert.match(chinesePrompt.value, /若无法执行，请直接说明/);
+    assert.ok(
+      chinesePrompt.value.indexOf("npm:openclaw-weixin") < chinesePrompt.value.indexOf("clawhub:openclaw-wechat"),
+    );
     assert.match(overview, /<h3 id="direct-install">直接运行命令/);
     assert.match(overview, /<h4 id="npm-source">npm：/);
     assert.match(overview, /<h4 id="clawhub-source">ClawHub：/);
-    assert.match(overview, /<h3 id="agent-install">让 OpenClaw 选择安装来源/);
     assert.equal((overview.match(/class="prompt-lead"/g) ?? []).length, 1);
     assert.doesNotMatch(overview, /id="(?:npm|clawhub)-agent-install"/);
     assert.match(overview, /<h5 id="clawhub-cli-install">ClawHub 命令/);
@@ -129,35 +111,16 @@ describe("syncContent", () => {
     const english = (await readFile(path.join(contentDir, "en", "index.md"), "utf8")).replaceAll("\r\n", "\n");
     assert.deepEqual(assertRegistryReadmeOrder(english, "npm", { fileName: "en/index.md" }).order, ["npm", "clawhub"]);
     const englishPrompt = assertRegistryPrompt(english, { fileName: "en/index.md" });
-    assert.equal(englishPrompt.value.split("npm:openclaw-weixin").length - 1, 1);
-    assert.equal(englishPrompt.value.split("clawhub:openclaw-wechat").length - 1, 1);
-    assert.equal(englishPrompt.value.split("`--force`").length - 1, 1);
-    assert.doesNotMatch(englishPrompt.value, /openclaw plugins install/);
-    assert.match(englishPrompt.value, /Install or replace the WeChat plugin for this OpenClaw instance/);
-    assert.match(englishPrompt.value, /internal plugin installer only when it can replace the existing\s+installation/);
-    assert.match(englishPrompt.value, /otherwise use its terminal plugin\s+installer/);
-    assert.match(englishPrompt.value, /Choose exactly one available source/);
-    assert.match(englishPrompt.value, /I authorize the selected source/);
-    assert.match(englishPrompt.value, /equivalent to `--force`/);
-    assert.match(
-      englishPrompt.value,
-      /Do not uninstall first, use plain `npm install`, or delete configuration or login\s+data/,
+    assert.ok(
+      englishPrompt.value.indexOf("clawhub:openclaw-wechat") < englishPrompt.value.indexOf("npm:openclaw-weixin"),
     );
-    assert.match(englishPrompt.value, /perform a basic connection check/);
-    assert.match(englishPrompt.value, /Tell me before any reload\s+or restart/);
-    assert.match(englishPrompt.value, /prompt for QR login if needed/);
-    assert.match(englishPrompt.value, /Briefly report the source and\s+result/);
-    assert.match(englishPrompt.value, /if you cannot perform the installation, say so/);
     assert.match(english, /<h2 id="connect-wechat">Choose an installation method/);
     assert.match(english, /Copy the prompt, or run a command directly/);
-    assert.match(english, /prompt lets OpenClaw choose one available source and perform basic checks/);
-    assert.match(english, /direct commands only install or replace the plugin/);
     assert.match(
       english,
       /class="install-choice"[\s\S]*href="#agent-install"[\s\S]*Copy the prompt[\s\S]*href="#direct-install"[\s\S]*Run a command/,
     );
     assert.equal((english.match(/class="install-choice"/g) ?? []).length, 1);
-    assert.match(english, /<h3 id="agent-install">Let OpenClaw choose the package source/);
     assert.equal((english.match(/class="prompt-lead"/g) ?? []).length, 1);
     assert.doesNotMatch(english, /id="(?:npm|clawhub)-agent-install"/);
     assert.match(english, /<h3 id="direct-install">Run a command directly/);

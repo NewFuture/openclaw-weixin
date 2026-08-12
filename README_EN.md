@@ -15,34 +15,24 @@ is available from both npm and ClawHub.
 <h2 id="connect-wechat">Choose an installation method</h2>
 
 <p class="choice-lead"><strong>Copy the prompt, or run a command directly.</strong>
-The prompt lets OpenClaw choose one available source and perform basic checks;
-direct commands only install or replace the plugin.</p>
+The prompt tries ClawHub first, falls back to npm, and completes installation
+and connection checks; direct commands only install or replace the plugin.</p>
 
 <div class="install-choice">
-  <a href="#agent-install"><strong>Copy the prompt</strong><span>Let OpenClaw choose the source</span></a>
+  <a href="#agent-install"><strong>Copy the prompt</strong><span>ClawHub first, npm fallback</span></a>
   <span class="choice-or" aria-hidden="true">or</span>
   <a href="#direct-install"><strong>Run a command</strong><span>Choose npm or ClawHub yourself</span></a>
 </div>
 
 <!-- registry-prompt:start -->
-<h3 id="agent-install">Let OpenClaw choose the package source</h3>
+<h3 id="agent-install">Let OpenClaw complete the installation</h3>
 
 <p class="prompt-lead">Paste this prompt into an OpenClaw chat and send it:</p>
 
 ```text
-Install or replace the WeChat plugin for this OpenClaw instance. Prefer
-OpenClaw's internal plugin installer only when it can replace the existing
-installation; otherwise use its terminal plugin installer.
+Install or replace the WeChat plugin in place for this OpenClaw instance and check its connection. Install from ClawHub `clawhub:openclaw-wechat` first; only if the ClawHub source is explicitly unavailable, fall back to npm `npm:openclaw-weixin`, and install only one.
 
-Choose exactly one available source: ClawHub `clawhub:openclaw-wechat` or npm
-`npm:openclaw-weixin`. I authorize the selected source to replace an existing
-installation with the same `openclaw-weixin` plugin ID (equivalent to `--force`).
-Do not uninstall first, use plain `npm install`, or delete configuration or login
-data.
-
-After installation, perform a basic connection check. Tell me before any reload
-or restart, and prompt for QR login if needed. Briefly report the source and
-result; if you cannot perform the installation, say so.
+Follow OpenClaw's install policy and use in-place replacement for an existing installation with the same `openclaw-weixin` plugin ID (the `--force` behavior), preserving configuration and login data. Use the OpenClaw plugin installation flow rather than plain `npm install`. After installation, verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the source and result, or explain the failure.
 ```
 <!-- registry-prompt:end -->
 

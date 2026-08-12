@@ -14,30 +14,23 @@
 <h2 id="connect-wechat">选择一种安装方式</h2>
 
 <p class="choice-lead"><strong>推荐复制提示词，也可以直接运行命令。</strong>
-提示词让 OpenClaw 选择一个可用来源并完成基本检查；直接命令只安装或替换插件。</p>
+提示词让 OpenClaw 优先使用 npm、失败时回退 ClawHub，并完成安装与连接检查；直接命令只安装或替换插件。</p>
 
 <div class="install-choice">
-  <a href="#agent-install"><strong>复制提示词</strong><span>让 OpenClaw 选择来源</span></a>
+  <a href="#agent-install"><strong>复制提示词</strong><span>npm 优先，ClawHub 兜底</span></a>
   <span class="choice-or" aria-hidden="true">或</span>
   <a href="#direct-install"><strong>运行命令</strong><span>自己选择 npm 或 ClawHub</span></a>
 </div>
 
 <!-- registry-prompt:start -->
-<h3 id="agent-install">让 OpenClaw 选择安装来源</h3>
+<h3 id="agent-install">让 OpenClaw 自动完成安装</h3>
 
 <p class="prompt-lead">把下面这段话粘贴到 OpenClaw 聊天框并发送：</p>
 
 ```text
-请为当前 OpenClaw 安装或原位替换微信插件。优先使用能完成原位覆盖的 OpenClaw 内部
-插件安装能力；若当前内部能力不支持覆盖，再使用终端中的 OpenClaw 插件安装器。
+请为当前 OpenClaw 安装或原位替换微信插件，并检查微信连接。优先安装 npm 的 `npm:openclaw-weixin`；仅当 npm 来源明确不可用时，改用 ClawHub 的 `clawhub:openclaw-wechat`，全程只安装一个。
 
-请在 ClawHub 的 `clawhub:openclaw-wechat` 和 npm 的 `npm:openclaw-weixin` 中自行选择
-一个可用来源，只安装一个。我已确认所选来源，并允许覆盖同一 `openclaw-weixin` 插件 ID
-的现有安装（相当于 `--force`）。不要先卸载、使用普通的 `npm install` 或删除配置和
-登录数据。
-
-安装后做基本连接检查；需要重载或重启时先提示我，未登录时提示扫码。最后简要报告来源
-和结果；若无法执行，请直接说明。
+请遵循 OpenClaw 的安装策略，对所用来源执行同一 `openclaw-weixin` 插件 ID 的原位替换（对应 `--force`），并保留现有配置和登录数据；请使用 OpenClaw 插件安装流程，而不是普通的 `npm install`。安装后确认插件已加载并探测微信 Channel；未登录时提示扫码。最后简要报告来源和结果；失败时说明原因。
 ```
 <!-- registry-prompt:end -->
 
