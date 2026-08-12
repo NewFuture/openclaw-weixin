@@ -73,7 +73,8 @@ deploy** once. GitHub applies that one UI action to both jobs, while each job
 receives only its own environment and OIDC trust boundary. If only one target is
 missing, approve only that environment. If both exact targets exist, neither
 environment requests approval. The GitHub Packages job uses the repository's
-`GITHUB_TOKEN` and performs its own exact-version and release-order precheck.
+`GITHUB_TOKEN` and performs its own exact-version precheck. A missing intermediate
+mirror version is reported but does not block the exact current target.
 
 Before an irreversible command, each package job verifies the live tag and
 rechecks its own target. The npmjs and GitHub Packages jobs treat a successful
@@ -123,10 +124,35 @@ If npmjs already contains a version whose tag is missing, automation fails
 instead of creating a tag that could misrepresent the published artifact's
 source.
 Consecutive releases wait for the preceding repository version to appear on
-npmjs. The GitHub Packages mirror must contain the immediately preceding
-repository release as `latest` before the next mirror version can publish. If
-the mirror is empty, backfill the preceding release before publishing a later
-mirror version.
+npmjs. GitHub Packages is an independent mirror: an absent intermediate mirror
+version or an empty mirror produces a warning but does not block publishing the
+exact current release target. Exact-target lookups remain fail-closed for errors
+other than a not-found response, and the target is rechecked immediately before
+publication to close the build-time race. A missing target older than the
+mirror's current `latest` still fails rather than moving that dist-tag backward.
+
+## GitHub Packages v3.1.3 recovery
+
+The immutable `v3.1.3` tag predates the relaxed mirror-order check, so rerunning
+its coordinated release workflow cannot consume that fix. After
+`recover-github-package-v3.1.3.yml` is merged to `main`, recover only this missing
+mirror target:
+
+1. Open **Actions → Recover GitHub Package v3.1.3**.
+2. Select **Run workflow**, keep the branch set to `main`, and start the run.
+3. Confirm the run either reports
+   `@newfuture/openclaw-weixin@3.1.3 is already published` or receives a
+   successful `npm publish` response.
+
+The workflow has no version or source input. It checks out the exact existing
+`refs/tags/v3.1.3`, validates matching package, plugin, lockfile, bilingual
+changelog, and release-transition metadata, and verifies the live tag again
+before publication. It skips an existing exact target, fails non-404 registry
+errors, and builds and packs from the tag before applying only
+`scripts/prepare-github-package.mjs` to the temporary package. Its job has
+`contents: read` and `packages: write`; it has neither OIDC permission nor a
+long-lived token. Do not run it before the workflow is merged, and never move
+`v3.1.3`.
 
 ## ClawHub package identity
 

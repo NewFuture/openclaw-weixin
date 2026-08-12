@@ -140,6 +140,14 @@ npmjs; the explicit `clawhub:` installer downloads that artifact directly. A new
 ClawHub request after either boundary requires authoritative attempt evidence and
 explicit recovery authorization.
 
+GitHub Packages does not require a gap-free mirror history. Its release job warns
+about a missing intermediate version, proceeds with the exact current target,
+refuses to move `latest` backward for an older missing target, and rechecks the
+exact target immediately before publishing. The one-off
+`recover-github-package-v3.1.3.yml` workflow can reconcile only the immutable
+`v3.1.3` tag from `main`; it grants no OIDC permission and accepts no branch,
+tag, or version input.
+
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The
 site is a [VitePress](https://vitepress.dev/) project that keeps its own

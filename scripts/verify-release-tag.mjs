@@ -53,8 +53,8 @@ export function verifyReleaseTag({ expectedCommit, expectedRef, repository = "or
 function main() {
   try {
     const result = verifyReleaseTag({
-      expectedCommit: process.env.GITHUB_SHA,
-      expectedRef: process.env.GITHUB_REF,
+      expectedCommit: process.env.RELEASE_COMMIT ?? process.env.GITHUB_SHA,
+      expectedRef: process.env.RELEASE_REF ?? process.env.GITHUB_REF,
     });
     console.log(`Live release tag verified: ${result.ref} at ${result.commit}.`);
   } catch (error) {

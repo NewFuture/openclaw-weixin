@@ -1,0 +1,150 @@
+name: Recover GitHub Package v3.1.3
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    name: Publish v3.1.3 to GitHub Packages
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: release-source
+    permissions:
+      contents: read
+      packages: write
+    env:
+      RECOVERY_REF: refs/tags/v3.1.3
+      RECOVERY_TAG: v3.1.3
+
+    steps:
+      - name: Check out recovery workflow tools
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          path: workflow-tools
+
+      - name: Check out exact recovery tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: refs/tags/v3.1.3
+          path: release-source
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          registry-url: https://registry.npmjs.org
+
+      - name: Verify recovery metadata and source
+        run: |
+          set -euo pipefail
+          if [[ ! "$RECOVERY_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Recovery tag must be a stable vX.Y.Z tag."
+            exit 1
+          fi
+          RELEASE_TAG="$RECOVERY_TAG" npm run check:versions
+          transition_output="$(mktemp)"
+          trap 'rm -f "$transition_output"' EXIT
+          GITHUB_OUTPUT="$transition_output" node scripts/resolve-release-transition.mjs
+          release_commit="$(grep '^release_commit=' "$transition_output" | cut -d= -f2)"
+          checked_out_commit="$(git rev-parse HEAD)"
+          if [[ "$release_commit" != "$checked_out_commit" ]]; then
+            echo "::error::${RECOVERY_TAG} is checked out at ${checked_out_commit}, but release metadata resolves to ${release_commit}."
+            exit 1
+          fi
+          echo "RELEASE_COMMIT=${release_commit}" >> "$GITHUB_ENV"
+          echo "RELEASE_REF=${RECOVERY_REF}" >> "$GITHUB_ENV"
+
+      - name: Configure GitHub Packages lookup
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          registry-url: https://npm.pkg.github.com
+          scope: "@newfuture"
+
+      - name: Check exact GitHub Packages target
+        id: github-status
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: node "$GITHUB_WORKSPACE/workflow-tools/scripts/check-github-package-target.mjs"
+
+      - name: Set up Node.js for build
+        if: steps.github-status.outputs.published != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: release-source/package-lock.json
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        if: steps.github-status.outputs.published != 'true'
+        run: npm ci
+
+      - name: Build package
+        if: steps.github-status.outputs.published != 'true'
+        run: npm run build
+
+      - name: Inspect package contents
+        if: steps.github-status.outputs.published != 'true'
+        run: npm run pack:check
+
+      - name: Prepare GitHub Packages artifact
+        if: steps.github-status.outputs.published != 'true'
+        run: |
+          set -euo pipefail
+          package_tarball="$(
+            npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP" --json |
+              node -p "JSON.parse(require('fs').readFileSync(0, 'utf8'))[0].filename"
+          )"
+          package_root="$RUNNER_TEMP/github-package"
+          mkdir -p "$package_root"
+          tar -xzf "$RUNNER_TEMP/$package_tarball" -C "$package_root"
+          node scripts/prepare-github-package.mjs "$package_root/package"
+          (
+            cd "$package_root/package"
+            npm pack --dry-run --ignore-scripts --json >/dev/null
+          )
+
+      - name: Configure GitHub Packages registry
+        if: steps.github-status.outputs.published != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.15.0"
+          registry-url: https://npm.pkg.github.com
+          scope: "@newfuture"
+
+      - name: Verify live recovery tag before publication
+        if: steps.github-status.outputs.published != 'true'
+        run: node "$GITHUB_WORKSPACE/workflow-tools/scripts/verify-release-tag.mjs"
+
+      - name: Recheck exact GitHub Packages target
+        id: github-final-status
+        if: steps.github-status.outputs.published != 'true'
+        env:
+          GITHUB_PACKAGE_EXACT_ONLY: "true"
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: node "$GITHUB_WORKSPACE/workflow-tools/scripts/check-github-package-target.mjs"
+
+      - name: Publish GitHub package
+        if: >-
+          ${{
+            steps.github-status.outputs.published != 'true'
+            && steps.github-final-status.outputs.published != 'true'
+          }}
+        working-directory: ${{ runner.temp }}/github-package/package
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: npm publish --ignore-scripts --registry=https://npm.pkg.github.com

@@ -6,6 +6,15 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- **GitHub Packages recovery:** A missing intermediate mirror version no longer
+  blocks the exact current target. The workflow warns about the gap, rechecks the
+  exact target before publishing, refuses to move `latest` backward, and still
+  fails explicit non-404 lookup errors. A one-off manual recovery path is limited
+  to the immutable `v3.1.3` tag from `main`, without backfilling 3.1.2, moving the
+  tag, or granting OIDC permission.
+
 ## [3.1.3] - 2026-08-12
 
 ### Fixed
