@@ -34,6 +34,17 @@ function countOccurrences(value, fragment) {
   return value.split(fragment).length - 1;
 }
 
+function singleBacktickCodeSpans(value) {
+  return [...value.matchAll(/(?<!`)`([^`\r\n]+)`(?!`)/g)].map((match) => match[1]);
+}
+
+function countExactCommandLines(value, command) {
+  return value.split(/\r?\n/).filter((line) => {
+    const trimmed = line.trim();
+    return trimmed === command || trimmed === `\`${command}\``;
+  }).length;
+}
+
 function readmeError(fileName, message) {
   return new Error(`${fileName}: ${message}`);
 }
@@ -127,17 +138,18 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
     end: endMarkerStart + endMarker.length,
     value: markdown.slice(start, endMarkerStart + endMarker.length),
   };
-  if (prompt.value.includes("openclaw plugins install")) {
+  if (/\bopenclaw\s+plugins\s+install\b/iu.test(prompt.value)) {
     throw readmeError(fileName, "shared prompt must describe installation in natural language, not embed a full CLI");
   }
+  const codeSpans = singleBacktickCodeSpans(prompt.value);
   for (const source of REGISTRY_SOURCES) {
     const expectedSpec = REGISTRY_INSTALL_SPECS[source];
-    const specCount = countOccurrences(prompt.value, expectedSpec);
+    const specCount = codeSpans.filter((value) => value === expectedSpec).length;
     if (specCount !== 1) {
       throw readmeError(fileName, `shared prompt must include \`${expectedSpec}\` exactly once (found ${specCount})`);
     }
   }
-  const forceCount = countOccurrences(prompt.value, "`--force`");
+  const forceCount = codeSpans.filter((value) => value === "--force").length;
   if (forceCount !== 1) {
     throw readmeError(fileName, `shared prompt must describe \`--force\` exactly once (found ${forceCount})`);
   }
@@ -187,7 +199,7 @@ export function assertRegistryReadmeInstallCommands(markdown, options) {
   for (const source of REGISTRY_SOURCES) {
     const block = inspected.blocks[source].value;
     const expectedCommand = REGISTRY_INSTALL_COMMANDS[source];
-    const commandCount = countOccurrences(block, expectedCommand);
+    const commandCount = countExactCommandLines(block, expectedCommand);
     if (commandCount !== 1) {
       throw readmeError(
         fileName,

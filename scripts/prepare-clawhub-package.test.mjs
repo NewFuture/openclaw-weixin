@@ -385,9 +385,14 @@ describe("ClawHub package preparation", () => {
       mutate: (readme) =>
         readme.replace(
           registryPromptMarker("start"),
-          `${registryPromptMarker("start")}\nopenclaw plugins install npm:openclaw-weixin --force`,
+          `${registryPromptMarker("start")}\nOpEnClAw  plugins\tinstall npm:openclaw-weixin --force`,
         ),
       expected: "shared prompt must describe installation in natural language, not embed a full CLI",
+    },
+    {
+      label: "suffixed prompt spec",
+      mutate: (readme) => readme.replace("`npm:openclaw-weixin`", "`npm:openclaw-weixin-typo`"),
+      expected: "shared prompt must include `npm:openclaw-weixin` exactly once (found 0)",
     },
     {
       label: "duplicate marker",
@@ -447,11 +452,26 @@ describe("ClawHub package preparation", () => {
         const promptEndIndex = readme.indexOf(promptEnd) + promptEnd.length;
         const command = "openclaw plugins install npm:openclaw-weixin --force";
         return (
-          readme.slice(0, promptEndIndex) + readme.slice(promptEndIndex).replace(command, `${command}\n${command}`)
+          readme.slice(0, promptEndIndex) +
+          readme.slice(promptEndIndex).replace(`\`${command}\``, `\`${command}\`\n\`${command}\``)
         );
       },
       expected:
         "npm source block must include `openclaw plugins install npm:openclaw-weixin --force` exactly once (found 2)",
+    },
+    {
+      label: "direct command with appended shell command",
+      mutate: (readme) => {
+        const promptEnd = registryPromptMarker("end");
+        const promptEndIndex = readme.indexOf(promptEnd) + promptEnd.length;
+        const command = "openclaw plugins install npm:openclaw-weixin --force";
+        return (
+          readme.slice(0, promptEndIndex) +
+          readme.slice(promptEndIndex).replace(command, `${command} && echo unexpected`)
+        );
+      },
+      expected:
+        "npm source block must include `openclaw plugins install npm:openclaw-weixin --force` exactly once (found 0)",
     },
     {
       label: "relative Markdown link",
