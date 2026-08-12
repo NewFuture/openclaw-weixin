@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.4] - 2026-08-12
+
 ### Fixed
 
 - **Release version gaps:** npmjs and GitHub Packages no longer require
