@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-08-12
+
 ### Changed
 
 - **Channel ID alias compatibility:** On OpenClaw 2026.7.1 and later, declared
