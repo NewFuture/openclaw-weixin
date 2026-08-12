@@ -140,6 +140,13 @@ npmjs; the explicit `clawhub:` installer downloads that artifact directly. A new
 ClawHub request after either boundary requires authoritative attempt evidence and
 explicit recovery authorization.
 
+npmjs and GitHub Packages do not require gap-free publication history. Their
+release checks permit an unpublished intermediate repository version when the
+exact current target is absent and registry `latest` is lower. GitHub Packages
+also rechecks the exact target plus `latest` immediately before publishing.
+Never move an immutable skipped tag to fill a registry gap; prepare and publish
+the next version instead.
+
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The
 site is a [VitePress](https://vitepress.dev/) project that keeps its own

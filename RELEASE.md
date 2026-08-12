@@ -73,16 +73,19 @@ deploy** once. GitHub applies that one UI action to both jobs, while each job
 receives only its own environment and OIDC trust boundary. If only one target is
 missing, approve only that environment. If both exact targets exist, neither
 environment requests approval. The GitHub Packages job uses the repository's
-`GITHUB_TOKEN` and performs its own exact-version and release-order precheck.
+`GITHUB_TOKEN` and performs its own exact-version precheck. A missing intermediate
+mirror version is reported but does not block the exact current target.
 
 Before an irreversible command, each package job verifies the live tag and
-rechecks its own target. The npmjs and GitHub Packages jobs treat a successful
-`npm publish` response as completion instead of immediately querying a registry
-that may still be propagating the new version. The ClawHub job waits for its
-publish response and requires `publicationStatus` to be `published`. ClawHub
-stores its uploaded ClawPack, and the package's default `clawhub:` installer
-downloads that artifact directly. The npmjs and ClawHub jobs are the only jobs
-with `id-token: write`.
+rechecks its own target. GitHub Packages also rereads `latest` at that boundary
+so another publication during the build cannot make this release move the
+dist-tag backward. The npmjs and GitHub Packages jobs treat a successful `npm
+publish` response as completion instead of immediately querying a registry that
+may still be propagating the new version. The ClawHub job waits for its publish
+response and requires `publicationStatus` to be `published`. ClawHub stores its
+uploaded ClawPack, and the package's default `clawhub:` installer downloads that
+artifact directly. The npmjs and ClawHub jobs are the only jobs with `id-token:
+write`.
 
 After all three package jobs succeed or correctly skip an existing target, a
 least-privilege job creates the matching GitHub Release with notes rendered from
@@ -122,11 +125,20 @@ such as repository visibility, rerun the original release commit's workflow.
 If npmjs already contains a version whose tag is missing, automation fails
 instead of creating a tag that could misrepresent the published artifact's
 source.
-Consecutive releases wait for the preceding repository version to appear on
-npmjs. The GitHub Packages mirror must contain the immediately preceding
-repository release as `latest` before the next mirror version can publish. If
-the mirror is empty, backfill the preceding release before publishing a later
-mirror version.
+npmjs and GitHub Packages may skip an unpublished intermediate repository
+version. Before creating a new immutable tag, the `main` coordinator checks the
+exact npmjs target, requires a public repository for provenance, then reads
+`latest` and requires it to be lower than the proposed version. It does not wait
+for the immediately preceding repository version. GitHub Packages likewise
+reports the current mirror state and permits a missing exact current target when
+`latest` is lower or the mirror is empty. Exact-target lookups remain fail-closed
+for errors other than a not-found response. GitHub Packages rechecks both the
+exact target and `latest` immediately before publication to close exact-version
+and dist-tag build-time races. A missing target older than the registry's
+current `latest` fails rather than moving that dist-tag backward.
+
+Never move or reuse an immutable skipped tag to fill a registry gap. Prepare a
+separate version release instead.
 
 ## ClawHub package identity
 

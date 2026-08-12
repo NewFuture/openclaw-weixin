@@ -6,6 +6,13 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Release version gaps:** npmjs and GitHub Packages no longer require
+  intermediate repository versions to be published. The workflows still check
+  the exact target, require `latest` to be lower than the release, recheck remote
+  state before irreversible boundaries, and fail explicit non-404 lookup errors.
+
 ## [3.1.3] - 2026-08-12
 
 ### Fixed

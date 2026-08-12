@@ -508,13 +508,11 @@ jobs:
           transition_output="$(mktemp)"
           trap 'rm -f "$transition_output"' EXIT
           GITHUB_OUTPUT="$transition_output" node scripts/resolve-release-transition.mjs
-          previous_release_version="$(grep '^previous_release_version=' "$transition_output" | cut -d= -f2)"
           release_commit="$(grep '^release_commit=' "$transition_output" | cut -d= -f2)"
           if [[ "$release_commit" != "$GITHUB_SHA" ]]; then
             echo "::error::Tag ${RELEASE_TAG} resolves release commit ${release_commit}, but this run is on ${GITHUB_SHA}. Only the CI coordinator may trigger a release publish; do not push tags manually."
             exit 1
           fi
-          echo "PREVIOUS_RELEASE_VERSION=${previous_release_version}" >> "$GITHUB_ENV"
 
       - name: Configure GitHub Packages lookup
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -523,7 +521,7 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: "@newfuture"
 
-      - name: Check GitHub Packages release order
+      - name: Check exact GitHub Packages target
         id: github-status
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
@@ -549,26 +547,7 @@ jobs:
             echo "::error::Could not determine whether ${GITHUB_PACKAGE_NAME}@${target_version} is published."
             exit 1
           fi
-
-          : > "$registry_error"
-          if latest_version="$(
-            npm view "${GITHUB_PACKAGE_NAME}@latest" version \
-              --registry="$GITHUB_PACKAGE_REGISTRY" 2>"$registry_error"
-          )"; then
-            if [[ "$latest_version" != "$PREVIOUS_RELEASE_VERSION" ]]; then
-              echo "::error::GitHub Packages latest is ${latest_version}, but the previous repository release is ${PREVIOUS_RELEASE_VERSION}."
-              echo "::error::Publish or reconcile ${GITHUB_PACKAGE_NAME}@${PREVIOUS_RELEASE_VERSION} before ${target_version}."
-              exit 1
-            fi
-            RELEASE_PREVIOUS_VERSION="$latest_version" npm run check:versions
-          elif ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
-            cat "$registry_error" >&2
-            echo "::error::Could not read the latest GitHub Packages version."
-            exit 1
-          else
-            echo "::error::GitHub Packages is empty; publish ${GITHUB_PACKAGE_NAME}@${PREVIOUS_RELEASE_VERSION} before ${target_version}."
-            exit 1
-          fi
+          echo "${GITHUB_PACKAGE_NAME}@${target_version} is not published."
           echo "published=false" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js for build
@@ -621,8 +600,56 @@ jobs:
         if: steps.github-status.outputs.published != 'true'
         run: node scripts/verify-release-tag.mjs
 
-      - name: Publish GitHub package
+      - name: Recheck GitHub Packages target and latest
+        id: github-final-status
         if: steps.github-status.outputs.published != 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          target_version="$(node -p "require('./package.json').version")"
+          registry_error="$(mktemp)"
+          trap 'rm -f "$registry_error"' EXIT
+          if published_version="$(
+            npm view "${GITHUB_PACKAGE_NAME}@${target_version}" version \
+              --registry="$GITHUB_PACKAGE_REGISTRY" 2>"$registry_error"
+          )"; then
+            if [[ "$published_version" != "$target_version" ]]; then
+              echo "::error::GitHub Packages returned unexpected version ${published_version} for ${target_version}."
+              exit 1
+            fi
+            echo "${GITHUB_PACKAGE_NAME}@${target_version} appeared during the build; skipping publication."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not determine whether ${GITHUB_PACKAGE_NAME}@${target_version} is published."
+            exit 1
+          fi
+
+          : > "$registry_error"
+          if latest_version="$(
+            npm view "${GITHUB_PACKAGE_NAME}@latest" version \
+              --registry="$GITHUB_PACKAGE_REGISTRY" 2>"$registry_error"
+          )"; then
+            RELEASE_PREVIOUS_VERSION="$latest_version" npm run check:versions
+            echo "GitHub Packages latest is ${latest_version}; ${target_version} remains eligible to publish."
+          elif ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not read the latest GitHub Packages version."
+            exit 1
+          else
+            echo "GitHub Packages has no latest version; ${target_version} is eligible to publish."
+          fi
+          echo "published=false" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub package
+        if: >-
+          ${{
+            steps.github-status.outputs.published != 'true'
+            && steps.github-final-status.outputs.published != 'true'
+          }}
         working-directory: ${{ runner.temp }}/github-package/package
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}

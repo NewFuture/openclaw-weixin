@@ -21,7 +21,6 @@ jobs:
     timeout-minutes: 5
 
     outputs:
-      previous_release_version: ${{ steps.release.outputs.previous_release_version }}
       release_commit: ${{ steps.release.outputs.release_commit }}
       release_tag: ${{ steps.release.outputs.tag }}
       release_version: ${{ steps.release.outputs.version }}
@@ -222,7 +221,6 @@ jobs:
       - name: Reconcile release
         env:
           GH_TOKEN: ${{ github.token }}
-          PREVIOUS_VERSION: ${{ needs.release-metadata.outputs.previous_release_version }}
           RELEASE_COMMIT: ${{ needs.release-metadata.outputs.release_commit }}
           RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
           RELEASE_VERSION: ${{ needs.release-metadata.outputs.release_version }}
@@ -278,36 +276,6 @@ jobs:
             echo "::error::Repository must be public before creating ${RELEASE_TAG} for npm provenance."
             exit 1
           fi
-
-          if [[ -z "$PREVIOUS_VERSION" ]]; then
-            echo "::error::Cannot determine the previous repository release version."
-            exit 1
-          fi
-          deadline=$((SECONDS + 1200))
-          while true; do
-            : > "$registry_error"
-            if published_previous="$(
-              npm view "openclaw-weixin@${PREVIOUS_VERSION}" version \
-                --registry=https://registry.npmjs.org 2>"$registry_error"
-            )"; then
-              if [[ "$published_previous" != "$PREVIOUS_VERSION" ]]; then
-                echo "::error::npm returned unexpected version ${published_previous} for ${PREVIOUS_VERSION}."
-                exit 1
-              fi
-              break
-            fi
-            if ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
-              cat "$registry_error" >&2
-              echo "::error::Could not determine whether openclaw-weixin@${PREVIOUS_VERSION} is published."
-              exit 1
-            fi
-            if (( SECONDS >= deadline )); then
-              echo "::error::Timed out waiting for openclaw-weixin@${PREVIOUS_VERSION} to be published."
-              exit 1
-            fi
-            echo "Waiting for openclaw-weixin@${PREVIOUS_VERSION} before releasing ${RELEASE_VERSION}."
-            sleep 15
-          done
 
           : > "$registry_error"
           if ! latest_version="$(
