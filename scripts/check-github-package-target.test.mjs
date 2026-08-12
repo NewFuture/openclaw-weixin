@@ -72,7 +72,7 @@ describe("GitHub Packages target inspection", () => {
     );
   });
 
-  it("refuses to move the latest dist-tag backward for an older missing target", () => {
+  it("closes the pre-publish latest race instead of moving the dist-tag backward", () => {
     const run = vi
       .fn()
       .mockReturnValueOnce(result(1, "", "npm error code E404"))
@@ -81,22 +81,6 @@ describe("GitHub Packages target inspection", () => {
     expect(() => inspectGitHubPackageTarget({ run, version: "3.1.3" })).toThrow(
       "GitHub Packages latest 3.2.0 is not older than missing target 3.1.3",
     );
-  });
-
-  it("supports an exact-only race recheck", () => {
-    const run = vi.fn(() => result(1, "", "npm error code E404"));
-
-    expect(
-      inspectGitHubPackageTarget({
-        checkLatest: false,
-        run,
-        version: "3.1.3",
-      }),
-    ).toEqual({
-      latestVersion: null,
-      published: false,
-      version: null,
-    });
-    expect(run).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledTimes(2);
   });
 });

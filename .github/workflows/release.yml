@@ -574,11 +574,10 @@ jobs:
         if: steps.github-status.outputs.published != 'true'
         run: node scripts/verify-release-tag.mjs
 
-      - name: Recheck exact GitHub Packages target
+      - name: Recheck GitHub Packages target and latest
         id: github-final-status
         if: steps.github-status.outputs.published != 'true'
         env:
-          GITHUB_PACKAGE_EXACT_ONLY: "true"
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: node scripts/check-github-package-target.mjs
 

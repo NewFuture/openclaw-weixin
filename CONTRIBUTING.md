@@ -143,10 +143,12 @@ explicit recovery authorization.
 GitHub Packages does not require a gap-free mirror history. Its release job warns
 about a missing intermediate version, proceeds with the exact current target,
 refuses to move `latest` backward for an older missing target, and rechecks the
-exact target immediately before publishing. The one-off
+exact target plus `latest` immediately before publishing. The one-off
 `recover-github-package-v3.1.3.yml` workflow can reconcile only the immutable
 `v3.1.3` tag from `main`; it grants no OIDC permission and accepts no branch,
-tag, or version input.
+tag, or version input. It shares the coordinated release's `release-publish`
+concurrency group, so finish or cancel an active coordinated release before
+starting recovery; prefer completing approved independent targets first.
 
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The

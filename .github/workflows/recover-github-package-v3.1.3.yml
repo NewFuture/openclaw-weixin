@@ -130,11 +130,10 @@ jobs:
         if: steps.github-status.outputs.published != 'true'
         run: node "$GITHUB_WORKSPACE/workflow-tools/scripts/verify-release-tag.mjs"
 
-      - name: Recheck exact GitHub Packages target
+      - name: Recheck GitHub Packages target and latest
         id: github-final-status
         if: steps.github-status.outputs.published != 'true'
         env:
-          GITHUB_PACKAGE_EXACT_ONLY: "true"
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: node "$GITHUB_WORKSPACE/workflow-tools/scripts/check-github-package-target.mjs"
 

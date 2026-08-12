@@ -17,7 +17,7 @@ function isNotFound(result) {
   return /E404|404 Not Found/i.test(`${result.stderr}\n${result.stdout}`);
 }
 
-export function inspectGitHubPackageTarget({ checkLatest = true, run = runReleaseCommand, version }) {
+export function inspectGitHubPackageTarget({ run = runReleaseCommand, version }) {
   if (!/^\d+\.\d+\.\d+$/.test(version ?? "")) {
     throw new Error(`GitHub Packages target must be a stable semantic version, found ${JSON.stringify(version)}`);
   }
@@ -38,10 +38,6 @@ export function inspectGitHubPackageTarget({ checkLatest = true, run = runReleas
   if (!isNotFound(exactResult)) {
     throw commandFailure(exactArgs, exactResult);
   }
-  if (!checkLatest) {
-    return { latestVersion: null, published: false, version: null };
-  }
-
   const latestArgs = ["view", `${GITHUB_PACKAGE_NAME}@latest`, "version", `--registry=${GITHUB_PACKAGE_REGISTRY}`];
   const latestResult = run("npm", latestArgs);
   if (latestResult.status === 0) {
@@ -71,9 +67,7 @@ export function inspectGitHubPackageTarget({ checkLatest = true, run = runReleas
 function main() {
   try {
     const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
-    const exactOnly = process.env.GITHUB_PACKAGE_EXACT_ONLY === "true";
     const result = inspectGitHubPackageTarget({
-      checkLatest: !exactOnly,
       version: packageJson.version,
     });
 
@@ -82,16 +76,14 @@ function main() {
     }
     if (result.published) {
       console.log(`${GITHUB_PACKAGE_NAME}@${packageJson.version} is already published.`);
-    } else if (!exactOnly && result.latestVersion) {
+    } else if (result.latestVersion) {
       console.log(
         `::warning::GitHub Packages latest is ${result.latestVersion}; proceeding with the missing exact target ${packageJson.version} without requiring intermediate mirror versions.`,
       );
-    } else if (!exactOnly) {
+    } else {
       console.log(
         `::warning::GitHub Packages has no latest version; proceeding with the missing exact target ${packageJson.version}.`,
       );
-    } else {
-      console.log(`${GITHUB_PACKAGE_NAME}@${packageJson.version} is still missing.`);
     }
   } catch (error) {
     console.error(`GitHub Packages target check failed: ${error instanceof Error ? error.message : String(error)}`);

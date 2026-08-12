@@ -77,13 +77,15 @@ environment requests approval. The GitHub Packages job uses the repository's
 mirror version is reported but does not block the exact current target.
 
 Before an irreversible command, each package job verifies the live tag and
-rechecks its own target. The npmjs and GitHub Packages jobs treat a successful
-`npm publish` response as completion instead of immediately querying a registry
-that may still be propagating the new version. The ClawHub job waits for its
-publish response and requires `publicationStatus` to be `published`. ClawHub
-stores its uploaded ClawPack, and the package's default `clawhub:` installer
-downloads that artifact directly. The npmjs and ClawHub jobs are the only jobs
-with `id-token: write`.
+rechecks its own target. GitHub Packages also rereads `latest` at that boundary
+so another publication during the build cannot make this release move the
+dist-tag backward. The npmjs and GitHub Packages jobs treat a successful `npm
+publish` response as completion instead of immediately querying a registry that
+may still be propagating the new version. The ClawHub job waits for its publish
+response and requires `publicationStatus` to be `published`. ClawHub stores its
+uploaded ClawPack, and the package's default `clawhub:` installer downloads that
+artifact directly. The npmjs and ClawHub jobs are the only jobs with `id-token:
+write`.
 
 After all three package jobs succeed or correctly skip an existing target, a
 least-privilege job creates the matching GitHub Release with notes rendered from
@@ -127,9 +129,10 @@ Consecutive releases wait for the preceding repository version to appear on
 npmjs. GitHub Packages is an independent mirror: an absent intermediate mirror
 version or an empty mirror produces a warning but does not block publishing the
 exact current release target. Exact-target lookups remain fail-closed for errors
-other than a not-found response, and the target is rechecked immediately before
-publication to close the build-time race. A missing target older than the
-mirror's current `latest` still fails rather than moving that dist-tag backward.
+other than a not-found response. Both the exact target and `latest` are rechecked
+immediately before publication to close exact-version and dist-tag build-time
+races. A missing target older than the mirror's current `latest` fails rather
+than moving that dist-tag backward.
 
 ## GitHub Packages v3.1.3 recovery
 
@@ -138,11 +141,22 @@ its coordinated release workflow cannot consume that fix. After
 `recover-github-package-v3.1.3.yml` is merged to `main`, recover only this missing
 mirror target:
 
-1. Open **Actions → Recover GitHub Package v3.1.3**.
-2. Select **Run workflow**, keep the branch set to `main`, and start the run.
-3. Confirm the run either reports
+The recovery workflow shares the `release-publish` concurrency group with the
+coordinated release. Run `31573692605` is currently waiting for npmjs and
+ClawHub approvals and holds that group, so a recovery dispatch would queue. Use
+this safe order:
+
+1. Approve and complete the current run's protected npmjs and ClawHub jobs, then
+   wait for run `31573692605` to finish. Prefer this over cancellation so those
+   independent release targets complete.
+2. Open **Actions → Recover GitHub Package v3.1.3**.
+3. Select **Run workflow**, keep the branch set to `main`, and start the run.
+4. Confirm the run either reports
    `@newfuture/openclaw-weixin@3.1.3 is already published` or receives a
    successful `npm publish` response.
+5. Rerun the coordinated `v3.1.3` release workflow. Its exact-target checks skip
+   the now-complete package destinations and allow the GitHub Release job to
+   finalize.
 
 The workflow has no version or source input. It checks out the exact existing
 `refs/tags/v3.1.3`, validates matching package, plugin, lockfile, bilingual
