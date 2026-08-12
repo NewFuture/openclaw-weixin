@@ -6,6 +6,15 @@
 
 ## [未发布]
 
+## [3.1.3] - 2026-08-12
+
+### 修复
+
+- **发布流程可靠性：** npmjs、ClawHub 和 GitHub Packages 现在从已验证的 release tag
+  并行发布，并以成功的发布响应完成各自任务，避免 npm registry 的即时可见性延迟使已成功的
+  发布失败；GitHub Release 在三个包目标完成后收尾。ClawHub OIDC 可信发布不再覆盖包
+  owner。
+
 ## [3.1.2] - 2026-08-12
 
 ### 变更
