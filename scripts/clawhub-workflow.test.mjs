@@ -30,8 +30,9 @@ describe("ClawHub publish workflow contract", () => {
     expect(workflow).not.toContain("--wait");
     expect(releaseGuide).toContain("uses the English source for its primary `README.md`");
     expect(releaseGuide).toContain("changes\nall staged README titles to `openclaw-wechat`");
-    expect(releaseGuide).toContain("preserves one identical shared");
-    expect(releaseGuide).toContain("prefers OpenClaw's internal installer when");
+    expect(releaseGuide).toMatch(
+      /Chinese prompt tries npm before ClawHub[\s\S]*English prompt\s+tries ClawHub before npm/,
+    );
     expect(releaseGuide).toMatch(/direct-source blocks\s+from npm-first to\s+ClawHub-first/);
     expect(releaseGuide).toMatch(/repository\s+READMEs must remain titled\s+`openclaw-weixin` and npm-first/);
     expect(releaseGuide).not.toContain("## First ClawHub publication");

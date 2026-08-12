@@ -98,14 +98,14 @@ markers, commands placed in the wrong source block, and relative registry links.
 It changes the temporary package name and ClawHub install choice, uses the
 English source as the primary `README.md` and `README_EN.md`, writes the full
 Chinese source to `README.zh_CN.md`, changes all staged titles from
-`openclaw-weixin` to `openclaw-wechat`, preserves one identical shared prompt
-that names both source specs, prefers OpenClaw's internal installer when
-it can perform the replacement, and delegates the exactly-one choice to
-OpenClaw, then reorders the direct-source blocks from npm-first to
-ClawHub-first. The canonical source files and npm tarball remain titled
-`openclaw-weixin`, npm-first, and unchanged; both languages must retain both
-exact direct commands, absolute documentation links, and the
-`openclaw-weixin` runtime id.
+`openclaw-weixin` to `openclaw-wechat`, and preserves each localized prompt.
+The Chinese prompt tries npm first and falls back to ClawHub; the English prompt
+does the reverse, aligning the primary README of each published package with its
+default source. The converter then reorders the direct-source blocks from
+npm-first to ClawHub-first.
+The canonical source files and npm tarball remain titled `openclaw-weixin`,
+npm-first, and unchanged; both languages must retain both exact direct commands,
+absolute documentation links, and the `openclaw-weixin` runtime id.
 
 Run the pinned ClawHub validator with its report directory outside the checkout,
 then preview the publish without credentials:
