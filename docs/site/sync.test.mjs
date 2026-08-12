@@ -72,11 +72,13 @@ describe("syncContent", () => {
     const chinesePrompt = assertRegistryPrompt(overview, { fileName: "index.md" });
     assert.match(overview, /ClawHub \| `openclaw-wechat`/);
     assert.match(overview, /npm \| `openclaw-weixin`/);
+    assert.match(chinesePrompt.value, /全程只安装一个。\r?\n请遵循 OpenClaw 的安装策略/);
     assert.match(overview, /腾讯官方 npm 包是 `@tencent-weixin\/openclaw-weixin`/);
     assert.match(overview, /当前能力包括微信私聊、文本与媒体收发、扫码登录和多账号/);
     assert.match(overview, /插件没有声明群聊能力/);
     assert.match(overview, /OpenClaw `>=2026\.6\.1`/);
     assert.match(overview, /`>=22\.22\.3 <23`、`>=24\.15\.0 <25` 或 `>=25\.9\.0`/);
+    assert.match(overview, /\*\*任选一个即可，不要同时安装。\*\* 本插件需要/);
     assert.match(overview, /推荐复制提示词，也可以直接运行命令/);
     assert.match(
       overview,
@@ -111,6 +113,7 @@ describe("syncContent", () => {
     const english = (await readFile(path.join(contentDir, "en", "index.md"), "utf8")).replaceAll("\r\n", "\n");
     assert.deepEqual(assertRegistryReadmeOrder(english, "npm", { fileName: "en/index.md" }).order, ["npm", "clawhub"]);
     const englishPrompt = assertRegistryPrompt(english, { fileName: "en/index.md" });
+    assert.match(englishPrompt.value, /and install only one\.\r?\nFollow OpenClaw's install policy/);
     assert.ok(
       englishPrompt.value.indexOf("clawhub:openclaw-wechat") < englishPrompt.value.indexOf("npm:openclaw-weixin"),
     );
@@ -167,8 +170,8 @@ describe("syncContent", () => {
     assert.doesNotMatch(overview, /\| 安装后 \|/);
     assert.doesNotMatch(overview, /\| 腾讯上游独立包 \|/);
     assert.match(overview, /社区维护发行版；腾讯官方 npm 包是 `@tencent-weixin\/openclaw-weixin`/);
-    assert.match(overview, /沿用 `openclaw-weixin` 插件、Channel 和状态 ID/);
-    assert.match(overview, /可以原位替换并\s*保留现有配置与登录状态/);
+    assert.match(overview, /沿用腾讯版的\s+插件、Channel 和状态 ID/);
+    assert.match(overview, /可原位替换并保留现有配置与登录状态/);
 
     const english = await readFile(path.join(contentDir, "en", "index.md"), "utf8");
     assert.match(english, /## Community package sources/);
@@ -180,8 +183,8 @@ describe("syncContent", () => {
       english,
       /community-maintained distribution of[\s\S]*Tencent's\s+official npm package is `@tencent-weixin\/openclaw-weixin`/,
     );
-    assert.match(english, /keep the `openclaw-weixin` plugin, channel,\s+and state ID/);
-    assert.match(english, /in-place replacement without losing existing configuration\s+or login state/);
+    assert.match(english, /retains Tencent's plugin, channel, and state\s+ID/);
+    assert.match(english, /in-place replacement that preserves configuration and login\s+state/);
 
     const guide = await readFile(path.join(contentDir, "guide.md"), "utf8");
     assert.match(guide, /### 在不同场景使用哪个名称/);
