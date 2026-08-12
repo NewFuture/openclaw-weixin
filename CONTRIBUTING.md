@@ -140,15 +140,12 @@ npmjs; the explicit `clawhub:` installer downloads that artifact directly. A new
 ClawHub request after either boundary requires authoritative attempt evidence and
 explicit recovery authorization.
 
-GitHub Packages does not require a gap-free mirror history. Its release job warns
-about a missing intermediate version, proceeds with the exact current target,
-refuses to move `latest` backward for an older missing target, and rechecks the
-exact target plus `latest` immediately before publishing. The one-off
-`recover-github-package-v3.1.3.yml` workflow can reconcile only the immutable
-`v3.1.3` tag from `main`; it grants no OIDC permission and accepts no branch,
-tag, or version input. It shares the coordinated release's `release-publish`
-concurrency group, so finish or cancel an active coordinated release before
-starting recovery; prefer completing approved independent targets first.
+npmjs and GitHub Packages do not require gap-free publication history. Their
+release checks permit an unpublished intermediate repository version when the
+exact current target is absent and registry `latest` is lower. GitHub Packages
+also rechecks the exact target plus `latest` immediately before publishing.
+Never move an immutable skipped tag to fill a registry gap; prepare and publish
+the next version instead.
 
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The

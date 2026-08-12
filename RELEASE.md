@@ -125,48 +125,21 @@ such as repository visibility, rerun the original release commit's workflow.
 If npmjs already contains a version whose tag is missing, automation fails
 instead of creating a tag that could misrepresent the published artifact's
 source.
-Consecutive releases wait for the preceding repository version to appear on
-npmjs. GitHub Packages is an independent mirror: an absent intermediate mirror
-version or an empty mirror produces a warning but does not block publishing the
-exact current release target. Exact-target lookups remain fail-closed for errors
-other than a not-found response. Both the exact target and `latest` are rechecked
-immediately before publication to close exact-version and dist-tag build-time
-races. A missing target older than the mirror's current `latest` fails rather
-than moving that dist-tag backward.
+npmjs and GitHub Packages may skip an unpublished intermediate repository
+version. Before creating a new immutable tag, the `main` coordinator checks the
+exact npmjs target, requires a public repository for provenance, then reads
+`latest` and requires it to be lower than the proposed version. It does not wait
+for the immediately preceding repository version. GitHub Packages likewise
+warns about an absent intermediate mirror version or an empty mirror rather than
+blocking the exact current target. Exact-target lookups remain fail-closed for
+errors other than a not-found response. GitHub Packages rechecks both the exact
+target and `latest` immediately before publication to close exact-version and
+dist-tag build-time races. A missing target older than the registry's current
+`latest` fails rather than moving that dist-tag backward.
 
-## GitHub Packages v3.1.3 recovery
-
-The immutable `v3.1.3` tag predates the relaxed mirror-order check, so rerunning
-its coordinated release workflow cannot consume that fix. After
-`recover-github-package-v3.1.3.yml` is merged to `main`, recover only this missing
-mirror target:
-
-The recovery workflow shares the `release-publish` concurrency group with the
-coordinated release. Run `31573692605` is currently waiting for npmjs and
-ClawHub approvals and holds that group, so a recovery dispatch would queue. Use
-this safe order:
-
-1. Approve and complete the current run's protected npmjs and ClawHub jobs, then
-   wait for run `31573692605` to finish. Prefer this over cancellation so those
-   independent release targets complete.
-2. Open **Actions → Recover GitHub Package v3.1.3**.
-3. Select **Run workflow**, keep the branch set to `main`, and start the run.
-4. Confirm the run either reports
-   `@newfuture/openclaw-weixin@3.1.3 is already published` or receives a
-   successful `npm publish` response.
-5. Rerun the coordinated `v3.1.3` release workflow. Its exact-target checks skip
-   the now-complete package destinations and allow the GitHub Release job to
-   finalize.
-
-The workflow has no version or source input. It checks out the exact existing
-`refs/tags/v3.1.3`, validates matching package, plugin, lockfile, bilingual
-changelog, and release-transition metadata, and verifies the live tag again
-before publication. It skips an existing exact target, fails non-404 registry
-errors, and builds and packs from the tag before applying only
-`scripts/prepare-github-package.mjs` to the temporary package. Its job has
-`contents: read` and `packages: write`; it has neither OIDC permission nor a
-long-lived token. Do not run it before the workflow is merged, and never move
-`v3.1.3`.
+`v3.1.3` remains an immutable repository tag but is intentionally not recovered
+to npmjs, ClawHub, or GitHub Packages. Do not move or reuse it. The next
+coordinated release is `v3.1.4`.
 
 ## ClawHub package identity
 

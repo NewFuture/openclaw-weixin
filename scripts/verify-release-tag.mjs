@@ -16,13 +16,6 @@ function runGit(args) {
   };
 }
 
-export function resolveReleaseTagExpectation(env) {
-  return {
-    expectedCommit: env.RELEASE_COMMIT ?? env.GITHUB_SHA,
-    expectedRef: env.RELEASE_REF ?? env.GITHUB_REF,
-  };
-}
-
 export function verifyReleaseTag({ expectedCommit, expectedRef, repository = "origin", run = runGit }) {
   if (!/^[0-9a-f]{40}$/.test(expectedCommit ?? "")) {
     throw new Error(
@@ -59,7 +52,10 @@ export function verifyReleaseTag({ expectedCommit, expectedRef, repository = "or
 
 function main() {
   try {
-    const result = verifyReleaseTag(resolveReleaseTagExpectation(process.env));
+    const result = verifyReleaseTag({
+      expectedCommit: process.env.GITHUB_SHA,
+      expectedRef: process.env.GITHUB_REF,
+    });
     console.log(`Live release tag verified: ${result.ref} at ${result.commit}.`);
   } catch (error) {
     console.error(`Live release tag verification failed: ${error instanceof Error ? error.message : String(error)}`);

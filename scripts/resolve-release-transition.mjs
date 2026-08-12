@@ -47,13 +47,7 @@ function run() {
     if (process.env.GITHUB_OUTPUT) {
       appendFileSync(
         process.env.GITHUB_OUTPUT,
-        [
-          `previous_release_version=${result.previousReleaseVersion}`,
-          `release_commit=${result.releaseCommit}`,
-          `tag=${result.tag}`,
-          `version=${result.version}`,
-          "",
-        ].join("\n"),
+        [`release_commit=${result.releaseCommit}`, `tag=${result.tag}`, `version=${result.version}`, ""].join("\n"),
         "utf8",
       );
     }

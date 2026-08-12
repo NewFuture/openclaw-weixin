@@ -6,14 +6,16 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.4] - 2026-08-12
+
 ### Fixed
 
-- **GitHub Packages recovery:** A missing intermediate mirror version no longer
-  blocks the exact current target. The workflow warns about the gap, rechecks the
-  exact target and `latest` before publishing, refuses to move the dist-tag
-  backward, and still fails explicit non-404 lookup errors. A one-off manual
-  recovery path is limited to the immutable `v3.1.3` tag from `main`, without
-  backfilling 3.1.2, moving the tag, or granting OIDC permission.
+- **Release version gaps:** npmjs and GitHub Packages no longer require
+  intermediate repository versions to be published. The workflows still check
+  the exact target, require `latest` to be lower than the release, recheck remote
+  state before irreversible boundaries, and fail explicit non-404 lookup errors.
+  The immutable `v3.1.3` tag is neither moved nor recovered; publication proceeds
+  directly to 3.1.4.
 
 ## [3.1.3] - 2026-08-12
 
