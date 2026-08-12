@@ -478,6 +478,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      GITHUB_PACKAGE_NAME: "@newfuture/openclaw-weixin"
+      GITHUB_PACKAGE_REGISTRY: https://npm.pkg.github.com
 
     steps:
       - name: Check out repository
@@ -522,7 +525,30 @@ jobs:
         id: github-status
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
-        run: node scripts/check-github-package-target.mjs
+        run: |
+          set -euo pipefail
+          target_version="$(node -p "require('./package.json').version")"
+          registry_error="$(mktemp)"
+          trap 'rm -f "$registry_error"' EXIT
+          if published_version="$(
+            npm view "${GITHUB_PACKAGE_NAME}@${target_version}" version \
+              --registry="$GITHUB_PACKAGE_REGISTRY" 2>"$registry_error"
+          )"; then
+            if [[ "$published_version" != "$target_version" ]]; then
+              echo "::error::GitHub Packages returned unexpected version ${published_version} for ${target_version}."
+              exit 1
+            fi
+            echo "${GITHUB_PACKAGE_NAME}@${target_version} is already published."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not determine whether ${GITHUB_PACKAGE_NAME}@${target_version} is published."
+            exit 1
+          fi
+          echo "${GITHUB_PACKAGE_NAME}@${target_version} is not published."
+          echo "published=false" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js for build
         if: steps.github-status.outputs.published != 'true'
@@ -579,7 +605,44 @@ jobs:
         if: steps.github-status.outputs.published != 'true'
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
-        run: node scripts/check-github-package-target.mjs
+        run: |
+          set -euo pipefail
+          target_version="$(node -p "require('./package.json').version")"
+          registry_error="$(mktemp)"
+          trap 'rm -f "$registry_error"' EXIT
+          if published_version="$(
+            npm view "${GITHUB_PACKAGE_NAME}@${target_version}" version \
+              --registry="$GITHUB_PACKAGE_REGISTRY" 2>"$registry_error"
+          )"; then
+            if [[ "$published_version" != "$target_version" ]]; then
+              echo "::error::GitHub Packages returned unexpected version ${published_version} for ${target_version}."
+              exit 1
+            fi
+            echo "${GITHUB_PACKAGE_NAME}@${target_version} appeared during the build; skipping publication."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not determine whether ${GITHUB_PACKAGE_NAME}@${target_version} is published."
+            exit 1
+          fi
+
+          : > "$registry_error"
+          if latest_version="$(
+            npm view "${GITHUB_PACKAGE_NAME}@latest" version \
+              --registry="$GITHUB_PACKAGE_REGISTRY" 2>"$registry_error"
+          )"; then
+            RELEASE_PREVIOUS_VERSION="$latest_version" npm run check:versions
+            echo "GitHub Packages latest is ${latest_version}; ${target_version} remains eligible to publish."
+          elif ! grep -Eq 'E404|404 Not Found' "$registry_error"; then
+            cat "$registry_error" >&2
+            echo "::error::Could not read the latest GitHub Packages version."
+            exit 1
+          else
+            echo "GitHub Packages has no latest version; ${target_version} is eligible to publish."
+          fi
+          echo "published=false" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub package
         if: >-

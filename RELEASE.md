@@ -130,16 +130,15 @@ version. Before creating a new immutable tag, the `main` coordinator checks the
 exact npmjs target, requires a public repository for provenance, then reads
 `latest` and requires it to be lower than the proposed version. It does not wait
 for the immediately preceding repository version. GitHub Packages likewise
-warns about an absent intermediate mirror version or an empty mirror rather than
-blocking the exact current target. Exact-target lookups remain fail-closed for
-errors other than a not-found response. GitHub Packages rechecks both the exact
-target and `latest` immediately before publication to close exact-version and
-dist-tag build-time races. A missing target older than the registry's current
-`latest` fails rather than moving that dist-tag backward.
+reports the current mirror state and permits a missing exact current target when
+`latest` is lower or the mirror is empty. Exact-target lookups remain fail-closed
+for errors other than a not-found response. GitHub Packages rechecks both the
+exact target and `latest` immediately before publication to close exact-version
+and dist-tag build-time races. A missing target older than the registry's
+current `latest` fails rather than moving that dist-tag backward.
 
-`v3.1.3` remains an immutable repository tag but is intentionally not recovered
-to npmjs, ClawHub, or GitHub Packages. Do not move or reuse it. The next
-coordinated release is `v3.1.4`.
+Never move or reuse an immutable skipped tag to fill a registry gap. Prepare a
+separate version release instead.
 
 ## ClawHub package identity
 
