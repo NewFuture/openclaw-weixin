@@ -64,56 +64,57 @@ ClawHub independently. An existing ClawHub version is accepted only when its
 package, owner, source repository, source commit, source tag, and embedded
 plugin/channel identity match the release exactly.
 
-Each missing registry target starts its own protected job after the shared
-validation and target-resolution job completes. When both targets are missing,
-`npm-publish` and `clawhub-publish` become Pending concurrently in the same run.
-Wait until both appear in **Review deployments**, select both environments, and
-click **Approve and deploy** once. GitHub applies that one UI action to both
-jobs, while each job receives only its own environment and OIDC trust boundary.
-If only one target is missing, select and approve only the one environment that
-appears. If both exact targets exist, neither environment requests approval.
+The `npm-publish`, `clawhub-publish`, and `github-package` jobs all depend
+directly on the shared validation job, so the three package targets can proceed
+concurrently. Missing npmjs and ClawHub targets request their respective
+protected environments. When both are missing, wait until both appear in
+**Review deployments**, select both environments, and click **Approve and
+deploy** once. GitHub applies that one UI action to both jobs, while each job
+receives only its own environment and OIDC trust boundary. If only one target is
+missing, approve only that environment. If both exact targets exist, neither
+environment requests approval. The GitHub Packages job uses the repository's
+`GITHUB_TOKEN` and performs its own exact-version and release-order precheck.
 
-After approval, each job verifies the live tag and independently rechecks only
-its exact target. The npm job publishes and verifies npmjs only when missing.
-The ClawHub job publishes only when its exact source and runtime identity remain
-missing. Neither registry job waits for the other: ClawHub stores its uploaded
-ClawPack, and the package's default `clawhub:` installer downloads that artifact
-directly. These are the only two jobs with `id-token: write`.
+Before an irreversible command, each package job verifies the live tag and
+rechecks its own target. The npmjs and GitHub Packages jobs treat a successful
+`npm publish` response as completion instead of immediately querying a registry
+that may still be propagating the new version. The ClawHub job waits for its
+publish response and requires `publicationStatus` to be `published`. ClawHub
+stores its uploaded ClawPack, and the package's default `clawhub:` installer
+downloads that artifact directly. The npmjs and ClawHub jobs are the only jobs
+with `id-token: write`.
 
-A read-only reconciliation job rechecks both exact registry targets after the
-publication jobs succeed or are correctly skipped. Only then does a
-least-privilege GitHub Packages job pack the same validated source tree, change
-only its package name, install spec, and registry metadata, and publish
-`@newfuture/openclaw-weixin` with the repository's `GITHUB_TOKEN`. Another
-least-privilege job creates the matching GitHub Release with notes rendered
-from the versioned Chinese and English changelog sections. OIDC, GitHub
-Packages write, and GitHub contents write permissions remain isolated to their
-respective jobs.
+After all three package jobs succeed or correctly skip an existing target, a
+least-privilege job creates the matching GitHub Release with notes rendered from
+the versioned Chinese and English changelog sections. OIDC, GitHub Packages
+write, and GitHub contents write permissions remain isolated to their respective
+jobs.
 
 | npmjs target | ClawHub target | Protected-job behavior |
 | --- | --- | --- |
-| Missing | Missing | Wait for both environments, select both, approve once; both jobs publish independently |
-| Exact version exists | Missing | Only `clawhub-publish` requests approval; publish and verify ClawHub independently |
-| Missing | Exact matching version exists | Only `npm-publish` requests approval; publish and verify npmjs without a ClawHub request |
-| Exact version exists | Exact matching version exists | Neither environment requests approval; continue recovery jobs |
-| Either state | ClawHub missing with prior publication boundary | Recover npmjs independently if needed, then stop before a duplicate ClawHub request |
+| Missing | Missing | Wait for both environments, select both, approve once; npmjs, ClawHub, and GitHub Packages proceed independently |
+| Exact version exists | Missing | Only `clawhub-publish` requests approval; GitHub Packages proceeds independently |
+| Missing | Exact matching version exists | Only `npm-publish` requests approval; GitHub Packages proceeds independently |
+| Exact version exists | Exact matching version exists | Neither environment requests approval; GitHub Packages is checked before finalizing GitHub Release |
+| Either state | ClawHub missing with prior publication boundary | npmjs and GitHub Packages may complete independently, but stop before a duplicate ClawHub request and do not finalize GitHub Release |
 | Either state | Version exists with mismatched source or runtime identity | Fail; never treat it as recovery success |
 
 CI explicitly dispatches the workflow at its newly created tag because tags
 created with `GITHUB_TOKEN` do not recursively trigger tag-push workflows. A
 maintainer recovers a failed release by re-running that original workflow run;
-branch dispatches are rejected, and every new registry publish attempt requires
-its own environment approval. Each package registry is checked independently.
+branch dispatches are rejected, and every new protected-registry publish attempt
+requires its own environment approval. Each package target is checked
+independently before its publish command.
 Before ClawHub publication can start, the workflow persists both a durable
 tag-and-commit-specific check run and a 90-day boundary artifact. If ClawHub
 remains absent, either marker makes automation fail closed instead of
 submitting a duplicate. The check run remains after artifact expiry. An
-existing exact version is still skipped while a missing npmjs version, GitHub
-Packages mirror, or GitHub Release is reconciled without republishing.
+existing exact package version is skipped while missing package targets proceed
+independently; GitHub Release runs only after all three package jobs complete.
 Before npmjs publication, later `main` pushes can reconcile an interrupted tag
 or workflow dispatch. Once npmjs contains the version, the `main` coordinator
-considers that release dispatched; failures in the downstream GitHub Packages
-or GitHub Release jobs must be recovered by rerunning `release.yml` from the
+considers that release dispatched; failures in ClawHub, GitHub Packages, or the
+final GitHub Release job must be recovered by rerunning `release.yml` from the
 existing tag. Only CI running on the first-parent commit that introduced the
 version may create its missing tag. Later same-version runs can reconcile an
 existing tag, but cannot invent one; after satisfying a blocked prerequisite
@@ -207,9 +208,10 @@ uploads sanitized inspector and JSON reports. If npmjs succeeds but ClawHub
 fails before the publication boundary is created, re-run the original workflow:
 only `clawhub-publish` requests approval, while its target recheck skips any
 exact version that appeared during the failure. The reverse partial state is
-handled independently by `npm-publish`. If both exact targets already match,
-both protected jobs are skipped while GitHub Packages and GitHub Release
-recovery continues.
+handled independently by `npm-publish`, and GitHub Packages retains its own
+idempotent precheck. If both exact protected-registry targets already match,
+both protected jobs are skipped while GitHub Packages is reconciled before the
+GitHub Release is finalized.
 
 ClawHub CLI 0.23.3 has no supported standalone attempt status or resume command.
 Its authenticated attempt endpoint is an internal implementation detail, and
