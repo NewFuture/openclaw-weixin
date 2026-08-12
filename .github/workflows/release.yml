@@ -211,22 +211,6 @@ jobs:
         if: steps.targets.outputs.npmjs_published != 'true'
         run: npm publish --ignore-scripts --provenance --access public --registry=https://registry.npmjs.org
 
-      - name: Verify exact npmjs publication
-        id: final-target
-        env:
-          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/npmjs-target-final.json
-          RELEASE_TARGETS_SCOPE: npmjs
-        run: node scripts/resolve-release-targets.mjs
-
-      - name: Require exact npmjs publication
-        env:
-          PUBLICATION_REQUIRED: ${{ steps.final-target.outputs.publication_required }}
-        run: |
-          if [[ "$PUBLICATION_REQUIRED" != "false" ]]; then
-            echo "::error::The exact npmjs target is still missing after publication."
-            exit 1
-          fi
-
       - name: Upload npmjs publication reports
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -234,7 +218,6 @@ jobs:
           name: npmjs-release-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/npmjs-target-after-approval.json
-            ${{ runner.temp }}/npmjs-target-final.json
           if-no-files-found: ignore
           retention-days: 30
 
@@ -444,7 +427,6 @@ jobs:
           fi
           npx --yes clawhub@0.23.3 package publish "${clawpacks[0]}" \
             --family code-plugin \
-            --owner newfuture \
             --display-name WeChat \
             --categories channels \
             --topics wechat,weixin,messaging \
@@ -465,22 +447,6 @@ jobs:
             }
           '
 
-      - name: Verify exact ClawHub publication
-        id: final-target
-        env:
-          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/clawhub-target-final.json
-          RELEASE_TARGETS_SCOPE: clawhub
-        run: node scripts/resolve-release-targets.mjs
-
-      - name: Require exact ClawHub publication
-        env:
-          PUBLICATION_REQUIRED: ${{ steps.final-target.outputs.publication_required }}
-        run: |
-          if [[ "$PUBLICATION_REQUIRED" != "false" ]]; then
-            echo "::error::The exact ClawHub target is still missing after publication."
-            exit 1
-          fi
-
       - name: Upload ClawHub publication reports
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -496,102 +462,16 @@ jobs:
             ${{ runner.temp }}/clawhub-package-publish.json
             ${{ runner.temp }}/clawhub-target-after-approval.json
             ${{ runner.temp }}/clawhub-target-before-boundary.json
-            ${{ runner.temp }}/clawhub-target-final.json
-          if-no-files-found: ignore
-          retention-days: 30
-
-  verify-registries:
-    name: Verify coordinated registry publication
-    needs:
-      - validate
-      - npm-publish
-      - clawhub-publish
-    if: >-
-      ${{
-        !cancelled()
-        && needs.validate.result == 'success'
-        && (needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')
-        && (needs.clawhub-publish.result == 'success' || needs.clawhub-publish.result == 'skipped')
-      }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24.15.0"
-          registry-url: https://registry.npmjs.org
-
-      - name: Verify release metadata
-        env:
-          RELEASE_REF_TYPE: ${{ github.ref_type }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          if [ "$RELEASE_REF_TYPE" != "tag" ]; then
-            echo "::error::Release workflow must run from a tag, not ${RELEASE_REF_TYPE} ${RELEASE_TAG}."
-            exit 1
-          fi
-          npm run check:versions
-          transition_output="$(mktemp)"
-          trap 'rm -f "$transition_output"' EXIT
-          GITHUB_OUTPUT="$transition_output" node scripts/resolve-release-transition.mjs
-          release_commit="$(grep '^release_commit=' "$transition_output" | cut -d= -f2)"
-          if [[ "$release_commit" != "$GITHUB_SHA" ]]; then
-            echo "::error::Tag ${RELEASE_TAG} resolves release commit ${release_commit}, but this run is on ${GITHUB_SHA}. Only the CI coordinator may trigger a release publish; do not push tags manually."
-            exit 1
-          fi
-
-      - name: Verify live release tag before downstream publication
-        run: node scripts/verify-release-tag.mjs
-
-      - name: Resolve final registry publication targets
-        id: targets
-        env:
-          RELEASE_TARGETS_REPORT: ${{ runner.temp }}/release-targets-final.json
-        run: node scripts/resolve-release-targets.mjs
-
-      - name: Require both exact registry versions
-        env:
-          PUBLICATION_REQUIRED: ${{ steps.targets.outputs.publication_required }}
-        run: |
-          if [[ "$PUBLICATION_REQUIRED" != "false" ]]; then
-            echo "::error::A coordinated registry target is missing before downstream publication."
-            exit 1
-          fi
-
-      - name: Upload final registry report
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: coordinated-registry-verification-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/release-targets-final.json
           if-no-files-found: ignore
           retention-days: 30
 
   github-package:
     name: Publish to GitHub Packages
-    needs:
-      - validate
-      - npm-publish
-      - clawhub-publish
-      - verify-registries
+    needs: validate
     if: >-
       ${{
         !cancelled()
         && needs.validate.result == 'success'
-        && (needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')
-        && (needs.clawhub-publish.result == 'success' || needs.clawhub-publish.result == 'skipped')
-        && needs.verify-registries.result == 'success'
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -754,7 +634,6 @@ jobs:
       - validate
       - npm-publish
       - clawhub-publish
-      - verify-registries
       - github-package
     if: >-
       ${{
@@ -762,7 +641,6 @@ jobs:
         && needs.validate.result == 'success'
         && (needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')
         && (needs.clawhub-publish.result == 'success' || needs.clawhub-publish.result == 'skipped')
-        && needs.verify-registries.result == 'success'
         && needs.github-package.result == 'success'
       }}
     runs-on: ubuntu-latest

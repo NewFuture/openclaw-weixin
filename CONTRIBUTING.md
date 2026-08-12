@@ -124,18 +124,20 @@ npx --yes clawhub@0.23.3 package publish \
 These commands validate the next prospective version; they do not publish or
 modify the existing public ClawHub release.
 `.github/workflows/clawhub-publish.yml` performs this credential-free validation
-for pull requests only. Production npmjs and ClawHub publication is coordinated
-by `.github/workflows/release.yml` from an exact release tag, with separate
-protected `npm-publish` and `clawhub-publish` jobs. When both targets are missing,
-wait for both environments to become Pending, select both in **Review
-deployments**, and click **Approve and deploy** once; the UI action is shared,
-but OIDC trust remains isolated. Do not add production dispatch,
-`id-token: write`, or a long-lived registry credential to the pull-request
-workflow. Before the real ClawHub command can start, the release workflow
-persists a durable check run plus a tag-and-commit-specific 90-day Actions
-artifact. ClawHub uploads and stores its own ClawPack independently of npmjs; the
-explicit `clawhub:` installer downloads that artifact directly. A new ClawHub
-request after either boundary requires authoritative attempt evidence and
+for pull requests only. Production npmjs, ClawHub, and GitHub Packages
+publication starts in parallel from an exact release tag; GitHub Release
+finalization waits for all three jobs. npmjs and ClawHub use separate protected
+`npm-publish` and `clawhub-publish` jobs. When both targets are missing, wait for
+both environments to become Pending, select both in **Review deployments**, and
+click **Approve and deploy** once; the UI action is shared, but OIDC trust
+remains isolated. Successful publish responses, rather than immediate registry
+read-after-write checks, complete their respective jobs. Do not add production
+dispatch, `id-token: write`, or a long-lived registry credential to the
+pull-request workflow. Before the real ClawHub command can start, the release
+workflow persists a durable check run plus a tag-and-commit-specific 90-day
+Actions artifact. ClawHub uploads and stores its own ClawPack independently of
+npmjs; the explicit `clawhub:` installer downloads that artifact directly. A new
+ClawHub request after either boundary requires authoritative attempt evidence and
 explicit recovery authorization.
 
 Build the documentation website into `docs/site/dist/` (the same command GitHub

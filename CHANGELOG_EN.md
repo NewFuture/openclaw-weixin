@@ -6,6 +6,16 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.3] - 2026-08-12
+
+### Fixed
+
+- **Release workflow reliability:** npmjs, ClawHub, and GitHub Packages now
+  publish in parallel from the validated release tag and complete from successful
+  publish responses, avoiding a false failure when npm registry propagation
+  lags; GitHub Release finalizes after all three package targets complete.
+  ClawHub OIDC trusted publishing no longer overrides the package owner.
+
 ## [3.1.2] - 2026-08-12
 
 ### Changed
