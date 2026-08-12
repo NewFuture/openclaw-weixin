@@ -101,7 +101,8 @@ html[lang^="zh"] {
 }
 
 .docs-home .vp-doc h2[id],
-.docs-home .vp-doc h3[id] {
+.docs-home .vp-doc h3[id],
+.docs-home .vp-doc h4[id] {
   scroll-margin-top: 96px;
 }
 
@@ -146,7 +147,7 @@ html[lang^="zh"] {
 
 .docs-home .install-choice {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: stretch;
   margin: 20px 0 44px;
   border-top: 1px solid var(--docs-border);
@@ -156,6 +157,7 @@ html[lang^="zh"] {
 .docs-home .install-choice a {
   display: flex;
   min-height: 80px;
+  min-width: 0;
   flex-direction: column;
   justify-content: center;
   padding: 14px 16px;
@@ -188,6 +190,7 @@ html[lang^="zh"] {
   margin-top: 4px;
   color: var(--vp-c-text-2);
   font-size: 0.875rem;
+  overflow-wrap: anywhere;
 }
 
 .docs-home .choice-or {
@@ -195,6 +198,33 @@ html[lang^="zh"] {
   padding: 0 12px;
   color: var(--vp-c-text-3);
   font-size: 0.875rem;
+}
+
+.docs-home h4[id="npm-source"],
+.docs-home h4[id="clawhub-source"] {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid var(--docs-border);
+  font-size: 1.1rem;
+}
+
+.docs-home h4[id="npm-source"] code,
+.docs-home h4[id="clawhub-source"] code {
+  color: var(--vp-c-brand-1);
+  font-size: 0.9em;
+}
+
+.docs-home .source-note {
+  max-width: 66ch;
+  margin: 10px 0 28px;
+  color: var(--vp-c-text-2);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.docs-home .source-note strong {
+  color: var(--vp-c-text-1);
+  font-weight: 650;
 }
 
 .docs-home .prompt-lead {
@@ -224,21 +254,24 @@ html[lang^="zh"] {
 }
 
 .docs-home .prompt-lead + div[class*="language-"] code {
+  width: 100%;
+  min-width: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
   white-space: pre-wrap;
 }
 
-.docs-home #cli-install + div[class*="language-"] {
+.docs-home h5[id$="-cli-install"] + div[class*="language-"] {
   border-color: var(--docs-accent-border);
   background: var(--docs-accent-faint);
 }
 
-.docs-home #cli-install + div[class*="language-"] code {
+.docs-home h5[id$="-cli-install"] + div[class*="language-"] code {
   font-weight: 650;
 }
 
 .docs-home .prompt-lead + div[class*="language-"],
-.docs-home #cli-install + div[class*="language-"] {
+.docs-home h5[id$="-cli-install"] + div[class*="language-"] {
   transition:
     border-color 180ms ease,
     background-color 180ms ease,
@@ -247,21 +280,21 @@ html[lang^="zh"] {
 
 .docs-home .prompt-lead + div[class*="language-"]:hover,
 .docs-home .prompt-lead + div[class*="language-"]:focus-within,
-.docs-home #cli-install + div[class*="language-"]:hover,
-.docs-home #cli-install + div[class*="language-"]:focus-within {
+.docs-home h5[id$="-cli-install"] + div[class*="language-"]:hover,
+.docs-home h5[id$="-cli-install"] + div[class*="language-"]:focus-within {
   border-color: var(--docs-accent-border);
   box-shadow: 0 8px 24px var(--docs-shadow);
 }
 
 .docs-home .prompt-lead + div[class*="language-"] > button.copy,
-.docs-home #cli-install + div[class*="language-"] > button.copy {
+.docs-home h5[id$="-cli-install"] + div[class*="language-"] > button.copy {
   opacity: var(--docs-highlight-copy-opacity);
 }
 
 .docs-home .prompt-lead + div[class*="language-"]:hover > button.copy,
 .docs-home .prompt-lead + div[class*="language-"]:focus-within > button.copy,
-.docs-home #cli-install + div[class*="language-"]:hover > button.copy,
-.docs-home #cli-install + div[class*="language-"]:focus-within > button.copy {
+.docs-home h5[id$="-cli-install"] + div[class*="language-"]:hover > button.copy,
+.docs-home h5[id$="-cli-install"] + div[class*="language-"]:focus-within > button.copy {
   opacity: 1;
 }
 
@@ -491,6 +524,16 @@ html[lang^="zh"] {
     gap: 12px;
   }
 
+  .docs-home .vp-doc table {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 479px) {
+  .docs-home .product-summary {
+    font-size: 1rem;
+  }
+
   .docs-home .install-choice a {
     min-height: 88px;
     padding: 12px 10px;
@@ -502,16 +545,6 @@ html[lang^="zh"] {
 
   .docs-home .install-choice a span {
     font-size: 0.8125rem;
-  }
-
-  .docs-home .vp-doc table {
-    font-size: 0.9rem;
-  }
-}
-
-@media (max-width: 479px) {
-  .docs-home .product-summary {
-    font-size: 1rem;
   }
 
   .docs-home .vp-doc th,
@@ -551,7 +584,7 @@ html[lang^="zh"] {
   .docs-home .install-choice,
   .docs-home .install-choice a,
   .docs-home .prompt-lead + div[class*="language-"],
-  .docs-home #cli-install + div[class*="language-"],
+  .docs-home h5[id$="-cli-install"] + div[class*="language-"],
   .docs-home details.full-check,
   .docs-home details:not(.full-check) summary,
   .docs-home details:not(.full-check) summary::after,

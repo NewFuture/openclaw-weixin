@@ -200,6 +200,12 @@ function makeGatewayContext(account: ResolvedWeixinAccount, overrides: Partial<G
   };
 }
 
+describe("weixinPlugin metadata", () => {
+  it("links setup and status surfaces to the community documentation", () => {
+    expect(weixinPlugin.meta.docsPath).toBe("https://openclaw-weixin.newfuture.cc/");
+  });
+});
+
 describe("weixinPlugin config.isEnabled", () => {
   it("enables only primary hash accounts so host start(alias) is rejected before a task", () => {
     const isEnabled = weixinPlugin.config?.isEnabled;

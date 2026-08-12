@@ -1,25 +1,38 @@
 # Detailed Guide
 
-[Back to README](../README_EN.md) | [简体中文](./guide.md)
+[Back to overview](https://openclaw-weixin.newfuture.cc/en/) |
+[简体中文](https://openclaw-weixin.newfuture.cc/guide.html)
 
 ## Installation Details
 
-### Package Names and State
+### Which name to use
 
-The npm package, plugin id, and channel id are all `openclaw-weixin`. The
-[install command](../README_EN.md#connect-wechat) preserves the existing
-`channels.openclaw-weixin`, `plugins.entries.openclaw-weixin`, and
-`~/.openclaw/openclaw-weixin/` state paths.
+| Situation | Name to use |
+| --- | --- |
+| Install the community build from npm | `openclaw-weixin` |
+| Install the community build from ClawHub | `openclaw-wechat` |
 
-`--force` allows OpenClaw to overwrite an existing plugin installation with the
-same internal id; it does not change source-trust or security policy. OpenClaw
-rotates backups of its config automatically; do not copy the entire state
-directory for this replacement.
+This is a community-maintained distribution of the Tencent upstream project;
+Tencent's official npm package is `@tencent-weixin/openclaw-weixin`. The community
+package names and registries differ, but they keep the `openclaw-weixin` plugin,
+channel, and state ID. Choose one community source; the
+[install commands](https://openclaw-weixin.newfuture.cc/en/#connect-wechat)
+preserve the existing `channels.openclaw-weixin`,
+`plugins.entries.openclaw-weixin`, and `~/.openclaw/openclaw-weixin/` state
+paths.
+
+`--force` confirms that the operator reviewed and selected the install source
+and allows OpenClaw to overwrite an existing plugin installation with the same
+internal id. It does not bypass `security.installPolicy` or the built-in
+dependency denylist. OpenClaw rotates backups of its config automatically; do
+not copy the entire state directory for this replacement.
 
 ### Limitations
 
-- Use the CLI for this community npm package. OpenClaw's Control UI does not
-  install arbitrary npm, git, or local-path plugin sources.
+- Install either community package through the OpenClaw CLI. Do not use plain
+  `npm install`, and do not install both the npm and ClawHub variants.
+  OpenClaw's Control UI does not install arbitrary npm, git, or local-path
+  plugin sources.
 - In Nix mode (`OPENCLAW_NIX_MODE=1`), plugin install, update, uninstall,
   enable, and disable commands are intentionally disabled. Add the package and
   config to the Nix source, then rebuild instead.
@@ -71,7 +84,8 @@ added in a future version if needed.
 
 > [!WARNING]
 > Do not uninstall when replacing Tencent's package. Use the
-> [install command](../README_EN.md#connect-wechat) instead.
+> [install command](https://openclaw-weixin.newfuture.cc/en/#connect-wechat)
+> instead.
 
 Back up `~/.openclaw/openclaw.json` first if you may want to reinstall: current
 OpenClaw versions remove the plugin entry and owned
@@ -106,5 +120,5 @@ openclaw channels status --probe
 
 ## Developer Documentation
 
-- [Backend API protocol](./backend-api_EN.md)
-- [Architecture](./architecture_EN.md)
+- [Backend API protocol](https://openclaw-weixin.newfuture.cc/en/backend-api.html)
+- [Architecture](https://openclaw-weixin.newfuture.cc/en/architecture.html)

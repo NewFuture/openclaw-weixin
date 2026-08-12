@@ -1,23 +1,33 @@
 # 详细指南
 
-[返回 README](../README.md) | [English](./guide_EN.md)
+[返回概览](https://openclaw-weixin.newfuture.cc/) |
+[English](https://openclaw-weixin.newfuture.cc/en/guide.html)
 
 ## 安装说明
 
-### 包名与状态兼容性
+### 在不同场景使用哪个名称
 
-npm 包、插件 ID 和 channel ID 均为 `openclaw-weixin`。README 中的
-[安装命令](../README.md#connect-wechat)会保留
+| 场景 | 使用的名称 |
+| --- | --- |
+| 从 npm 安装社区版 | `openclaw-weixin` |
+| 从 ClawHub 安装社区版 | `openclaw-wechat` |
+
+这是腾讯上游项目的社区维护发行版；腾讯官方 npm 包是
+`@tencent-weixin/openclaw-weixin`。社区版的包名和发布渠道不同，但沿用
+`openclaw-weixin` 插件、Channel 和状态 ID。任选一个社区来源即可；README 中的
+[安装命令](https://openclaw-weixin.newfuture.cc/#connect-wechat)会保留
 `channels.openclaw-weixin`、`plugins.entries.openclaw-weixin` 和
 `~/.openclaw/openclaw-weixin/` 状态路径。
 
-`--force` 允许 OpenClaw 覆盖内部 ID 相同的现有插件安装；它不会改变来源信任或
-安全策略。OpenClaw 会自动轮换配置备份；此次替换无需复制整个状态目录。
+`--force` 表示操作者已审阅并明确选择安装来源，同时允许 OpenClaw 覆盖内部 ID 相同的
+现有插件安装。它不会绕过 `security.installPolicy` 或内置依赖拒绝列表。OpenClaw 会
+自动轮换配置备份；此次替换无需复制整个状态目录。
 
 ### 安装限制
 
-- 此社区 npm 包需通过 CLI 安装；OpenClaw Control UI 不能安装任意 npm、git
-  或本地路径来源的插件。
+- 两个社区包均通过 OpenClaw CLI 安装；不要使用普通 `npm install`，也不要同时安装
+  npm 与 ClawHub 版本。OpenClaw Control UI 不能安装任意 npm、git 或本地路径来源
+  的插件。
 - Nix 模式（`OPENCLAW_NIX_MODE=1`）会禁止插件安装、更新、卸载、启用和停用
   命令；请改动 Nix 配置源后重新构建。
 - OpenClaw 安装插件依赖时会禁用生命周期脚本，因此本包直接携带编译后的
@@ -63,7 +73,7 @@ npm 包、插件 ID 和 channel ID 均为 `openclaw-weixin`。README 中的
 
 > [!WARNING]
 > 替换腾讯版时不要卸载，请使用 README 中的
-> [安装命令](../README.md#connect-wechat)原位替换。
+> [安装命令](https://openclaw-weixin.newfuture.cc/#connect-wechat)原位替换。
 
 如果以后可能重装，请先备份 `~/.openclaw/openclaw.json`：新版 OpenClaw
 卸载时会删除插件条目及其拥有的 `channels.openclaw-weixin` 配置。
@@ -95,5 +105,5 @@ openclaw channels status --probe
 
 ## 开发者文档
 
-- [后端 API 协议](./backend-api.md)
-- [架构说明](./architecture.md)
+- [后端 API 协议](https://openclaw-weixin.newfuture.cc/backend-api.html)
+- [架构说明](https://openclaw-weixin.newfuture.cc/architecture.html)

@@ -1,13 +1,28 @@
-import { mkdir, mkdtemp, readdir, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { extract, list } from "tar";
 
 import { prepareStagedPackageVariant } from "./package-variant.mjs";
+import {
+  assertRegistryPrompt,
+  assertRegistryReadmeInstallCommands,
+  assertRegistryReadmeLinksAbsolute,
+  assertRegistryReadmeOrder,
+  assertRegistryReadmeTitle,
+  preferRegistryReadmeSource,
+  preferRegistryReadmeTitle,
+  REGISTRY_README_FILES,
+} from "./registry-readme.mjs";
 
 export const CLAWHUB_PACKAGE_NAME = "openclaw-wechat";
 export const CLAWHUB_INSTALL_SPEC = `clawhub:${CLAWHUB_PACKAGE_NAME}`;
+export const CLAWHUB_README_LAYOUT = {
+  "README.md": "README_EN.md",
+  "README_EN.md": "README_EN.md",
+  "README.zh_CN.md": "README.md",
+};
 
 const SAFE_ARCHIVE_ENTRY_TYPES = new Set(["File", "OldFile", "Directory"]);
 
@@ -70,11 +85,50 @@ export async function extractPackageArchive(sourceArchive, outputDirectory) {
   return path.join(outputDirectory, "package");
 }
 
+export async function prepareClawHubReadmes(packageDirectory) {
+  const canonicalReadmes = Object.fromEntries(
+    await Promise.all(
+      REGISTRY_README_FILES.map(async (fileName) => [
+        fileName,
+        await readFile(path.join(packageDirectory, fileName), "utf8"),
+      ]),
+    ),
+  );
+  const variants = Object.fromEntries(
+    Object.entries(canonicalReadmes).map(([fileName, markdown]) => {
+      assertRegistryReadmeTitle(markdown, "npm", { fileName });
+      assertRegistryReadmeOrder(markdown, "npm", { fileName });
+      const canonicalPrompt = assertRegistryPrompt(markdown, { fileName });
+      assertRegistryReadmeInstallCommands(markdown, { fileName });
+      assertRegistryReadmeLinksAbsolute(markdown, { fileName });
+      const variant = preferRegistryReadmeTitle(
+        preferRegistryReadmeSource(markdown, "clawhub", { fileName }),
+        "clawhub",
+        { fileName },
+      );
+      assertRegistryReadmeTitle(variant, "clawhub", { fileName });
+      assertRegistryReadmeOrder(variant, "clawhub", { fileName });
+      const variantPrompt = assertRegistryPrompt(variant, { fileName });
+      if (variantPrompt.value !== canonicalPrompt.value) {
+        throw new Error(`${fileName}: ClawHub staging must not change the shared prompt`);
+      }
+      assertRegistryReadmeInstallCommands(variant, { fileName });
+      return [fileName, variant];
+    }),
+  );
+  await Promise.all(
+    Object.entries(CLAWHUB_README_LAYOUT).map(([targetFileName, sourceFileName]) =>
+      writeFile(path.join(packageDirectory, targetFileName), variants[sourceFileName], "utf8"),
+    ),
+  );
+}
+
 export async function prepareClawHubPackage(source, outputDirectory = process.cwd()) {
   const sourceArchive = await resolveSourceArchive(source);
   const stagingRoot = await mkdtemp(path.join(tmpdir(), "openclaw-clawhub-"));
   try {
     const packageDirectory = await extractPackageArchive(sourceArchive, stagingRoot);
+    await prepareClawHubReadmes(packageDirectory);
     return await prepareStagedPackageVariant(packageDirectory, path.resolve(outputDirectory), {
       name: CLAWHUB_PACKAGE_NAME,
       install: {

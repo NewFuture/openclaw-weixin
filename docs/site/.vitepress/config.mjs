@@ -15,6 +15,9 @@ const base = `${new URL(baseUrl).pathname.replace(/\/+$/, "")}/`;
 const editLink = {
   pattern: `${SITE.repositoryUrl}/edit/${SITE.defaultBranch}/:path`,
 };
+const clawHubIcon = {
+  svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 3h4v4H6V3Zm8 0h4v4h-4V3ZM4 10h4v4H4v-4Zm6 0h4v4h-4v-4Zm6 0h4v4h-4v-4ZM6 17h4v4H6v-4Zm8 0h4v4h-4v-4Z"/></svg>',
+};
 
 export default defineConfig({
   title: SITE.name,
@@ -52,9 +55,10 @@ export default defineConfig({
         socialLinks: [
           { icon: "github", link: SITE.repositoryUrl, ariaLabel: "GitHub 仓库" },
           { icon: "npm", link: SITE.npmUrl, ariaLabel: "npm 软件包" },
+          { icon: clawHubIcon, link: SITE.clawHubUrl, ariaLabel: "ClawHub 软件包" },
         ],
         footer: {
-          message: `${SITE.tagline.zh} · 基于 MIT 许可证发布。`,
+          message: `${SITE.tagline.zh} · <a href="${SITE.npmUrl}">npm</a> · <a href="${SITE.clawHubUrl}">ClawHub</a> · MIT 许可证`,
           copyright: `衍生自 <a href="${SITE.upstreamUrl}">Tencent/openclaw-weixin</a>`,
         },
       },
@@ -79,9 +83,10 @@ export default defineConfig({
         socialLinks: [
           { icon: "github", link: SITE.repositoryUrl, ariaLabel: "GitHub repository" },
           { icon: "npm", link: SITE.npmUrl, ariaLabel: "npm package" },
+          { icon: clawHubIcon, link: SITE.clawHubUrl, ariaLabel: "ClawHub package" },
         ],
         footer: {
-          message: `${SITE.tagline.en} · Released under the MIT License.`,
+          message: `${SITE.tagline.en} · <a href="${SITE.npmUrl}">npm</a> · <a href="${SITE.clawHubUrl}">ClawHub</a> · MIT License`,
           copyright: `Derived from <a href="${SITE.upstreamUrl}">Tencent/openclaw-weixin</a>`,
         },
       },

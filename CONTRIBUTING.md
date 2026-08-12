@@ -93,8 +93,19 @@ tar -xzf <clawhub-output>/openclaw-wechat-<version>.tgz -C <clawpack-root>
 ```
 
 The source directory must contain exactly one `.tgz`. The converter rejects a
-non-canonical package name or npm install spec and changes only the temporary
-package name and ClawHub install choice.
+non-canonical package name or npm install spec, malformed registry-source
+markers, commands placed in the wrong source block, and relative registry links.
+It changes the temporary package name and ClawHub install choice, uses the
+English source as the primary `README.md` and `README_EN.md`, writes the full
+Chinese source to `README.zh_CN.md`, changes all staged titles from
+`openclaw-weixin` to `openclaw-wechat`, preserves one identical shared prompt
+that names both source specs, prefers OpenClaw's internal installer when
+it can perform the replacement, and delegates the exactly-one choice to
+OpenClaw, then reorders the direct-source blocks from npm-first to
+ClawHub-first. The canonical source files and npm tarball remain titled
+`openclaw-weixin`, npm-first, and unchanged; both languages must retain both
+exact direct commands, absolute documentation links, and the
+`openclaw-weixin` runtime id.
 
 Run the pinned ClawHub validator with its report directory outside the checkout,
 then preview the publish without credentials:
@@ -110,21 +121,22 @@ npx --yes clawhub@0.23.3 package publish \
   --source-ref <git-ref> --dry-run --json
 ```
 
-These commands validate a prospective listing; they do not mean that a public
-ClawHub release already exists. `.github/workflows/clawhub-publish.yml` performs
-this credential-free validation for pull requests only. Production npmjs and
-ClawHub publication is coordinated by `.github/workflows/release.yml` from an
-exact release tag, with separate protected `npm-publish` and
-`clawhub-publish` jobs. When both targets are missing, wait for both environments
-to become Pending, select both in **Review deployments**, and click **Approve
-and deploy** once; the UI action is shared, but OIDC trust remains isolated. Do
-not add production dispatch, `id-token: write`, or a long-lived registry
-credential to the pull-request workflow. Before the real ClawHub command can
-start, the release workflow persists a durable check run plus a
-tag-and-commit-specific 90-day Actions artifact. ClawHub uploads and stores its
-own ClawPack independently of npmjs; the explicit `clawhub:` installer downloads
-that artifact directly. A new ClawHub request after either boundary requires
-authoritative attempt evidence and explicit recovery authorization.
+These commands validate the next prospective version; they do not publish or
+modify the existing public ClawHub release.
+`.github/workflows/clawhub-publish.yml` performs this credential-free validation
+for pull requests only. Production npmjs and ClawHub publication is coordinated
+by `.github/workflows/release.yml` from an exact release tag, with separate
+protected `npm-publish` and `clawhub-publish` jobs. When both targets are missing,
+wait for both environments to become Pending, select both in **Review
+deployments**, and click **Approve and deploy** once; the UI action is shared,
+but OIDC trust remains isolated. Do not add production dispatch,
+`id-token: write`, or a long-lived registry credential to the pull-request
+workflow. Before the real ClawHub command can start, the release workflow
+persists a durable check run plus a tag-and-commit-specific 90-day Actions
+artifact. ClawHub uploads and stores its own ClawPack independently of npmjs; the
+explicit `clawhub:` installer downloads that artifact directly. A new ClawHub
+request after either boundary requires authoritative attempt evidence and
+explicit recovery authorization.
 
 Build the documentation website into `docs/site/dist/` (the same command GitHub
 Pages runs) after editing Markdown documents or the files in `docs/site/`. The

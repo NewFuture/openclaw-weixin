@@ -163,7 +163,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
     aliases: ["openclaw-wechat"],
     label: "WeChat",
     selectionLabel: "WeChat (long-poll)",
-    docsPath: "/channels/openclaw-weixin",
+    docsPath: "https://openclaw-weixin.newfuture.cc/",
     docsLabel: "WeChat",
     blurb: "getUpdates long-poll upstream, sendMessage downstream; token auth.",
     order: 75,
