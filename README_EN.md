@@ -31,7 +31,6 @@ and connection checks; direct commands only install or replace the plugin.</p>
 
 ```text
 Install or replace the WeChat plugin in place for this OpenClaw instance and check its connection. Install from ClawHub `clawhub:openclaw-wechat` first; only if the ClawHub source is explicitly unavailable, fall back to npm `npm:openclaw-weixin`, and install only one.
-
 Follow OpenClaw's install policy and use in-place replacement for an existing installation with the same `openclaw-weixin` plugin ID (the `--force` behavior), preserving configuration and login data. Use the OpenClaw plugin installation flow rather than plain `npm install`. After installation, verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the source and result, or explain the failure.
 ```
 <!-- registry-prompt:end -->
@@ -82,16 +81,57 @@ backups automatically.</p>
 | npm | `openclaw-weixin` |
 | ClawHub | `openclaw-wechat` |
 
+Both sources publish the same community distribution. **Choose one; do not install
+both.** The plugin requires OpenClaw `>=2026.6.1` and one of these Node.js ranges:
+`>=22.22.3 <23`, `>=24.15.0 <25`, or `>=25.9.0`.
+
+## Community and Tencent distributions
+
 This project is a community-maintained distribution of
 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin); Tencent's
-official npm package is `@tencent-weixin/openclaw-weixin`. The community package
-names and registries differ, but they keep the `openclaw-weixin` plugin, channel,
-and state ID, allowing in-place replacement without losing existing configuration
-or login state.
+official npm package is `@tencent-weixin/openclaw-weixin`. This project is
+maintained and published independently and is not an official Tencent or WeChat
+release. Both distributions use the same WeChat backend protocol and
+`openclaw-weixin` internal identity; their publication sources, included fixes,
+and support channels differ.
 
-**Choose one community source; do not install both.** The plugin requires OpenClaw
-`>=2026.6.1` and one of these Node.js ranges: `>=22.22.3 <23`,
-`>=24.15.0 <25`, or `>=25.9.0`.
+### Why choose the community distribution
+
+- **Shipped community fixes:** On top of Tencent upstream, this distribution
+  includes inbound replay deduplication, per-agent inbound media isolation,
+  stable multi-account aliases, case-insensitive context-token user IDs, and
+  explicit failure instead of false success when a context token is missing. See
+  the [community changelog](https://openclaw-weixin.newfuture.cc/en/changelog.html)
+  for the first release of each change.
+- **Explicit compatibility boundaries:** The minimum supported host and
+  recommended development host are both validated, and a precompiled runtime is
+  published for the documented Node.js ranges, reducing uncertainty from host
+  upgrades and install-time compilation.
+- **Flexible installation and migration:** The same community implementation is
+  available from npm and ClawHub. It retains Tencent's plugin, channel, and state
+  ID, allowing an in-place replacement that preserves configuration and login
+  state.
+- **Transparent maintenance:** Bilingual documentation and changelogs are paired
+  with an [upstream intake tracker](https://github.com/NewFuture/openclaw-weixin/issues/36)
+  that distinguishes Tencent-side status, community inclusion, and release
+  status.
+
+| Comparison | Community distribution (this project) | Tencent distribution |
+| --- | --- | --- |
+| Maintenance model | Tracks Tencent upstream, with independent community review, testing, and releases | Maintained and released officially by Tencent |
+| Install packages | npm `openclaw-weixin`; ClawHub `openclaw-wechat` | npm `@tencent-weixin/openclaw-weixin` |
+| Plugin, channel, and state ID | `openclaw-weixin` | `openclaw-weixin` |
+| Update scope | Tracks Tencent upstream and independently evaluates community fixes and OpenClaw compatibility changes | Decided independently by Tencent upstream |
+| Compatibility validation | Validates the minimum supported host, recommended development host, and explicit Node.js ranges | Defined by Tencent's package metadata and documentation |
+| Changes and support | [Community changelog](https://openclaw-weixin.newfuture.cc/en/changelog.html) · [Upstream intake tracker](https://github.com/NewFuture/openclaw-weixin/issues/36) · [Issue tracker](https://github.com/NewFuture/openclaw-weixin/issues) | [Tencent changelog](https://github.com/Tencent/openclaw-weixin/blob/main/CHANGELOG.md) · [Issue tracker](https://github.com/Tencent/openclaw-weixin/issues) |
+
+Choose the community distribution for the shipped fixes above, dual package
+sources, and this project's compatibility validation. Choose Tencent's
+distribution when you require Tencent's official maintenance path. Versions and
+fixes land independently, so version numbers alone do not establish which
+features are present. The packages occupy the same plugin ID and cannot coexist.
+To switch from Tencent's package to this distribution, use one of the `--force`
+commands above for an in-place replacement; do not uninstall first.
 
 Current capabilities include direct chats, text and media transfer, QR login,
 and multiple accounts. The plugin does not advertise group-chat support.
@@ -101,7 +141,7 @@ and multiple accounts. The plugin does not advertise group-chat support.
 > plugin/channel ID. On OpenClaw 2026.7.1 and later,
 > `--channel openclaw-wechat` selects the same channel; earlier supported hosts
 > must continue to use `openclaw-weixin`. Plugin enable/disable commands, config,
-> and state paths always use `openclaw-weixin`. Do not install both
+> and state paths always use `openclaw-weixin`. Do not install multiple
 > distributions at once.
 
 <p class="install-done"><strong>If this OpenClaw instance already has a WeChat login,
