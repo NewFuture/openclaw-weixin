@@ -7,7 +7,7 @@
 **把 OpenClaw 接入微信**
 
 社区维护的 OpenClaw 微信渠道插件，提供 npm 与 ClawHub 两个安装源。
-本插件需要 OpenClaw `>=2026.6.1` 和 Node.js `>=22.22.3`。
+本插件需要 OpenClaw `>=2026.6.1`。
 
 <a id="connect-wechat"></a>
 
@@ -75,11 +75,9 @@ openclaw plugins install clawhub:openclaw-wechat --force
 
 ```bash
 openclaw --version
-node --version
 ```
 
-需要 OpenClaw `>=2026.6.1` 以及上文列出的 Node.js 范围。若版本过低或 Nix 模式禁止
-安装，请不要卸载现有插件；按
+需要 OpenClaw `>=2026.6.1`。若版本过低或 Nix 模式禁止安装，请不要卸载现有插件；按
 [安装限制与故障排查](https://openclaw-weixin.newfuture.cc/guide.html#安装限制)处理。
 
 ### 安装后没有自动连接

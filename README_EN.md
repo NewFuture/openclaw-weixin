@@ -8,7 +8,7 @@
 
 A community-maintained OpenClaw WeChat channel plugin available from npm and
 ClawHub.
-This plugin requires OpenClaw `>=2026.6.1` and Node.js `>=22.22.3`.
+This plugin requires OpenClaw `>=2026.6.1`.
 
 <a id="connect-wechat"></a>
 
@@ -82,12 +82,10 @@ Check only when installation reports an incompatible version:
 
 ```bash
 openclaw --version
-node --version
 ```
 
-The plugin requires OpenClaw `>=2026.6.1` and one of the Node.js ranges listed
-above. If either version is too old or Nix mode disables installation, do not
-uninstall the existing plugin. Follow the
+The plugin requires OpenClaw `>=2026.6.1`. If the host is too old or Nix mode
+disables installation, do not uninstall the existing plugin. Follow the
 [installation limitations and troubleshooting](https://openclaw-weixin.newfuture.cc/en/guide.html#limitations).
 
 ### The connection does not return after installation

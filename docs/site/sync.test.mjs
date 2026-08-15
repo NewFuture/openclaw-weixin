@@ -77,7 +77,8 @@ describe("syncContent", () => {
     assert.doesNotMatch(overview, /腾讯官方 npm 包|当前能力包括微信私聊|## 社区版与腾讯版/);
     assert.match(overview, /\[社区版与腾讯版\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/distributions\.html\)/);
     assert.doesNotMatch(overview, /npm 优先，ClawHub 兜底|自己选择 npm 或 ClawHub/);
-    assert.match(overview, /本插件需要 OpenClaw `>=2026\.6\.1` 和 Node\.js `>=22\.22\.3`/);
+    assert.match(overview, /本插件需要 OpenClaw `>=2026\.6\.1`/);
+    assert.doesNotMatch(overview, /Node\.js|node --version/);
     assert.match(overview, /\[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
     assert.match(overview, /\[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/);
     assert.doesNotMatch(overview, /不要同时安装/);
@@ -131,7 +132,8 @@ describe("syncContent", () => {
     );
     assert.doesNotMatch(english, /ClawHub first, npm fallback|Choose npm or ClawHub yourself/);
     assert.doesNotMatch(english, /does not advertise group-chat support/);
-    assert.match(english, /This plugin requires OpenClaw `>=2026\.6\.1` and Node\.js `>=22\.22\.3`/);
+    assert.match(english, /This plugin requires OpenClaw `>=2026\.6\.1`/);
+    assert.doesNotMatch(english, /Node\.js|node --version/);
     assert.doesNotMatch(english, /do not install both|Do not install multiple distributions/);
     assert.match(
       english,
