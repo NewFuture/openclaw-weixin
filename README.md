@@ -45,7 +45,11 @@
 | ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
 
 <!-- registry-source:npm:start -->
+<a id="npm-source"></a>
+
 #### npm：`openclaw-weixin`
+
+<a id="npm-cli-install"></a>
 
 ```bash
 openclaw plugins install npm:openclaw-weixin --force
@@ -53,9 +57,13 @@ openclaw plugins install npm:openclaw-weixin --force
 <!-- registry-source:npm:end -->
 
 <!-- registry-source:clawhub:start -->
+<a id="clawhub-source"></a>
+
 #### ClawHub：`openclaw-wechat`
 
 下面的命令也可原位替换占用 `openclaw-weixin` 插件 ID 的腾讯版或 npm 版。
+
+<a id="clawhub-cli-install"></a>
 
 ```bash
 openclaw plugins install clawhub:openclaw-wechat --force
@@ -102,6 +110,8 @@ openclaw channels status --probe
 | 插件无加载错误，且目标账号探测成功 | 已完成，无需继续操作 |
 | 账号显示未登录 | 继续下面的扫码绑定 |
 | Channel 显示 `OK` 但未连接 | 按[连接故障排查](https://openclaw-weixin.newfuture.cc/guide.html#channel-显示-ok-但未连接)重载实际运行单元 |
+
+<a id="bind-account"></a>
 
 ### 状态显示未登录
 

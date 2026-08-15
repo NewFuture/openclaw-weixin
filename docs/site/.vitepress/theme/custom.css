@@ -225,27 +225,38 @@ html[lang^="zh"] {
   font-weight: 650;
 }
 
-.docs-home :is(p:has(> #agent-install) + h3 + p, h4:has(> code), h4:has(> code) + p) + div[class*="language-"] {
+.docs-home
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+  + div[class*="language-"] {
   transition:
     border-color 180ms ease,
     background-color 180ms ease,
     box-shadow 180ms ease;
 }
 
-.docs-home :is(p:has(> #agent-install) + h3 + p, h4:has(> code), h4:has(> code) + p) + div[class*="language-"]:hover,
 .docs-home
-  :is(p:has(> #agent-install) + h3 + p, h4:has(> code), h4:has(> code) + p)
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+  + div[class*="language-"]:hover,
+.docs-home
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
   + div[class*="language-"]:focus-within {
   border-color: var(--docs-accent-border);
   box-shadow: 0 8px 24px var(--docs-shadow);
 }
 
 .docs-home
-  :is(p:has(> #agent-install) + h3 + p, h4:has(> code), h4:has(> code) + p)
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+  + div[class*="language-"]
+  > button.copy {
+  opacity: 0.62;
+}
+
+.docs-home
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
   + div[class*="language-"]:hover
   > button.copy,
 .docs-home
-  :is(p:has(> #agent-install) + h3 + p, h4:has(> code), h4:has(> code) + p)
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
   + div[class*="language-"]:focus-within
   > button.copy {
   opacity: 1;
@@ -441,7 +452,9 @@ html[lang^="zh"] {
 
 @media (prefers-reduced-motion: reduce) {
   .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a,
-  .docs-home :is(p:has(> #agent-install) + h3 + p, h4:has(> code), h4:has(> code) + p) + div[class*="language-"],
+  .docs-home
+    :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+    + div[class*="language-"],
   .docs-home details.full-check,
   .docs-home details:not(.full-check) summary,
   .docs-home details:not(.full-check) summary::after,

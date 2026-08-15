@@ -48,7 +48,11 @@ id.
 | ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
 
 <!-- registry-source:npm:start -->
+<a id="npm-source"></a>
+
 #### npm: `openclaw-weixin`
+
+<a id="npm-cli-install"></a>
 
 ```bash
 openclaw plugins install npm:openclaw-weixin --force
@@ -56,10 +60,14 @@ openclaw plugins install npm:openclaw-weixin --force
 <!-- registry-source:npm:end -->
 
 <!-- registry-source:clawhub:start -->
+<a id="clawhub-source"></a>
+
 #### ClawHub: `openclaw-wechat`
 
 The command can also replace a Tencent or npm installation that owns the
 `openclaw-weixin` plugin id.
+
+<a id="clawhub-cli-install"></a>
 
 ```bash
 openclaw plugins install clawhub:openclaw-wechat --force
@@ -112,6 +120,8 @@ openclaw channels status --probe
 | Plugin has no load error and the intended account passes the probe | You are done |
 | Account is not logged in | Continue to QR login below |
 | Channel shows `OK` but does not connect | Follow [connection troubleshooting](https://openclaw-weixin.newfuture.cc/en/guide.html#channel-shows-ok-but-doesn-t-connect) to reload the actual runtime |
+
+<a id="bind-account"></a>
 
 ### The status reports no login
 
