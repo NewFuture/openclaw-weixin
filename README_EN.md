@@ -19,6 +19,7 @@ The prompt tries ClawHub first, falls back to npm, and completes installation
 and connection checks; direct commands only install or replace the plugin.
 
 - [**Copy the prompt**](#agent-install)
+- **or**
 - [**Run a command**](#direct-install)
 
 <!-- registry-prompt:start -->

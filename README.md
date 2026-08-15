@@ -18,6 +18,7 @@
 只安装或替换插件。
 
 - [**复制提示词**](#agent-install)
+- **或**
 - [**运行命令**](#direct-install)
 
 <!-- registry-prompt:start -->

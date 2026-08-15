@@ -85,7 +85,10 @@ describe("syncContent", () => {
     assert.match(overview, /\[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/);
     assert.doesNotMatch(overview, /不要同时安装/);
     assert.match(overview, /推荐复制提示词，也可以直接运行命令/);
-    assert.match(overview, /- \[\*\*复制提示词\*\*\]\(#agent-install\)\n- \[\*\*运行命令\*\*\]\(#direct-install\)/);
+    assert.match(
+      overview,
+      /- \[\*\*复制提示词\*\*\]\(#agent-install\)\n- \*\*或\*\*\n- \[\*\*运行命令\*\*\]\(#direct-install\)/,
+    );
     assert.doesNotMatch(overview, /<(?:p|div|h[1-6]|strong|ul|li|code)\b/);
     assert.ok(
       chinesePrompt.value.indexOf("npm:openclaw-weixin") < chinesePrompt.value.indexOf("clawhub:openclaw-wechat"),
@@ -133,7 +136,7 @@ describe("syncContent", () => {
     assert.doesNotMatch(english, /do not install both|Do not install multiple distributions/);
     assert.match(
       english,
-      /- \[\*\*Copy the prompt\*\*\]\(#agent-install\)\n- \[\*\*Run a command\*\*\]\(#direct-install\)/,
+      /- \[\*\*Copy the prompt\*\*\]\(#agent-install\)\n- \*\*or\*\*\n- \[\*\*Run a command\*\*\]\(#direct-install\)/,
     );
     assert.doesNotMatch(english, /<(?:p|div|h[1-6]|strong|ul|li|code)\b/);
     assert.doesNotMatch(english, /id="(?:npm|clawhub)-agent-install"/);
