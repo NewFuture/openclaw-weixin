@@ -80,6 +80,45 @@ authentication or routing. All registered agents on this plugin instance
 currently share the same `botAgent` declaration; per-agent overrides may be
 added in a future version if needed.
 
+## Tool-call progress messages (optional)
+
+`replyProgressMessages` defaults to `true`. While the model calls tools, the
+plugin sends structured `TOOL_CALL_START` and `TOOL_CALL_RESULT` progress
+messages. Disable these extra messages in `openclaw.json` if they are not
+wanted:
+
+```json
+{
+  "channels": {
+    "openclaw-weixin": {
+      "replyProgressMessages": false
+    }
+  }
+}
+```
+
+Setting it to `false` suppresses only tool-call progress messages. It does not
+disable the final reply or ordinary text and media messages.
+
+## Proactive and scheduled sends
+
+The WeChat backend requires every outbound message to carry an account-scoped
+context token issued by an inbound message from that recipient. The plugin
+stores the token under the receiving account.
+
+- If the recipient has not messaged the bot or the token is missing, the plugin
+  refuses delivery instead of returning a local success result.
+- A stored token can still become stale. If a send fails after a long idle
+  period, ask the recipient to message the corresponding bot once to refresh
+  the token, then retry.
+- Scheduled jobs in multi-account deployments should explicitly set both
+  `delivery.to` and `delivery.accountId`. Without `accountId`, delivery proceeds
+  only when account-scoped context selects exactly one account; missing or
+  ambiguous context fails.
+
+Context tokens are sensitive: never copy them between accounts, put them in job
+configuration, or share their state files.
+
 ## Uninstall
 
 > [!WARNING]

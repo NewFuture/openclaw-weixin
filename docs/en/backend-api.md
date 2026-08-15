@@ -1,7 +1,7 @@
 # Backend API Protocol
 
-[Back to detailed guide](./guide_EN.md) |
-[简体中文](./backend-api.md)
+[Back to detailed guide](./guide.md) |
+[简体中文](../zh-CN/backend-api.md)
 
 This document covers every Weixin backend endpoint used by the plugin for QR
 login, lifecycle notifications, messaging, and media. The two QR login requests
@@ -37,7 +37,7 @@ not. The message examples below omit it for readability.
 ```
 
 `bot_agent` is for observability only. Its supported format and configuration
-are documented in the [detailed guide](./guide_EN.md#custom-botagent-optional).
+are documented in the [detailed guide](./guide.md#custom-botagent-optional).
 
 ## Endpoint List
 
@@ -70,6 +70,12 @@ Content-Type: application/json
   "local_token_list": []
 }
 ```
+
+`local_token_list` contains up to 10 local `bot_token` values from the most
+recently registered accounts; it is empty when no local credentials exist. The
+backend uses the list to recognize bots already bound to this OpenClaw and may
+respond with `binded_redirect`. Every token in the list is sensitive; never put
+a real value in logs or examples.
 
 The response contains an opaque `qrcode` identifier and
 `qrcode_img_content`, the URL rendered as the QR code. Poll
@@ -169,8 +175,11 @@ Send a message to a user.
 
 ## getUploadUrl
 
-Get CDN upload pre-signed parameters. Call this endpoint before uploading a file
-to obtain `upload_param` and `thumb_upload_param`.
+Get CDN upload pre-signed parameters. Call this endpoint before uploading a
+file; clients prefer `upload_full_url` and otherwise use `upload_param`.
+`thumb_upload_param` may be returned only when a thumbnail is requested. The
+current plugin always sends `no_need_thumb: true`, uploads only the original
+media, and neither requests nor uses thumbnail upload parameters.
 
 **Request body:**
 
@@ -335,13 +344,15 @@ AES-128-ECB encryption:
 
 1. Calculate the file's plaintext size, MD5, and ciphertext size after
    AES-128-ECB encryption
-2. If a thumbnail is needed (image/video), calculate the thumbnail's plaintext
-   and ciphertext parameters as well
-3. Call `getUploadUrl` to get `upload_full_url` or `upload_param` (and optional
-   `thumb_upload_param`)
-4. Encrypt the file content with AES-128-ECB and `POST` it to the CDN URL as
+2. Call `getUploadUrl` with `no_need_thumb: true`
+3. Prefer `upload_full_url`; otherwise construct the CDN URL from `upload_param`
+4. Encrypt the original media with AES-128-ECB and `POST` it to the CDN URL as
    `application/octet-stream`
-5. Encrypt and upload the thumbnail in the same way when requested
-6. Read `x-encrypted-param` from the CDN response and use it as
+5. Read `x-encrypted-param` from the CDN response and use it as
    `encrypt_query_param` in the `CDNMedia` reference
-7. Include the reference in the `MessageItem` and send
+6. Include the reference in the `MessageItem` and send
+
+The protocol also defines `thumb_rawsize`, `thumb_rawfilemd5`,
+`thumb_filesize`, and `thumb_upload_param` for implementations that set
+`no_need_thumb: false` and upload a thumbnail. The current plugin does not enter
+that branch.

@@ -4,28 +4,28 @@
 [English](https://openclaw-weixin.newfuture.cc/en/) · [在线文档](https://openclaw-weixin.newfuture.cc/)
 <!-- docs-site:repo-only:end -->
 
-<p class="product-tagline">把 OpenClaw 接入微信</p>
+**把 OpenClaw 接入微信**
 
-<p class="product-summary">
-这是 <a href="https://github.com/Tencent/openclaw-weixin">Tencent/openclaw-weixin</a>
+这是 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin)
 的社区维护发行版，提供 npm 与 ClawHub 两个发布入口。
-</p>
 
-<h2 id="connect-wechat">选择一种安装方式</h2>
+<a id="connect-wechat"></a>
 
-<p class="choice-lead"><strong>推荐复制提示词，也可以直接运行命令。</strong>
-提示词让 OpenClaw 优先使用 npm、失败时回退 ClawHub，并完成安装与连接检查；直接命令只安装或替换插件。</p>
+## 选择一种安装方式
 
-<div class="install-choice">
-  <a href="#agent-install"><strong>复制提示词</strong><span>npm 优先，ClawHub 兜底</span></a>
-  <span class="choice-or" aria-hidden="true">或</span>
-  <a href="#direct-install"><strong>运行命令</strong><span>自己选择 npm 或 ClawHub</span></a>
-</div>
+**推荐复制提示词，也可以直接运行命令。**
+
+提示词让 OpenClaw 优先使用 npm、失败时回退 ClawHub，并完成安装与连接检查；直接命令
+只安装或替换插件。
+
+[复制提示词](#agent-install) · 或 · [运行命令](#direct-install)
 
 <!-- registry-prompt:start -->
-<h3 id="agent-install">让 OpenClaw 自动完成安装</h3>
+<a id="agent-install"></a>
 
-<p class="prompt-lead">把下面这段话粘贴到 OpenClaw 聊天框并发送：</p>
+### 让 OpenClaw 自动完成安装
+
+把下面这段话粘贴到 OpenClaw 聊天框并发送：
 
 ```text
 请为当前 OpenClaw 安装或原位替换微信插件，并检查微信连接。优先安装 npm 的 `npm:openclaw-weixin`；仅当 npm 来源明确不可用时，改用 ClawHub 的 `clawhub:openclaw-wechat`，全程只安装一个。
@@ -33,16 +33,17 @@
 ```
 <!-- registry-prompt:end -->
 
-<h3 id="direct-install">直接运行命令</h3>
+<a id="direct-install"></a>
+
+### 直接运行命令
 
 <!-- registry-source:npm:start -->
-<h4 id="npm-source">npm：<code>openclaw-weixin</code></h4>
+#### npm：`openclaw-weixin`
 
-<p class="source-note"><strong>npm 页面、GitHub README 和文档站默认使用此来源。</strong>
-<code>--force</code> 表示你已审阅并明确选择该 npm 来源，同时允许覆盖相同插件 ID
-的现有安装。</p>
+**npm 页面、GitHub README 和文档站默认使用此来源。** `--force` 表示你已审阅并
+明确选择该 npm 来源，同时允许覆盖相同插件 ID 的现有安装。
 
-<h5 id="npm-cli-install">npm 命令</h5>
+##### npm 命令
 
 ```bash
 openclaw plugins install npm:openclaw-weixin --force
@@ -50,24 +51,23 @@ openclaw plugins install npm:openclaw-weixin --force
 <!-- registry-source:npm:end -->
 
 <!-- registry-source:clawhub:start -->
-<h4 id="clawhub-source">ClawHub：<code>openclaw-wechat</code></h4>
+#### ClawHub：`openclaw-wechat`
 
-<p class="source-note"><strong>ClawHub 包页面默认使用此来源。</strong>
-页面顶部不带 <code>--force</code> 的命令适合没有现有微信插件的全新安装；下面保留
-<code>--force</code>，使同一条命令也能原位替换占用 <code>openclaw-weixin</code>
-插件 ID 的腾讯版或 npm 版。</p>
+**ClawHub 包页面默认使用此来源。** 页面顶部不带 `--force` 的命令适合没有现有微信
+插件的全新安装；下面保留 `--force`，使同一条命令也能原位替换占用
+`openclaw-weixin` 插件 ID 的腾讯版或 npm 版。
 
-<h5 id="clawhub-cli-install">ClawHub 命令</h5>
+##### ClawHub 命令
 
 ```bash
 openclaw plugins install clawhub:openclaw-wechat --force
 ```
 <!-- registry-source:clawhub:end -->
 
-<p class="replacement-note"><strong>替换腾讯版时不要先卸载。</strong>
-两个社区发布源都保留插件 ID、Channel ID、配置和登录状态。
-<code>--force</code> 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表；OpenClaw
-会自动轮换配置备份。</p>
+> [!WARNING]
+> **替换腾讯版时不要先卸载。** 两个社区发布源都保留插件 ID、Channel ID、配置和
+> 登录状态。`--force` 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表；OpenClaw
+> 会自动轮换配置备份。
 
 ## 两个社区入口
 
@@ -85,9 +85,7 @@ openclaw plugins install clawhub:openclaw-wechat --force
 本项目是 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin) 的
 社区维护发行版；腾讯官方 npm 包是 `@tencent-weixin/openclaw-weixin`。本项目由社区
 独立维护和发布，不是腾讯或微信官方版本。两者使用相同的微信后端协议及
-`openclaw-weixin` 内部标识，差异主要在发布来源、修复纳入和支持渠道。
-
-### 为什么选择社区版
+`openclaw-weixin` 内部标识，差异主要在发布来源、修复纳入和新功能支持以及安全更新。
 
 - **已发布的社区修复：** 在腾讯上游基础上，已加入入站重放去重、按 Agent 隔离入站
   媒体、稳定多账号别名、context token 用户 ID 大小写兼容，以及缺少 context token
@@ -100,21 +98,7 @@ openclaw plugins install clawhub:openclaw-wechat --force
   [上游合入跟踪](https://github.com/NewFuture/openclaw-weixin/issues/36)中区分腾讯侧
   状态、社区版合入和正式发布。
 
-| 对比项 | 社区版（本项目） | 腾讯版 |
-| --- | --- | --- |
-| 维护定位 | 跟进腾讯上游，并由社区独立审查、测试和发布 | 由腾讯官方维护和发布 |
-| 安装包 | npm `openclaw-weixin`；ClawHub `openclaw-wechat` | npm `@tencent-weixin/openclaw-weixin` |
-| 插件、Channel 和状态 ID | `openclaw-weixin` | `openclaw-weixin` |
-| 更新范围 | 跟进腾讯上游，并独立评估社区修复与 OpenClaw 兼容调整 | 由腾讯上游独立决定 |
-| 兼容验证 | 验证最低支持宿主、推荐开发宿主和明确的 Node.js 版本范围 | 以腾讯版包元数据和说明为准 |
-| 变更与支持 | [社区变更日志](https://openclaw-weixin.newfuture.cc/changelog.html) · [上游合入跟踪](https://github.com/NewFuture/openclaw-weixin/issues/36) · [问题反馈](https://github.com/NewFuture/openclaw-weixin/issues) | [腾讯变更日志](https://github.com/Tencent/openclaw-weixin/blob/main/CHANGELOG.zh_CN.md) · [问题反馈](https://github.com/Tencent/openclaw-weixin/issues) |
-
-如果希望使用上述已发布修复、双发布入口和本项目兼容验证，选择社区版；如果需要腾讯
-官方维护链路，选择腾讯版。两边的版本号和修复进入时间彼此独立，不能只按版本号判断
-功能先后。两者占用同一插件 ID，不能共存；从腾讯版切换到社区版时，请按上面的
-`--force` 命令原位替换，不要先卸载。
-
-当前能力包括微信私聊、文本与媒体收发、扫码登录和多账号；插件没有声明群聊能力。
+当前能力包括微信私聊、文本与媒体收发、扫码登录和多账号。
 
 > **名称兼容：** `openclaw-wechat` 是 ClawHub 包名及 channel 兼容别名，
 > `openclaw-weixin` 仍是规范 plugin/channel ID。在 OpenClaw 2026.7.1 及以上版本，
@@ -122,9 +106,9 @@ openclaw plugins install clawhub:openclaw-wechat --force
 > `openclaw-weixin`。插件启停命令、配置和状态路径始终使用 `openclaw-weixin`，并且不要
 > 同时安装多个发行包。
 
-<p class="install-done"><strong>如果当前 OpenClaw 已有微信登录状态，安装后通常只需确认连接。</strong>
-全新安装需要展开完整检查并扫码绑定；安装报错、未自动恢复连接或需要确认目标账号时，
-也在此检查。</p>
+> [!TIP]
+> **如果当前 OpenClaw 已有微信登录状态，安装后通常只需确认连接。** 全新安装需要
+> 展开完整检查并扫码绑定；安装报错、未自动恢复连接或需要确认目标账号时，也在此检查。
 
 <details id="verify-connection" class="full-check">
 <summary>完整检查、扫码与恢复</summary>
@@ -152,14 +136,11 @@ openclaw plugins list
 openclaw channels status --probe
 ```
 
-<div class="connection-criteria">
-  <strong>满足以下条件即表示连接成功</strong>
-  <ul>
-    <li><code>openclaw plugins list</code> 显示插件已启用，并且没有加载错误。</li>
-    <li><code>openclaw channels status --probe</code> 对目标微信账号探测成功。</li>
-    <li>使用多账号时，探测结果对应你准备使用的别名或账号 ID。</li>
-  </ul>
-</div>
+**满足以下条件即表示连接成功：**
+
+- `openclaw plugins list` 显示插件已启用，并且没有加载错误。
+- `openclaw channels status --probe` 对目标微信账号探测成功。
+- 使用多账号时，探测结果对应你准备使用的别名或账号 ID。
 
 | 检查结果 | 下一步 |
 | --- | --- |
@@ -168,7 +149,7 @@ openclaw channels status --probe
 | 账号显示未登录 | 继续下面的扫码绑定 |
 | Channel 显示 `OK` 但未连接 | 按[连接故障排查](https://openclaw-weixin.newfuture.cc/guide.html#channel-显示-ok-但未连接)重载实际运行单元 |
 
-<h3 id="bind-account">状态显示未登录</h3>
+### 状态显示未登录
 
 仅在探测显示目标账号未登录时执行：
 
@@ -221,9 +202,23 @@ openclaw channels login --channel openclaw-weixin --account nezha
 
 </details>
 
+## 主动与定时发送
+
+微信后端要求每条出站消息携带由该收件人入站消息下发的账号级 context token。插件收到
+消息后会按账号保存该 token：
+
+- 尚未收到该收件人的消息或 token 缺失时，插件会拒绝发送消息，不会返回本地“成功”
+  结果。
+- 已保存的 token 仍可能失效；长时间无交互后发送失败时，请让收件人先向对应 bot
+  发送一条消息以刷新 token，再重试。
+
+多账号部署的定时任务应同时显式设置 `delivery.to` 和 `delivery.accountId`。未指定
+`accountId` 时，只有恰好能从账号级上下文选出一个账号才会发送；缺失或歧义都会失败。
+context token 属于敏感数据，不要跨账号复制或写入任务配置。
+
 ## 文档与支持
 
-- [详细指南](https://openclaw-weixin.newfuture.cc/guide.html)：安装行为、BotAgent、卸载和故障排查
+- [详细指南](https://openclaw-weixin.newfuture.cc/guide.html)：安装行为、可选配置、主动发送限制、卸载和故障排查
 - [后端 API 协议](https://openclaw-weixin.newfuture.cc/backend-api.html)
 - [架构说明](https://openclaw-weixin.newfuture.cc/architecture.html)
 - [变更日志](https://openclaw-weixin.newfuture.cc/changelog.html)

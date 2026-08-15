@@ -4,30 +4,29 @@
 [简体中文](https://openclaw-weixin.newfuture.cc/) · [Documentation site](https://openclaw-weixin.newfuture.cc/en/)
 <!-- docs-site:repo-only:end -->
 
-<p class="product-tagline">Bring OpenClaw into WeChat</p>
+**Bring OpenClaw into WeChat**
 
-<p class="product-summary">
 This community-maintained distribution of
-<a href="https://github.com/Tencent/openclaw-weixin">Tencent/openclaw-weixin</a>
+[Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin)
 is available from both npm and ClawHub.
-</p>
 
-<h2 id="connect-wechat">Choose an installation method</h2>
+<a id="connect-wechat"></a>
 
-<p class="choice-lead"><strong>Copy the prompt, or run a command directly.</strong>
+## Choose an installation method
+
+**Copy the prompt, or run a command directly.**
+
 The prompt tries ClawHub first, falls back to npm, and completes installation
-and connection checks; direct commands only install or replace the plugin.</p>
+and connection checks; direct commands only install or replace the plugin.
 
-<div class="install-choice">
-  <a href="#agent-install"><strong>Copy the prompt</strong><span>ClawHub first, npm fallback</span></a>
-  <span class="choice-or" aria-hidden="true">or</span>
-  <a href="#direct-install"><strong>Run a command</strong><span>Choose npm or ClawHub yourself</span></a>
-</div>
+[Copy the prompt](#agent-install) · or · [Run a command](#direct-install)
 
 <!-- registry-prompt:start -->
-<h3 id="agent-install">Let OpenClaw complete the installation</h3>
+<a id="agent-install"></a>
 
-<p class="prompt-lead">Paste this prompt into an OpenClaw chat and send it:</p>
+### Let OpenClaw complete the installation
+
+Paste this prompt into an OpenClaw chat and send it:
 
 ```text
 Install or replace the WeChat plugin in place for this OpenClaw instance and check its connection. Install from ClawHub `clawhub:openclaw-wechat` first; only if the ClawHub source is explicitly unavailable, fall back to npm `npm:openclaw-weixin`, and install only one.
@@ -35,17 +34,18 @@ Follow OpenClaw's install policy and use in-place replacement for an existing in
 ```
 <!-- registry-prompt:end -->
 
-<h3 id="direct-install">Run a command directly</h3>
+<a id="direct-install"></a>
+
+### Run a command directly
 
 <!-- registry-source:npm:start -->
-<h4 id="npm-source">npm: <code>openclaw-weixin</code></h4>
+#### npm: `openclaw-weixin`
 
-<p class="source-note"><strong>The npm page, GitHub README, and documentation site
-default to this source.</strong> <code>--force</code> confirms that you reviewed and
-selected this npm source and allows replacement of an existing installation with
-the same plugin id.</p>
+**The npm page, GitHub README, and documentation site default to this source.**
+`--force` confirms that you reviewed and selected this npm source and allows
+replacement of an existing installation with the same plugin id.
 
-<h5 id="npm-cli-install">npm command</h5>
+##### npm command
 
 ```bash
 openclaw plugins install npm:openclaw-weixin --force
@@ -53,26 +53,25 @@ openclaw plugins install npm:openclaw-weixin --force
 <!-- registry-source:npm:end -->
 
 <!-- registry-source:clawhub:start -->
-<h4 id="clawhub-source">ClawHub: <code>openclaw-wechat</code></h4>
+#### ClawHub: `openclaw-wechat`
 
-<p class="source-note"><strong>The ClawHub package page defaults to this source.</strong>
-The banner command without <code>--force</code> is suitable for a fresh install
-with no existing WeChat plugin. The command below keeps <code>--force</code> so it
-can also replace a Tencent or npm installation that owns the
-<code>openclaw-weixin</code> plugin id.</p>
+**The ClawHub package page defaults to this source.** The banner command without
+`--force` is suitable for a fresh install with no existing WeChat plugin. The
+command below keeps `--force` so it can also replace a Tencent or npm
+installation that owns the `openclaw-weixin` plugin id.
 
-<h5 id="clawhub-cli-install">ClawHub command</h5>
+##### ClawHub command
 
 ```bash
 openclaw plugins install clawhub:openclaw-wechat --force
 ```
 <!-- registry-source:clawhub:end -->
 
-<p class="replacement-note"><strong>Do not uninstall Tencent's package first when
-replacing it.</strong> Both community sources preserve the plugin id, channel id,
-configuration, and login state. <code>--force</code> does not bypass OpenClaw's
-install policy or built-in dependency denylist. OpenClaw rotates configuration
-backups automatically.</p>
+> [!WARNING]
+> **Do not uninstall Tencent's package first when replacing it.** Both community
+> sources preserve the plugin id, channel id, configuration, and login state.
+> `--force` does not bypass OpenClaw's install policy or built-in dependency
+> denylist. OpenClaw rotates configuration backups automatically.
 
 ## Community package sources
 
@@ -92,10 +91,8 @@ This project is a community-maintained distribution of
 official npm package is `@tencent-weixin/openclaw-weixin`. This project is
 maintained and published independently and is not an official Tencent or WeChat
 release. Both distributions use the same WeChat backend protocol and
-`openclaw-weixin` internal identity; their publication sources, included fixes,
-and support channels differ.
-
-### Why choose the community distribution
+`openclaw-weixin` internal identity. The main differences are their publication
+sources and how fixes, new features, and security updates are incorporated.
 
 - **Shipped community fixes:** On top of Tencent upstream, this distribution
   includes inbound replay deduplication, per-agent inbound media isolation,
@@ -116,25 +113,8 @@ and support channels differ.
   that distinguishes Tencent-side status, community inclusion, and release
   status.
 
-| Comparison | Community distribution (this project) | Tencent distribution |
-| --- | --- | --- |
-| Maintenance model | Tracks Tencent upstream, with independent community review, testing, and releases | Maintained and released officially by Tencent |
-| Install packages | npm `openclaw-weixin`; ClawHub `openclaw-wechat` | npm `@tencent-weixin/openclaw-weixin` |
-| Plugin, channel, and state ID | `openclaw-weixin` | `openclaw-weixin` |
-| Update scope | Tracks Tencent upstream and independently evaluates community fixes and OpenClaw compatibility changes | Decided independently by Tencent upstream |
-| Compatibility validation | Validates the minimum supported host, recommended development host, and explicit Node.js ranges | Defined by Tencent's package metadata and documentation |
-| Changes and support | [Community changelog](https://openclaw-weixin.newfuture.cc/en/changelog.html) · [Upstream intake tracker](https://github.com/NewFuture/openclaw-weixin/issues/36) · [Issue tracker](https://github.com/NewFuture/openclaw-weixin/issues) | [Tencent changelog](https://github.com/Tencent/openclaw-weixin/blob/main/CHANGELOG.md) · [Issue tracker](https://github.com/Tencent/openclaw-weixin/issues) |
-
-Choose the community distribution for the shipped fixes above, dual package
-sources, and this project's compatibility validation. Choose Tencent's
-distribution when you require Tencent's official maintenance path. Versions and
-fixes land independently, so version numbers alone do not establish which
-features are present. The packages occupy the same plugin ID and cannot coexist.
-To switch from Tencent's package to this distribution, use one of the `--force`
-commands above for an in-place replacement; do not uninstall first.
-
 Current capabilities include direct chats, text and media transfer, QR login,
-and multiple accounts. The plugin does not advertise group-chat support.
+and multiple accounts.
 
 > **Name compatibility:** `openclaw-wechat` is the ClawHub package name and
 > channel compatibility alias; `openclaw-weixin` remains the canonical
@@ -144,11 +124,12 @@ and multiple accounts. The plugin does not advertise group-chat support.
 > and state paths always use `openclaw-weixin`. Do not install multiple
 > distributions at once.
 
-<p class="install-done"><strong>If this OpenClaw instance already has a WeChat login,
-you usually only need to confirm the connection after installation.</strong> For a
-new installation, open the full check and scan the QR code. Use it as well when
-installation fails, the connection does not return automatically, or you need to
-confirm the intended account.</p>
+> [!TIP]
+> **If this OpenClaw instance already has a WeChat login, you usually only need
+> to confirm the connection after installation.** For a new installation, open
+> the full check and scan the QR code. Use it as well when installation fails,
+> the connection does not return automatically, or you need to confirm the
+> intended account.
 
 <details id="verify-connection" class="full-check">
 <summary>Full check, QR login, and recovery</summary>
@@ -178,14 +159,12 @@ openclaw plugins list
 openclaw channels status --probe
 ```
 
-<div class="connection-criteria">
-  <strong>You are connected when all of these are true</strong>
-  <ul>
-    <li><code>openclaw plugins list</code> shows the plugin enabled with no load error.</li>
-    <li><code>openclaw channels status --probe</code> succeeds for the intended WeChat account.</li>
-    <li>With multiple accounts, the result belongs to the alias or account ID you intend to use.</li>
-  </ul>
-</div>
+**You are connected when all of these are true:**
+
+- `openclaw plugins list` shows the plugin enabled with no load error.
+- `openclaw channels status --probe` succeeds for the intended WeChat account.
+- With multiple accounts, the result belongs to the alias or account ID you
+  intend to use.
 
 | Result | Next action |
 | --- | --- |
@@ -194,7 +173,7 @@ openclaw channels status --probe
 | Account is not logged in | Continue to QR login below |
 | Channel shows `OK` but does not connect | Follow [connection troubleshooting](https://openclaw-weixin.newfuture.cc/en/guide.html#channel-shows-ok-but-doesn-t-connect) to reload the actual runtime |
 
-<h3 id="bind-account">The status reports no login</h3>
+### The status reports no login
 
 Run this only when the probe reports that the intended account is not logged in:
 
@@ -252,9 +231,27 @@ files from `~/.openclaw/openclaw-weixin/`.
 
 </details>
 
+## Proactive and scheduled sends
+
+The WeChat backend requires every outbound message to carry an account-scoped
+context token issued by an inbound message from that recipient. The plugin
+stores the token under the receiving account:
+
+- If the recipient has not messaged the bot or the token is missing, the plugin
+  refuses delivery instead of returning a local success result.
+- A stored token can still become stale. If a send fails after a long idle
+  period, ask the recipient to message the corresponding bot once to refresh
+  the token, then retry.
+
+Scheduled jobs in multi-account deployments should explicitly set both
+`delivery.to` and `delivery.accountId`. Without `accountId`, delivery proceeds
+only when account-scoped context selects exactly one account; missing or
+ambiguous context fails. Context tokens are sensitive: never copy them between
+accounts or put them in job configuration.
+
 ## Documentation and support
 
-- [Detailed guide](https://openclaw-weixin.newfuture.cc/en/guide.html): install behavior, BotAgent, uninstall, and troubleshooting
+- [Detailed guide](https://openclaw-weixin.newfuture.cc/en/guide.html): install behavior, optional settings, proactive-send constraints, uninstall, and troubleshooting
 - [Backend API protocol](https://openclaw-weixin.newfuture.cc/en/backend-api.html)
 - [Architecture](https://openclaw-weixin.newfuture.cc/en/architecture.html)
 - [Changelog](https://openclaw-weixin.newfuture.cc/en/changelog.html)

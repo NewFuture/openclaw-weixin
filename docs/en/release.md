@@ -1,5 +1,7 @@
 # npmjs, GitHub Packages, GitHub Release, and ClawHub process
 
+[简体中文](../zh-CN/release.md)
+
 `openclaw-weixin` publishes the canonical package to the official npm registry,
 publishes the matching ClawPack to the ClawHub listing `openclaw-wechat`, mirrors
 the package to GitHub Packages as `@newfuture/openclaw-weixin`, and creates a
@@ -170,7 +172,7 @@ It never modifies the source tarball or creates an `openclaw-wechat` npm package
 
 Before any ClawHub release, run `npm ci`, `npm run check`, and
 `npm run pack:check`, then build and validate the ClawPack with the commands in
-[CONTRIBUTING.md](./CONTRIBUTING.md). Never reuse or overwrite an existing
+[CONTRIBUTING.md](../CONTRIBUTING.md). Never reuse or overwrite an existing
 ClawHub version. Each new ClawHub version must come from the matching new
 canonical npm/GitHub release tag.
 

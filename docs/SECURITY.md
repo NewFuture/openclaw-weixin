@@ -1,5 +1,7 @@
 # Security Policy
 
+[简体中文](./zh-CN/security.md)
+
 ## Supported versions
 
 Security fixes are provided for the latest community release. Upgrade to the

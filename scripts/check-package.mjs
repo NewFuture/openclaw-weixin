@@ -190,12 +190,12 @@ for (const required of [
   "openclaw.plugin.json",
   "index.ts",
   "dist/index.js",
-  "docs/architecture.md",
-  "docs/architecture_EN.md",
-  "docs/guide.md",
-  "docs/guide_EN.md",
-  "docs/backend-api.md",
-  "docs/backend-api_EN.md",
+  "docs/zh-CN/architecture.md",
+  "docs/en/architecture.md",
+  "docs/zh-CN/guide.md",
+  "docs/en/guide.md",
+  "docs/zh-CN/backend-api.md",
+  "docs/en/backend-api.md",
 ]) {
   if (!files.has(required)) {
     fail(`missing required file ${required}`);

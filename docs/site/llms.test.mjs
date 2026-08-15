@@ -51,23 +51,22 @@ describe("emitMachineReadable", () => {
     }
   });
 
-  it("marks locale pages that still carry the English source", async () => {
+  it("indexes every page as an explicit translation", async () => {
     const llms = await readFile(path.join(outDir, "llms.txt"), "utf8");
-    assert.match(llms, /\/contributing\.md\): [^\n]+ \(English source, not translated yet\)\n/);
-    assert.doesNotMatch(llms, /\/architecture\.md\): [^\n]*English source/);
-    assert.doesNotMatch(llms, /\/guide\.md\): [^\n]*English source/);
+    assert.doesNotMatch(llms, /source, not translated yet/);
+    assert.ok(result.pages.every((page) => page.translated));
   });
 
   it("inlines every translated page in llms-full.txt with its repository source", async () => {
     const full = await readFile(path.join(outDir, "llms-full.txt"), "utf8");
-    for (const page of result.pages.filter((entry) => entry.translated)) {
+    for (const page of result.pages) {
       assert.ok(
         full.includes(`<!-- source: ${page.source} | locale: ${page.locale} | url: ${BASE_URL}/${page.path}.md -->`),
         `llms-full.txt is missing ${page.source}`,
       );
     }
     assert.ok(full.includes(`url: ${BASE_URL}/architecture.md`), "Chinese architecture must be inlined");
-    assert.ok(!full.includes(`url: ${BASE_URL}/contributing.md`), "untranslated copies must not be duplicated");
+    assert.ok(full.includes(`url: ${BASE_URL}/contributing.md`), "Chinese contributing guide must be inlined");
   });
 
   it("points robots.txt at the sitemap and disables Jekyll", async () => {

@@ -1,5 +1,7 @@
 # Contributing
 
+[简体中文](./zh-CN/contributing.md)
+
 This repository is the community-maintained distribution of
 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin).
 Contributions should preserve the `openclaw-weixin` plugin/channel id and its
@@ -27,8 +29,8 @@ Install the exact dependency versions recorded in the lockfile:
 npm ci
 ```
 
-Read [AGENTS.md](./AGENTS.md) for repository invariants and
-[the architecture guide](./docs/architecture.md) for lifecycle and data flow.
+Read [AGENTS.md](../AGENTS.md) for repository invariants and
+[the architecture guide](./en/architecture.md) for lifecycle and data flow.
 These rules apply whether a change is written manually or with coding-agent
 assistance.
 

@@ -69,6 +69,39 @@
 已注册的 agent 共享同一个 `botAgent` 声明；如有需要按 agent 单独标识的场景，
 可在后续版本扩展配置。
 
+## 工具调用进度消息（可选）
+
+`replyProgressMessages` 默认为 `true`。模型调用工具时，插件会发送结构化的
+`TOOL_CALL_START` 和 `TOOL_CALL_RESULT` 进度消息。若不希望显示这些额外消息，可在
+`openclaw.json` 中关闭：
+
+```json
+{
+  "channels": {
+    "openclaw-weixin": {
+      "replyProgressMessages": false
+    }
+  }
+}
+```
+
+设为 `false` 只会停止工具调用进度消息，不会关闭最终回复或普通文本与媒体消息。
+
+## 主动与定时发送
+
+微信后端要求每条出站消息携带由该收件人入站消息下发的账号级 context token。插件收到
+消息后会按账号保存该 token。
+
+- 尚未收到该收件人的消息或 token 缺失时，插件会拒绝发送消息，不会返回本地“成功”
+  结果。
+- 已保存的 token 仍可能失效；长时间无交互后发送失败时，请让收件人先向对应 bot
+  发送一条消息以刷新 token，再重试。
+- 多账号部署的定时任务应同时显式设置 `delivery.to` 和 `delivery.accountId`。未指定
+  `accountId` 时，只有恰好能从账号级上下文选出一个账号才会发送；缺失或歧义都会
+  失败。
+
+context token 属于敏感数据，不要跨账号复制、写入任务配置或分享状态文件。
+
 ## 卸载
 
 > [!WARNING]

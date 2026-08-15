@@ -6,7 +6,7 @@ const workflow = readFileSync(new URL("../.github/workflows/clawhub-publish.yml"
   "\r\n",
   "\n",
 );
-const releaseGuide = readFileSync(new URL("../RELEASE.md", import.meta.url), "utf8").replaceAll("\r\n", "\n");
+const releaseGuide = readFileSync(new URL("../docs/en/release.md", import.meta.url), "utf8").replaceAll("\r\n", "\n");
 
 describe("ClawHub publish workflow contract", () => {
   it("limits the standalone workflow to a pinned credential-free PR dry-run", () => {

@@ -77,16 +77,16 @@ export const DOCUMENTS = [
   },
   {
     slug: "guide",
-    sources: { zh: "docs/guide.md", en: "docs/guide_EN.md" },
+    sources: { zh: "docs/zh-CN/guide.md", en: "docs/en/guide.md" },
     title: { en: "Detailed Guide", zh: "详细指南" },
     description: {
-      en: "Installation behavior, custom BotAgent, uninstall, and troubleshooting.",
-      zh: "安装行为、自定义 BotAgent、卸载与故障排查。",
+      en: "Installation behavior, optional channel settings, proactive-send constraints, uninstall, and troubleshooting.",
+      zh: "安装行为、可选 Channel 配置、主动发送限制、卸载与故障排查。",
     },
   },
   {
     slug: "architecture",
-    sources: { zh: "docs/architecture.md", en: "docs/architecture_EN.md" },
+    sources: { zh: "docs/zh-CN/architecture.md", en: "docs/en/architecture.md" },
     title: { en: "Architecture", zh: "架构说明" },
     description: {
       en: "Component map, plugin lifecycle, inbound and outbound flows, and persistent state.",
@@ -95,7 +95,7 @@ export const DOCUMENTS = [
   },
   {
     slug: "backend-api",
-    sources: { zh: "docs/backend-api.md", en: "docs/backend-api_EN.md" },
+    sources: { zh: "docs/zh-CN/backend-api.md", en: "docs/en/backend-api.md" },
     title: { en: "Backend API Protocol", zh: "后端 API 协议" },
     description: {
       en: "Every Weixin backend endpoint used for QR login, lifecycle, messages, and media.",
@@ -113,7 +113,7 @@ export const DOCUMENTS = [
   },
   {
     slug: "contributing",
-    sources: { en: "CONTRIBUTING.md" },
+    sources: { zh: "docs/zh-CN/contributing.md", en: "docs/CONTRIBUTING.md" },
     title: { en: "Contributing", zh: "参与贡献" },
     description: {
       en: "Prerequisites, local development commands, and pull request expectations.",
@@ -121,17 +121,8 @@ export const DOCUMENTS = [
     },
   },
   {
-    slug: "agents",
-    sources: { en: "AGENTS.md" },
-    title: { en: "Coding Agent Guide", zh: "编码智能体指南" },
-    description: {
-      en: "Repository invariants, module map, validation ladder, and definition of done.",
-      zh: "仓库约束、模块地图、验证流程与完成标准。",
-    },
-  },
-  {
     slug: "release",
-    sources: { en: "RELEASE.md" },
+    sources: { zh: "docs/zh-CN/release.md", en: "docs/en/release.md" },
     title: { en: "Release Process", zh: "发布流程" },
     description: {
       en: "How npmjs, GitHub Packages, GitHub Releases, and ClawHub are published.",
@@ -140,7 +131,7 @@ export const DOCUMENTS = [
   },
   {
     slug: "security",
-    sources: { en: "SECURITY.md" },
+    sources: { zh: "docs/zh-CN/security.md", en: "docs/SECURITY.md" },
     title: { en: "Security Policy", zh: "安全策略" },
     description: {
       en: "Supported versions and how to report a vulnerability privately.",
@@ -159,7 +150,7 @@ export const GROUPS = [
   },
   {
     title: { en: "Project", zh: "项目信息" },
-    documents: ["contributing", "agents", "release", "security"],
+    documents: ["contributing", "release", "security"],
     collapsed: true,
   },
 ];
@@ -185,7 +176,7 @@ const TASK_NAV = {
 
 const MORE_NAV_GROUPS = [
   { label: "guides", documents: ["guide", "architecture", "backend-api", "changelog"] },
-  { label: "project", documents: ["contributing", "agents", "release", "security"] },
+  { label: "project", documents: ["contributing", "release", "security"] },
 ];
 
 export function documentBySlug(slug) {
