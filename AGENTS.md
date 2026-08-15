@@ -6,8 +6,8 @@ contract.
 
 ## Work in this order
 
-1. Read [the architecture guide](docs/architecture.md) for lifecycle and data flow
-   and [CONTRIBUTING.md](CONTRIBUTING.md) for setup and validation.
+1. Read [the architecture guide](docs/en/architecture.md) for lifecycle and data flow
+   and [CONTRIBUTING.md](docs/CONTRIBUTING.md) for setup and validation.
 2. Use the module map and all matching project skills to scope the change. Read the
    implementation, production callers, colocated tests, installed SDK package
    exports and `.d.ts` declarations, and analogous repository helpers before

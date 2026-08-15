@@ -69,28 +69,45 @@ describe("documentation map", () => {
     const byPath = new Map(pages.map((page) => [page.path, page]));
     assert.equal(byPath.get("index").source, "README.md");
     assert.equal(byPath.get("guide").locale, DEFAULT_LOCALE);
-    assert.equal(byPath.get("guide").source, "docs/guide.md");
-    assert.equal(byPath.get("en/guide").source, "docs/guide_EN.md");
-    assert.equal(byPath.get("architecture").source, "docs/architecture.md");
-    assert.equal(byPath.get("en/architecture").source, "docs/architecture_EN.md");
+    assert.equal(byPath.get("guide").source, "docs/zh-CN/guide.md");
+    assert.equal(byPath.get("en/guide").source, "docs/en/guide.md");
+    assert.equal(byPath.get("architecture").source, "docs/zh-CN/architecture.md");
+    assert.equal(byPath.get("en/architecture").source, "docs/en/architecture.md");
     assert.equal(byPath.get("en/index").source, "README_EN.md");
+  });
+
+  it("keeps every document explicitly translated", () => {
+    for (const document of DOCUMENTS) {
+      assert.ok(document.sources.zh, `missing Simplified Chinese source for ${document.slug}`);
+      assert.ok(document.sources.en, `missing English source for ${document.slug}`);
+    }
+    for (const slug of ["guide", "distributions", "architecture", "backend-api"]) {
+      const document = DOCUMENTS.find((entry) => entry.slug === slug);
+      assert.match(document.sources.zh, /^docs\/zh-CN\/[^/]+\.md$/);
+      assert.match(document.sources.en, /^docs\/en\/[^/]+\.md$/);
+      assert.doesNotMatch(document.sources.en, /_EN\.md$/);
+    }
+    assert.equal(DOCUMENTS.find((entry) => entry.slug === "release").sources.zh, "docs/zh-CN/release.md");
+    assert.equal(DOCUMENTS.find((entry) => entry.slug === "release").sources.en, "docs/en/release.md");
   });
 
   it("publishes every document in every locale so language switching never 404s", () => {
     const pages = createPages();
     assert.equal(pages.length, DOCUMENTS.length * LOCALES.length);
     const architecture = pages.find((page) => page.path === "architecture");
-    assert.equal(architecture.source, "docs/architecture.md");
+    assert.equal(architecture.source, "docs/zh-CN/architecture.md");
     assert.equal(architecture.sourceLocale, "zh");
     assert.equal(architecture.translated, true);
     assert.equal(architecture.canonicalPath, "architecture");
     const contributing = pages.find((page) => page.path === "contributing");
-    assert.equal(contributing.sourceLocale, "en");
-    assert.equal(contributing.translated, false);
-    assert.equal(contributing.canonicalPath, "en/contributing");
+    assert.equal(contributing.source, "docs/zh-CN/contributing.md");
+    assert.equal(contributing.sourceLocale, "zh");
+    assert.equal(contributing.translated, true);
+    assert.equal(contributing.canonicalPath, "contributing");
     const guide = pages.find((page) => page.path === "guide");
     assert.equal(guide.translated, true);
     assert.equal(guide.canonicalPath, "guide");
+    assert.ok(pages.every((page) => page.translated));
   });
 
   it("maps generated pages back to their repository source for edit links", () => {
@@ -98,8 +115,10 @@ describe("documentation map", () => {
     assert.equal(pageByFile["index.md"].source, "README.md");
     assert.equal(pageByFile["en/index.md"].source, "README_EN.md");
     assert.equal(pageByFile["changelog.md"].source, "CHANGELOG.md");
-    assert.equal(pageByFile["security.md"].source, "SECURITY.md");
-    assert.equal(pageByFile["en/security.md"].source, "SECURITY.md");
+    assert.equal(pageByFile["contributing.md"].source, "docs/zh-CN/contributing.md");
+    assert.equal(pageByFile["release.md"].source, "docs/zh-CN/release.md");
+    assert.equal(pageByFile["security.md"].source, "docs/zh-CN/security.md");
+    assert.equal(pageByFile["en/security.md"].source, "docs/SECURITY.md");
   });
 
   it("keeps every locale link inside its own locale", () => {
@@ -115,7 +134,7 @@ describe("documentation map", () => {
     const sidebar = chineseSidebar.flatMap((group) => group.items);
     const entry = sidebar.find((item) => item.link === "/architecture");
     assert.equal(entry.text, "架构说明");
-    assert.ok(sidebar.some((item) => item.link === "/contributing" && item.text === "参与贡献（EN）"));
+    assert.ok(sidebar.some((item) => item.link === "/contributing" && item.text === "参与贡献"));
     assert.ok(sidebar.some((item) => item.link === "/guide" && item.text === "详细指南"));
     assert.ok(
       createSidebar("en")
@@ -146,17 +165,17 @@ describe("documentation map", () => {
 
   it("resolves a source document to the reader's locale", () => {
     const resolve = createPathResolver("zh");
-    assert.equal(resolve("docs/guide.md"), "guide");
-    assert.equal(resolve("docs/architecture.md"), "architecture");
+    assert.equal(resolve("docs/zh-CN/guide.md"), "guide");
+    assert.equal(resolve("docs/zh-CN/architecture.md"), "architecture");
     assert.equal(resolve("LICENSE"), undefined);
   });
 
   it("honours an explicit link to another locale's translation", () => {
     assert.equal(createPathResolver("zh")("README_EN.md"), "en/index");
     assert.equal(createPathResolver("en")("README.md"), "index");
-    assert.equal(createPathResolver("zh")("docs/architecture_EN.md"), "en/architecture");
-    assert.equal(createPathResolver("en")("docs/architecture.md"), "architecture");
-    assert.equal(createPathResolver("en")("docs/architecture_EN.md"), "en/architecture");
+    assert.equal(createPathResolver("zh")("docs/en/architecture.md"), "en/architecture");
+    assert.equal(createPathResolver("en")("docs/zh-CN/architecture.md"), "architecture");
+    assert.equal(createPathResolver("en")("docs/en/architecture.md"), "en/architecture");
   });
 
   it("maps page paths onto the published HTML files", () => {

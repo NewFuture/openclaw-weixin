@@ -59,8 +59,8 @@ describe("compatibility metadata", () => {
     expect(packageJson.openclaw.channel.aliases).toEqual(["openclaw-wechat"]);
   });
 
-  it("matches the OpenClaw Node.js engine range", () => {
-    expect(packageJson.engines.node).toBe(">=22.22.3 <23 || >=24.15.0 <25 || >=25.9.0");
+  it("declares the supported Node.js floor", () => {
+    expect(packageJson.engines.node).toBe(">=22.22.3");
   });
 });
 

@@ -475,13 +475,13 @@ describe("ClawHub package preparation", () => {
     },
     {
       label: "relative Markdown link",
-      mutate: (readme) => `${readme}[Broken guide](../docs/guide.md)\n`,
-      expected: 'link target must be absolute or fragment-only: "../docs/guide.md"',
+      mutate: (readme) => `${readme}[Broken guide](../docs/en/guide.md)\n`,
+      expected: 'link target must be absolute or fragment-only: "../docs/en/guide.md"',
     },
     {
       label: "relative HTML link",
-      mutate: (readme) => `${readme}<a href="./docs/guide.md">Broken guide</a>\n`,
-      expected: 'link target must be absolute or fragment-only: "./docs/guide.md"',
+      mutate: (readme) => `${readme}<a href="./docs/en/guide.md">Broken guide</a>\n`,
+      expected: 'link target must be absolute or fragment-only: "./docs/en/guide.md"',
     },
   ])("rejects $label in a localized README", async ({ mutate, expected }) => {
     const source = await createCanonicalArchive(undefined, (readmes) => ({
@@ -506,26 +506,26 @@ describe("ClawHub package preparation", () => {
   });
 
   it.each([
-    ["dot-relative Markdown", "[Guide](./docs/guide.md)", "./docs/guide.md"],
-    ["parent-relative Markdown", "[Guide](../docs/guide.md)", "../docs/guide.md"],
+    ["dot-relative Markdown", "[Guide](./docs/en/guide.md)", "./docs/en/guide.md"],
+    ["parent-relative Markdown", "[Guide](../docs/en/guide.md)", "../docs/en/guide.md"],
     ["bare Markdown", "[Changelog](CHANGELOG.md)", "CHANGELOG.md"],
-    ["linked-image Markdown", "[![Build](https://example.test/badge.svg)](docs/guide.md)", "docs/guide.md"],
-    ["even-backslash inline Markdown", "[x\\\\](docs/guide.md)", "docs/guide.md"],
-    ["escaped-bracket reference Markdown", "[foo\\]]: docs/guide.md", "docs/guide.md"],
-    ["multiline reference Markdown", "[foo\nbar]: docs/guide.md", "docs/guide.md"],
-    ["three-line reference Markdown", "[foo\nbar\nbaz]: docs/guide.md", "docs/guide.md"],
-    ["blockquote reference Markdown", "> [guide]: docs/guide.md\n> [guide]", "docs/guide.md"],
-    ["list reference Markdown", "- [guide]: docs/guide.md\n- [guide]", "docs/guide.md"],
-    ["quoted HTML", '<a href="./docs/guide.md">Guide</a>', "./docs/guide.md"],
-    ["multiline quoted HTML", '<a href="docs/\nguide.md">Guide</a>', "docs/\nguide.md"],
+    ["linked-image Markdown", "[![Build](https://example.test/badge.svg)](docs/en/guide.md)", "docs/en/guide.md"],
+    ["even-backslash inline Markdown", "[x\\\\](docs/en/guide.md)", "docs/en/guide.md"],
+    ["escaped-bracket reference Markdown", "[foo\\]]: docs/en/guide.md", "docs/en/guide.md"],
+    ["multiline reference Markdown", "[foo\nbar]: docs/en/guide.md", "docs/en/guide.md"],
+    ["three-line reference Markdown", "[foo\nbar\nbaz]: docs/en/guide.md", "docs/en/guide.md"],
+    ["blockquote reference Markdown", "> [guide]: docs/en/guide.md\n> [guide]", "docs/en/guide.md"],
+    ["list reference Markdown", "- [guide]: docs/en/guide.md\n- [guide]", "docs/en/guide.md"],
+    ["quoted HTML", '<a href="./docs/en/guide.md">Guide</a>', "./docs/en/guide.md"],
+    ["multiline quoted HTML", '<a href="docs/en/\nguide.md">Guide</a>', "docs/en/\nguide.md"],
     [
       "HTML after an unmatched quote",
-      '<!-- href="https://example.test -->\n<a href="docs/guide.md">Guide</a>',
-      "docs/guide.md",
+      '<!-- href="https://example.test -->\n<a href="docs/en/guide.md">Guide</a>',
+      "docs/en/guide.md",
     ],
-    ["unquoted HTML", "<a href=docs/guide.md>Guide</a>", "docs/guide.md"],
-    ["fenced-code Markdown", "````text\n[Guide](docs/guide.md)\n````", "docs/guide.md"],
-    ["fence-like raw HTML", '<div>\n```text\n<a href="docs/guide.md">Guide</a>\n```\n</div>', "docs/guide.md"],
+    ["unquoted HTML", "<a href=docs/en/guide.md>Guide</a>", "docs/en/guide.md"],
+    ["fenced-code Markdown", "````text\n[Guide](docs/en/guide.md)\n````", "docs/en/guide.md"],
+    ["fence-like raw HTML", '<div>\n```text\n<a href="docs/en/guide.md">Guide</a>\n```\n</div>', "docs/en/guide.md"],
   ])("rejects %s links", (_label, link, target) => {
     expect(() =>
       assertRegistryReadmeLinksAbsolute(`${canonicalReadme("en")}\n${link}\n`, {
@@ -536,7 +536,7 @@ describe("ClawHub package preparation", () => {
 
   it("does not interpret an odd-backslash escaped bracket as an inline link", () => {
     expect(() =>
-      assertRegistryReadmeLinksAbsolute(`${canonicalReadme("en")}\n[x\\](docs/guide.md)\n`, {
+      assertRegistryReadmeLinksAbsolute(`${canonicalReadme("en")}\n[x\\](docs/en/guide.md)\n`, {
         fileName: "README_EN.md",
       }),
     ).not.toThrow();

@@ -1,6 +1,6 @@
 # 架构说明
 
-[English](./architecture_EN.md)
+[English](../en/architecture.md)
 
 `openclaw-weixin` 将微信 HTTP/CDN 协议适配到 OpenClaw channel 运行时。插件负责
 登录、账号状态、长轮询、消息转换和出站媒体传输；OpenClaw 负责路由、会话、命令

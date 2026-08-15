@@ -23,7 +23,6 @@
   --docs-accent-active: rgba(7, 193, 96, 0.17);
   --docs-accent-border: rgba(7, 193, 96, 0.36);
   --docs-shadow: rgba(5, 61, 32, 0.1);
-  --docs-highlight-copy-opacity: 0.62;
   --vp-code-copy-code-border-color: var(--docs-border);
   --vp-code-copy-code-bg: var(--vp-c-bg-elv);
   --vp-code-copy-code-hover-border-color: var(--docs-accent-border);
@@ -102,7 +101,8 @@ html[lang^="zh"] {
 
 .docs-home .vp-doc h2[id],
 .docs-home .vp-doc h3[id],
-.docs-home .vp-doc h4[id] {
+.docs-home .vp-doc h4[id],
+.docs-home .vp-doc a[id] {
   scroll-margin-top: 96px;
 }
 
@@ -111,9 +111,12 @@ html[lang^="zh"] {
   max-width: 72ch;
 }
 
-.docs-home .product-tagline {
+.docs-home .vp-doc h1 + p {
   max-width: 24ch;
   margin: 12px 0 0;
+}
+
+.docs-home .vp-doc h1 + p > strong {
   color: var(--vp-c-text-1);
   font-size: clamp(1.55rem, 3.6vw, 2.2rem);
   font-weight: 650;
@@ -121,7 +124,7 @@ html[lang^="zh"] {
   letter-spacing: -0.025em;
 }
 
-.docs-home .product-summary {
+.docs-home .vp-doc h1 + p + p {
   max-width: 66ch;
   margin: 20px 0 0;
   color: var(--vp-c-text-2);
@@ -129,39 +132,37 @@ html[lang^="zh"] {
   line-height: 1.7;
 }
 
-.docs-home #connect-wechat {
+.docs-home .vp-doc p:has(> #connect-wechat) + h2 {
   margin-top: 48px;
 }
 
-.docs-home .choice-lead {
-  max-width: 62ch;
-  margin: 14px 0 0;
-  color: var(--vp-c-text-2);
-  font-size: 1.08rem;
-  line-height: 1.65;
-}
-
-.docs-home .choice-lead strong {
-  color: var(--vp-c-text-1);
-}
-
-.docs-home .install-choice {
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: stretch;
+  max-width: none;
   margin: 20px 0 44px;
   border-top: 1px solid var(--docs-border);
   border-bottom: 1px solid var(--docs-border);
 }
 
-.docs-home .install-choice a {
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > strong {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--vp-c-text-3);
+  font-size: 0.875rem;
+}
+
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a {
   display: flex;
   min-height: 80px;
-  min-width: 0;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
   padding: 14px 16px;
-  color: var(--vp-c-text-1);
+  color: var(--vp-c-brand-1);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
   text-decoration: none;
   transition:
     background-color 180ms ease,
@@ -169,74 +170,28 @@ html[lang^="zh"] {
     transform 120ms ease;
 }
 
-.docs-home .install-choice a:hover,
-.docs-home .install-choice a:focus-visible {
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:hover,
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:focus-visible {
   background: var(--docs-accent-surface);
   box-shadow: inset 0 -2px 0 var(--vp-c-brand-3);
 }
 
-.docs-home .install-choice a:active {
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:active {
   transform: translateY(1px);
   background: var(--docs-accent-active);
 }
 
-.docs-home .install-choice a strong {
-  color: var(--vp-c-brand-1);
-  font-size: 1.05rem;
-  font-weight: 700;
+.docs-home .vp-doc p:has(> a[id]:only-child) {
+  height: 0;
+  margin: 0;
 }
 
-.docs-home .install-choice a span {
-  margin-top: 4px;
-  color: var(--vp-c-text-2);
-  font-size: 0.875rem;
-  overflow-wrap: anywhere;
-}
-
-.docs-home .choice-or {
-  align-self: center;
-  padding: 0 12px;
-  color: var(--vp-c-text-3);
-  font-size: 0.875rem;
-}
-
-.docs-home h4[id="npm-source"],
-.docs-home h4[id="clawhub-source"] {
-  margin-top: 36px;
-  padding-top: 28px;
-  border-top: 1px solid var(--docs-border);
-  font-size: 1.1rem;
-}
-
-.docs-home h4[id="npm-source"] code,
-.docs-home h4[id="clawhub-source"] code {
-  color: var(--vp-c-brand-1);
-  font-size: 0.9em;
-}
-
-.docs-home .source-note {
-  max-width: 66ch;
-  margin: 10px 0 28px;
-  color: var(--vp-c-text-2);
-  font-size: 0.95rem;
-  line-height: 1.65;
-}
-
-.docs-home .source-note strong {
-  color: var(--vp-c-text-1);
-  font-weight: 650;
-}
-
-.docs-home .prompt-lead {
+.docs-home .vp-doc p:has(> #agent-install) + h3 + p {
   max-width: 62ch;
   margin: 12px 0 16px;
   color: var(--vp-c-text-2);
   font-size: 1rem;
   line-height: 1.65;
-}
-
-.docs-home .prompt-lead strong {
-  color: var(--vp-c-text-1);
 }
 
 .docs-home div[class*="language-"] {
@@ -248,12 +203,12 @@ html[lang^="zh"] {
   white-space: normal;
 }
 
-.docs-home .prompt-lead + div[class*="language-"] {
+.docs-home .vp-doc p:has(> #agent-install) + h3 + p + div[class*="language-"] {
   border-color: var(--docs-accent-border);
   background: var(--docs-accent-surface);
 }
 
-.docs-home .prompt-lead + div[class*="language-"] code {
+.docs-home .vp-doc p:has(> #agent-install) + h3 + p + div[class*="language-"] code {
   width: 100%;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -261,64 +216,50 @@ html[lang^="zh"] {
   white-space: pre-wrap;
 }
 
-.docs-home h5[id$="-cli-install"] + div[class*="language-"] {
+.docs-home :is(h4:has(> code), h4:has(> code) + p) + div[class*="language-"] {
   border-color: var(--docs-accent-border);
   background: var(--docs-accent-faint);
 }
 
-.docs-home h5[id$="-cli-install"] + div[class*="language-"] code {
+.docs-home :is(h4:has(> code), h4:has(> code) + p) + div[class*="language-"] code {
   font-weight: 650;
 }
 
-.docs-home .prompt-lead + div[class*="language-"],
-.docs-home h5[id$="-cli-install"] + div[class*="language-"] {
+.docs-home
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+  + div[class*="language-"] {
   transition:
     border-color 180ms ease,
     background-color 180ms ease,
     box-shadow 180ms ease;
 }
 
-.docs-home .prompt-lead + div[class*="language-"]:hover,
-.docs-home .prompt-lead + div[class*="language-"]:focus-within,
-.docs-home h5[id$="-cli-install"] + div[class*="language-"]:hover,
-.docs-home h5[id$="-cli-install"] + div[class*="language-"]:focus-within {
+.docs-home
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+  + div[class*="language-"]:hover,
+.docs-home
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+  + div[class*="language-"]:focus-within {
   border-color: var(--docs-accent-border);
   box-shadow: 0 8px 24px var(--docs-shadow);
 }
 
-.docs-home .prompt-lead + div[class*="language-"] > button.copy,
-.docs-home h5[id$="-cli-install"] + div[class*="language-"] > button.copy {
-  opacity: var(--docs-highlight-copy-opacity);
+.docs-home
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+  + div[class*="language-"]
+  > button.copy {
+  opacity: 0.62;
 }
 
-.docs-home .prompt-lead + div[class*="language-"]:hover > button.copy,
-.docs-home .prompt-lead + div[class*="language-"]:focus-within > button.copy,
-.docs-home h5[id$="-cli-install"] + div[class*="language-"]:hover > button.copy,
-.docs-home h5[id$="-cli-install"] + div[class*="language-"]:focus-within > button.copy {
+.docs-home
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+  + div[class*="language-"]:hover
+  > button.copy,
+.docs-home
+  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+  + div[class*="language-"]:focus-within
+  > button.copy {
   opacity: 1;
-}
-
-.docs-home .install-done {
-  margin: 32px 0 20px;
-  color: var(--vp-c-text-2);
-  font-size: 0.95rem;
-  line-height: 1.65;
-}
-
-.docs-home .install-done strong {
-  color: var(--vp-c-text-1);
-}
-
-.docs-home .replacement-note {
-  margin: 14px 0 0;
-  color: var(--vp-c-text-2);
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.docs-home .replacement-note strong {
-  color: var(--vp-c-text-1);
-  font-weight: 600;
 }
 
 .docs-home details {
@@ -434,48 +375,6 @@ html[lang^="zh"] {
   color: var(--vp-c-text-1);
 }
 
-.docs-home .connection-criteria {
-  display: grid;
-  grid-template-columns: minmax(150px, 0.42fr) 1fr;
-  gap: 24px;
-  margin: 24px 0;
-  padding: 20px;
-  border: 1px solid var(--docs-border);
-  border-radius: 10px;
-  background: var(--docs-accent-faint);
-}
-
-.docs-home .connection-criteria strong {
-  align-self: start;
-  color: var(--vp-c-brand-1);
-  font-size: 1.05rem;
-  line-height: 1.45;
-}
-
-.docs-home .connection-criteria ul {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.docs-home .connection-criteria li {
-  position: relative;
-  margin: 0;
-  padding-left: 22px;
-  color: var(--vp-c-text-1);
-}
-
-.docs-home .connection-criteria li::before {
-  position: absolute;
-  top: 0;
-  left: 0;
-  color: var(--vp-c-brand-1);
-  content: "✓";
-  font-weight: 750;
-}
-
 .docs-home .vp-doc table {
   display: table;
   width: 100%;
@@ -519,32 +418,19 @@ html[lang^="zh"] {
     padding-top: 28px;
   }
 
-  .docs-home .connection-criteria {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
   .docs-home .vp-doc table {
     font-size: 0.9rem;
   }
 }
 
 @media (max-width: 479px) {
-  .docs-home .product-summary {
-    font-size: 1rem;
-  }
-
-  .docs-home .install-choice a {
-    min-height: 88px;
-    padding: 12px 10px;
-  }
-
-  .docs-home .choice-or {
+  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > strong {
     padding: 0 6px;
   }
 
-  .docs-home .install-choice a span {
-    font-size: 0.8125rem;
+  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a {
+    min-height: 88px;
+    padding: 12px 10px;
   }
 
   .docs-home .vp-doc th,
@@ -558,33 +444,17 @@ html[lang^="zh"] {
   }
 }
 
-@keyframes docs-choice-settle {
-  from {
-    transform: translateY(6px);
-    box-shadow: 0 10px 28px var(--docs-shadow);
-  }
-
-  to {
-    transform: translateY(0);
-    box-shadow: none;
-  }
-}
-
 @media (prefers-reduced-motion: no-preference) {
   html:has(.docs-home) {
     scroll-behavior: smooth;
   }
-
-  .docs-home .install-choice {
-    animation: docs-choice-settle 420ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .docs-home .install-choice,
-  .docs-home .install-choice a,
-  .docs-home .prompt-lead + div[class*="language-"],
-  .docs-home h5[id$="-cli-install"] + div[class*="language-"],
+  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a,
+  .docs-home
+    :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
+    + div[class*="language-"],
   .docs-home details.full-check,
   .docs-home details:not(.full-check) summary,
   .docs-home details:not(.full-check) summary::after,
@@ -594,14 +464,8 @@ html[lang^="zh"] {
     transition: none;
   }
 
-  .docs-home .install-choice a:active {
+  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:active {
     transform: none;
-  }
-}
-
-@media (hover: none) {
-  .docs-home {
-    --docs-highlight-copy-opacity: 1;
   }
 }
 

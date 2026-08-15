@@ -1,6 +1,6 @@
 # 后端 API 协议
 
-[返回详细指南](./guide.md) | [English](./backend-api_EN.md)
+[返回详细指南](./guide.md) | [English](../en/backend-api.md)
 
 本文档覆盖插件用于扫码登录、生命周期通知、消息和媒体的全部微信后端接口。两个扫码
 登录请求始终使用腾讯固定服务；账号登录后 `baseurl` 指定的后端需要实现生命周期、
@@ -66,6 +66,10 @@ Content-Type: application/json
   "local_token_list": []
 }
 ```
+
+`local_token_list` 最多包含账号索引中最近注册的 10 个本地 `bot_token`；没有本地凭据
+时为空。后端用它识别已绑定到当前 OpenClaw 的 bot，并可能返回
+`binded_redirect`。列表中的 token 均属敏感信息，不要在日志或示例中使用真实值。
 
 响应包含不透明的 `qrcode` 标识，以及用于生成二维码的 URL
 `qrcode_img_content`。随后轮询
@@ -163,8 +167,10 @@ Content-Type: application/json
 
 ## getUploadUrl
 
-获取 CDN 上传预签名参数。上传文件前需先调用此接口获取 `upload_param` 和
-`thumb_upload_param`。
+获取 CDN 上传预签名参数。上传文件前需先调用此接口；客户端优先使用
+`upload_full_url`，否则使用 `upload_param`。仅在请求缩略图时才可能返回
+`thumb_upload_param`。当前插件始终传入 `no_need_thumb: true`，只上传原始媒体，
+不请求或使用缩略图上传参数。
 
 **请求体：**
 
@@ -327,12 +333,14 @@ Content-Type: application/json
 ## CDN 上传流程
 
 1. 计算文件明文大小、MD5，以及 AES-128-ECB 加密后的密文大小
-2. 如需缩略图（图片/视频），同样计算缩略图的明文和密文参数
-3. 调用 `getUploadUrl` 获取 `upload_full_url` 或 `upload_param`（以及可选的
-   `thumb_upload_param`）
-4. 使用 AES-128-ECB 加密文件内容，以 `application/octet-stream` 通过 `POST`
+2. 调用 `getUploadUrl`，并传入 `no_need_thumb: true`
+3. 优先使用 `upload_full_url`，否则通过 `upload_param` 构造 CDN URL
+4. 使用 AES-128-ECB 加密原始媒体，以 `application/octet-stream` 通过 `POST`
    上传到 CDN URL
-5. 需要缩略图时，同理加密并上传
-6. 从 CDN 响应读取 `x-encrypted-param`，作为 `CDNMedia` 引用中的
+5. 从 CDN 响应读取 `x-encrypted-param`，作为 `CDNMedia` 引用中的
    `encrypt_query_param`
-7. 将引用放入 `MessageItem` 后发送
+6. 将引用放入 `MessageItem` 后发送
+
+协议还定义了 `thumb_rawsize`、`thumb_rawfilemd5`、`thumb_filesize` 和
+`thumb_upload_param`，供设置 `no_need_thumb: false` 的实现上传缩略图；当前插件
+不会进入该分支。

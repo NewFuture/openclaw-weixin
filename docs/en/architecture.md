@@ -1,6 +1,6 @@
 # Architecture
 
-[简体中文](./architecture.md)
+[简体中文](../zh-CN/architecture.md)
 
 `openclaw-weixin` adapts the Weixin HTTP/CDN protocol to the OpenClaw channel
 runtime. The plugin owns login, account state, long polling, message conversion,
@@ -8,7 +8,7 @@ and outbound media transfer. OpenClaw owns routing, sessions, command
 authorization, reply generation, hooks, and the unified media store.
 
 The wire-level endpoint and message shapes are documented in the
-[backend API protocol](./backend-api_EN.md).
+[backend API protocol](./backend-api.md).
 
 ## Component map
 

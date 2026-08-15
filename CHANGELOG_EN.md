@@ -6,6 +6,12 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- **Node.js compatibility range:** the published package now declares support
+  for Node.js `>=22.22.3`, including Node.js 24 and 26; CI adds compatibility
+  coverage for the current Node.js 26 runtime.
+
 ## [3.1.4] - 2026-08-12
 
 ### Fixed

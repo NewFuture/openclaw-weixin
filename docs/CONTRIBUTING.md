@@ -1,5 +1,7 @@
 # Contributing
 
+[简体中文](./zh-CN/contributing.md)
+
 This repository is the community-maintained distribution of
 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin).
 Contributions should preserve the `openclaw-weixin` plugin/channel id and its
@@ -12,12 +14,12 @@ is approved.
 - npm
 
 Use the Node.js version in `.nvmrc` for the recommended development
-environment. The published package follows OpenClaw's supported Node.js ranges:
-`>=22.22.3 <23`, `>=24.15.0 <25`, or `>=25.9.0`. CI validates the exact
-Node.js 22.22.3 and 24.15.0 lower bounds. The recommended Node.js 24 and
-OpenClaw 2026.7.1 combinations run the full validation suite. Compatibility
-jobs build and register the packaged runtime on Node.js 22 and the minimum
-supported host, OpenClaw 2026.6.1.
+environment. The published package supports Node.js `>=22.22.3`, including
+Node.js 24 and 26. CI validates the exact Node.js 22.22.3 floor, the recommended
+Node.js 24.15.0 environment, and a current Node.js 26 runtime. The recommended
+Node.js 24 and OpenClaw 2026.7.1 combinations run the full validation suite.
+Compatibility jobs build and register the packaged runtime on Node.js 22 and
+the minimum supported host, OpenClaw 2026.6.1.
 
 ## Development
 
@@ -27,8 +29,8 @@ Install the exact dependency versions recorded in the lockfile:
 npm ci
 ```
 
-Read [AGENTS.md](./AGENTS.md) for repository invariants and
-[the architecture guide](./docs/architecture.md) for lifecycle and data flow.
+Read [AGENTS.md](../AGENTS.md) for repository invariants and
+[the architecture guide](./en/architecture.md) for lifecycle and data flow.
 These rules apply whether a change is written manually or with coding-agent
 assistance.
 
