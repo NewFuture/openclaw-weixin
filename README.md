@@ -12,14 +12,7 @@
 
 ## 选择一种安装方式
 
-**推荐复制提示词，也可以直接运行命令。**
-
-提示词让 OpenClaw 优先使用 npm、失败时回退 ClawHub，并完成安装与连接检查；直接命令
-只安装或替换插件。
-
-- [**复制提示词**](#agent-install)
-- **或**
-- [**运行命令**](#direct-install)
+[**复制提示词**](#agent-install) **或** [**运行命令**](#direct-install)
 
 <!-- registry-prompt:start -->
 <a id="agent-install"></a>

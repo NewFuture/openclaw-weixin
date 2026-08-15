@@ -136,23 +136,16 @@ html[lang^="zh"] {
   margin-top: 48px;
 }
 
-.docs-home .vp-doc ul:has(+ p > #agent-install) {
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   max-width: none;
   margin: 20px 0 44px;
-  padding: 0;
   border-top: 1px solid var(--docs-border);
   border-bottom: 1px solid var(--docs-border);
-  list-style: none;
 }
 
-.docs-home .vp-doc ul:has(+ p > #agent-install) > li {
-  max-width: none;
-  margin: 0;
-}
-
-.docs-home .vp-doc ul:has(+ p > #agent-install) > li:nth-child(2) {
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > strong {
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -160,7 +153,7 @@ html[lang^="zh"] {
   font-size: 0.875rem;
 }
 
-.docs-home .vp-doc ul:has(+ p > #agent-install) a {
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a {
   display: flex;
   min-height: 80px;
   align-items: center;
@@ -177,13 +170,13 @@ html[lang^="zh"] {
     transform 120ms ease;
 }
 
-.docs-home .vp-doc ul:has(+ p > #agent-install) a:hover,
-.docs-home .vp-doc ul:has(+ p > #agent-install) a:focus-visible {
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:hover,
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:focus-visible {
   background: var(--docs-accent-surface);
   box-shadow: inset 0 -2px 0 var(--vp-c-brand-3);
 }
 
-.docs-home .vp-doc ul:has(+ p > #agent-install) a:active {
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:active {
   transform: translateY(1px);
   background: var(--docs-accent-active);
 }
@@ -412,11 +405,11 @@ html[lang^="zh"] {
 }
 
 @media (max-width: 479px) {
-  .docs-home .vp-doc ul:has(+ p > #agent-install) > li:nth-child(2) {
+  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > strong {
     padding: 0 6px;
   }
 
-  .docs-home .vp-doc ul:has(+ p > #agent-install) a {
+  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a {
     min-height: 88px;
     padding: 12px 10px;
   }
@@ -439,7 +432,7 @@ html[lang^="zh"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .docs-home .vp-doc ul:has(+ p > #agent-install) a,
+  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a,
   .docs-home :is(p:has(> #agent-install) + h3 + p, h5) + div[class*="language-"],
   .docs-home details.full-check,
   .docs-home details:not(.full-check) summary,
@@ -450,7 +443,7 @@ html[lang^="zh"] {
     transition: none;
   }
 
-  .docs-home .vp-doc ul:has(+ p > #agent-install) a:active {
+  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:active {
     transform: none;
   }
 }

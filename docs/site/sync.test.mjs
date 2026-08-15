@@ -87,7 +87,7 @@ describe("syncContent", () => {
     assert.match(overview, /推荐复制提示词，也可以直接运行命令/);
     assert.match(
       overview,
-      /- \[\*\*复制提示词\*\*\]\(#agent-install\)\n- \*\*或\*\*\n- \[\*\*运行命令\*\*\]\(#direct-install\)/,
+      /\[\*\*复制提示词\*\*\]\(#agent-install\) \*\*或\*\* \[\*\*运行命令\*\*\]\(#direct-install\)/,
     );
     assert.doesNotMatch(overview, /<(?:p|div|h[1-6]|strong|ul|li|code)\b/);
     assert.ok(
@@ -136,7 +136,7 @@ describe("syncContent", () => {
     assert.doesNotMatch(english, /do not install both|Do not install multiple distributions/);
     assert.match(
       english,
-      /- \[\*\*Copy the prompt\*\*\]\(#agent-install\)\n- \*\*or\*\*\n- \[\*\*Run a command\*\*\]\(#direct-install\)/,
+      /\[\*\*Copy the prompt\*\*\]\(#agent-install\) \*\*or\*\* \[\*\*Run a command\*\*\]\(#direct-install\)/,
     );
     assert.doesNotMatch(english, /<(?:p|div|h[1-6]|strong|ul|li|code)\b/);
     assert.doesNotMatch(english, /id="(?:npm|clawhub)-agent-install"/);
