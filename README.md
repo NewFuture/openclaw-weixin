@@ -6,8 +6,7 @@
 
 **把 OpenClaw 接入微信**
 
-这是 [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin)
-的社区维护发行版，提供 npm 与 ClawHub 两个发布入口。
+社区维护的 OpenClaw 微信渠道插件，提供 npm 与 ClawHub 两个安装源。
 
 <a id="connect-wechat"></a>
 
@@ -18,7 +17,8 @@
 提示词让 OpenClaw 优先使用 npm、失败时回退 ClawHub，并完成安装与连接检查；直接命令
 只安装或替换插件。
 
-[复制提示词](#agent-install) · 或 · [运行命令](#direct-install)
+- [**复制提示词**](#agent-install)
+- [**运行命令**](#direct-install)
 
 <!-- registry-prompt:start -->
 <a id="agent-install"></a>
@@ -69,16 +69,15 @@ openclaw plugins install clawhub:openclaw-wechat --force
 > 登录状态。`--force` 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表；OpenClaw
 > 会自动轮换配置备份。
 
-## 两个社区入口
+## 两个安装源
 
 | 安装来源 | 包名 |
 | --- | --- |
-| npm | `openclaw-weixin` |
-| ClawHub | `openclaw-wechat` |
+| npm | [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin) |
+| ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
 
-两个入口发布的是同一套社区版。**任选一个即可，不要同时安装。** 本插件需要 OpenClaw
-`>=2026.6.1`，并遵循
-以下 Node.js 范围：`>=22.22.3 <23`、`>=24.15.0 <25` 或 `>=25.9.0`。
+两个安装源发布的是同一套社区版。本插件需要 OpenClaw `>=2026.6.1`，并遵循以下
+Node.js 范围：`>=22.22.3 <23`、`>=24.15.0 <25` 或 `>=25.9.0`。
 
 ## 社区版与腾讯版
 
@@ -103,8 +102,7 @@ openclaw plugins install clawhub:openclaw-wechat --force
 > **名称兼容：** `openclaw-wechat` 是 ClawHub 包名及 channel 兼容别名，
 > `openclaw-weixin` 仍是规范 plugin/channel ID。在 OpenClaw 2026.7.1 及以上版本，
 > 可以使用 `--channel openclaw-wechat` 选择同一 channel；较早的受支持宿主仍需使用
-> `openclaw-weixin`。插件启停命令、配置和状态路径始终使用 `openclaw-weixin`，并且不要
-> 同时安装多个发行包。
+> `openclaw-weixin`。插件启停命令、配置和状态路径始终使用 `openclaw-weixin`。
 
 > [!TIP]
 > **如果当前 OpenClaw 已有微信登录状态，安装后通常只需确认连接。** 全新安装需要

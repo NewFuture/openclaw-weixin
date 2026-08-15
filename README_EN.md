@@ -6,9 +6,8 @@
 
 **Bring OpenClaw into WeChat**
 
-This community-maintained distribution of
-[Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin)
-is available from both npm and ClawHub.
+A community-maintained OpenClaw WeChat channel plugin available from npm and
+ClawHub.
 
 <a id="connect-wechat"></a>
 
@@ -19,7 +18,8 @@ is available from both npm and ClawHub.
 The prompt tries ClawHub first, falls back to npm, and completes installation
 and connection checks; direct commands only install or replace the plugin.
 
-[Copy the prompt](#agent-install) · or · [Run a command](#direct-install)
+- [**Copy the prompt**](#agent-install)
+- [**Run a command**](#direct-install)
 
 <!-- registry-prompt:start -->
 <a id="agent-install"></a>
@@ -73,16 +73,16 @@ openclaw plugins install clawhub:openclaw-wechat --force
 > `--force` does not bypass OpenClaw's install policy or built-in dependency
 > denylist. OpenClaw rotates configuration backups automatically.
 
-## Community package sources
+## Installation sources
 
 | Source | Package name |
 | --- | --- |
-| npm | `openclaw-weixin` |
-| ClawHub | `openclaw-wechat` |
+| npm | [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin) |
+| ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
 
-Both sources publish the same community distribution. **Choose one; do not install
-both.** The plugin requires OpenClaw `>=2026.6.1` and one of these Node.js ranges:
-`>=22.22.3 <23`, `>=24.15.0 <25`, or `>=25.9.0`.
+Both installation sources publish the same community distribution. The plugin
+requires OpenClaw `>=2026.6.1` and one of these Node.js ranges: `>=22.22.3 <23`,
+`>=24.15.0 <25`, or `>=25.9.0`.
 
 ## Community and Tencent distributions
 
@@ -121,8 +121,7 @@ and multiple accounts.
 > plugin/channel ID. On OpenClaw 2026.7.1 and later,
 > `--channel openclaw-wechat` selects the same channel; earlier supported hosts
 > must continue to use `openclaw-weixin`. Plugin enable/disable commands, config,
-> and state paths always use `openclaw-weixin`. Do not install multiple
-> distributions at once.
+> and state paths always use `openclaw-weixin`.
 
 > [!TIP]
 > **If this OpenClaw instance already has a WeChat login, you usually only need

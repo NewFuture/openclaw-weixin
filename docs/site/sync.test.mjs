@@ -73,8 +73,6 @@ describe("syncContent", () => {
     assert.match(overview, /<a id="connect-wechat"><\/a>\n\n## 选择一种安装方式/);
     assert.deepEqual(assertRegistryReadmeOrder(overview, "npm", { fileName: "index.md" }).order, ["npm", "clawhub"]);
     const chinesePrompt = assertRegistryPrompt(overview, { fileName: "index.md" });
-    assert.match(overview, /ClawHub \| `openclaw-wechat`/);
-    assert.match(overview, /npm \| `openclaw-weixin`/);
     assert.match(chinesePrompt.value, /全程只安装一个。\r?\n请遵循 OpenClaw 的安装策略/);
     assert.match(overview, /腾讯官方 npm 包是 `@tencent-weixin\/openclaw-weixin`/);
     assert.match(overview, /当前能力包括微信私聊、文本与媒体收发、扫码登录和多账号/);
@@ -82,9 +80,12 @@ describe("syncContent", () => {
     assert.doesNotMatch(overview, /npm 优先，ClawHub 兜底|自己选择 npm 或 ClawHub/);
     assert.match(overview, /OpenClaw `>=2026\.6\.1`/);
     assert.match(overview, /`>=22\.22\.3 <23`、`>=24\.15\.0 <25` 或 `>=25\.9\.0`/);
-    assert.match(overview, /\*\*任选一个即可，不要同时安装。\*\* 本插件需要/);
+    assert.match(overview, /## 两个安装源/);
+    assert.match(overview, /\[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
+    assert.match(overview, /\[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/);
+    assert.doesNotMatch(overview, /不要同时安装/);
     assert.match(overview, /推荐复制提示词，也可以直接运行命令/);
-    assert.match(overview, /\[复制提示词\]\(#agent-install\) · 或 · \[运行命令\]\(#direct-install\)/);
+    assert.match(overview, /- \[\*\*复制提示词\*\*\]\(#agent-install\)\n- \[\*\*运行命令\*\*\]\(#direct-install\)/);
     assert.doesNotMatch(overview, /<(?:p|div|h[1-6]|strong|ul|li|code)\b/);
     assert.ok(
       chinesePrompt.value.indexOf("npm:openclaw-weixin") < chinesePrompt.value.indexOf("clawhub:openclaw-wechat"),
@@ -97,7 +98,7 @@ describe("syncContent", () => {
     assert.match(overview, /##### ClawHub 命令/);
     assert.match(overview, /不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表/);
     assert.ok(chinesePrompt.start < overview.indexOf("### 直接运行命令"));
-    assert.ok(overview.indexOf("#### ClawHub：") < overview.indexOf("## 两个社区入口"));
+    assert.ok(overview.indexOf("#### ClawHub：") < overview.indexOf("## 两个安装源"));
     assert.match(overview, /<details id="verify-connection" class="full-check">/);
     assert.match(overview, /已有微信登录状态，安装后通常只需确认连接/);
     assert.match(overview, /全新安装需要[\s>]+展开完整检查并扫码绑定/);
@@ -128,7 +129,12 @@ describe("syncContent", () => {
     assert.doesNotMatch(english, /### Why choose the community distribution|\| Comparison \|/);
     assert.doesNotMatch(english, /ClawHub first, npm fallback|Choose npm or ClawHub yourself/);
     assert.doesNotMatch(english, /does not advertise group-chat support/);
-    assert.match(english, /\[Copy the prompt\]\(#agent-install\) · or · \[Run a command\]\(#direct-install\)/);
+    assert.match(english, /## Installation sources/);
+    assert.doesNotMatch(english, /do not install both|Do not install multiple distributions/);
+    assert.match(
+      english,
+      /- \[\*\*Copy the prompt\*\*\]\(#agent-install\)\n- \[\*\*Run a command\*\*\]\(#direct-install\)/,
+    );
     assert.doesNotMatch(english, /<(?:p|div|h[1-6]|strong|ul|li|code)\b/);
     assert.doesNotMatch(english, /id="(?:npm|clawhub)-agent-install"/);
     assert.match(english, /<a id="direct-install"><\/a>\n\n### Run a command directly/);
@@ -147,7 +153,7 @@ describe("syncContent", () => {
     assert.match(english, /global OpenClaw session setting/);
     assert.match(english, /does not bypass OpenClaw's[\s>]+install policy or built-in dependency[\s>]+denylist/);
     assert.ok(englishPrompt.start < english.indexOf("### Run a command directly"));
-    assert.ok(english.indexOf("#### ClawHub:") < english.indexOf("## Community package sources"));
+    assert.ok(english.indexOf("#### ClawHub:") < english.indexOf("## Installation sources"));
     assert.match(
       english,
       /https:\/\/openclaw-weixin\.newfuture\.cc\/en\/guide\.html#channel-shows-ok-but-doesn-t-connect/,
@@ -169,9 +175,12 @@ describe("syncContent", () => {
 
   it("keeps source choices in the table and explains Tencent compatibility below it", async () => {
     const overview = await readFile(path.join(contentDir, "index.md"), "utf8");
-    assert.match(overview, /## 两个社区入口/);
-    assert.match(overview, /npm \| `openclaw-weixin`/);
-    assert.match(overview, /ClawHub \| `openclaw-wechat`/);
+    assert.match(overview, /## 两个安装源/);
+    assert.match(overview, /npm \| \[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
+    assert.match(
+      overview,
+      /ClawHub \| \[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/,
+    );
     assert.doesNotMatch(overview, /\| 安装后 \|/);
     assert.doesNotMatch(overview, /\| 腾讯上游独立包 \|/);
     assert.match(overview, /社区维护发行版；腾讯官方 npm 包是 `@tencent-weixin\/openclaw-weixin`/);
@@ -179,9 +188,12 @@ describe("syncContent", () => {
     assert.match(overview, /可原位替换并保留现有配置与登录状态/);
 
     const english = await readFile(path.join(contentDir, "en", "index.md"), "utf8");
-    assert.match(english, /## Community package sources/);
-    assert.match(english, /npm \| `openclaw-weixin`/);
-    assert.match(english, /ClawHub \| `openclaw-wechat`/);
+    assert.match(english, /## Installation sources/);
+    assert.match(english, /npm \| \[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
+    assert.match(
+      english,
+      /ClawHub \| \[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/,
+    );
     assert.doesNotMatch(english, /\| After installation \|/);
     assert.doesNotMatch(english, /\| Tencent upstream distribution \|/);
     assert.match(

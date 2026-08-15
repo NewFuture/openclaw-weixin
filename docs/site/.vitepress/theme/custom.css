@@ -132,11 +132,64 @@ html[lang^="zh"] {
   line-height: 1.7;
 }
 
-.docs-home #connect-wechat + h2 {
+.docs-home .vp-doc p:has(> #connect-wechat) + h2 {
   margin-top: 48px;
 }
 
-.docs-home #agent-install + h3 + p {
+.docs-home .vp-doc ul:has(+ p > #agent-install) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: none;
+  margin: 20px 0 44px;
+  padding: 0;
+  border-top: 1px solid var(--docs-border);
+  border-bottom: 1px solid var(--docs-border);
+  list-style: none;
+}
+
+.docs-home .vp-doc ul:has(+ p > #agent-install) > li {
+  max-width: none;
+  margin: 0;
+}
+
+.docs-home .vp-doc ul:has(+ p > #agent-install) > li + li {
+  border-left: 1px solid var(--docs-border);
+}
+
+.docs-home .vp-doc ul:has(+ p > #agent-install) a {
+  display: flex;
+  min-height: 80px;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 16px;
+  color: var(--vp-c-brand-1);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 120ms ease;
+}
+
+.docs-home .vp-doc ul:has(+ p > #agent-install) a:hover,
+.docs-home .vp-doc ul:has(+ p > #agent-install) a:focus-visible {
+  background: var(--docs-accent-surface);
+  box-shadow: inset 0 -2px 0 var(--vp-c-brand-3);
+}
+
+.docs-home .vp-doc ul:has(+ p > #agent-install) a:active {
+  transform: translateY(1px);
+  background: var(--docs-accent-active);
+}
+
+.docs-home .vp-doc p:has(> a[id]:only-child) {
+  height: 0;
+  margin: 0;
+}
+
+.docs-home .vp-doc p:has(> #agent-install) + h3 + p {
   max-width: 62ch;
   margin: 12px 0 16px;
   color: var(--vp-c-text-2);
@@ -153,12 +206,12 @@ html[lang^="zh"] {
   white-space: normal;
 }
 
-.docs-home #agent-install + h3 + p + div[class*="language-"] {
+.docs-home .vp-doc p:has(> #agent-install) + h3 + p + div[class*="language-"] {
   border-color: var(--docs-accent-border);
   background: var(--docs-accent-surface);
 }
 
-.docs-home #agent-install + h3 + p + div[class*="language-"] code {
+.docs-home .vp-doc p:has(> #agent-install) + h3 + p + div[class*="language-"] code {
   width: 100%;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -175,21 +228,21 @@ html[lang^="zh"] {
   font-weight: 650;
 }
 
-.docs-home :is(#agent-install + h3 + p, h5) + div[class*="language-"] {
+.docs-home :is(p:has(> #agent-install) + h3 + p, h5) + div[class*="language-"] {
   transition:
     border-color 180ms ease,
     background-color 180ms ease,
     box-shadow 180ms ease;
 }
 
-.docs-home :is(#agent-install + h3 + p, h5) + div[class*="language-"]:hover,
-.docs-home :is(#agent-install + h3 + p, h5) + div[class*="language-"]:focus-within {
+.docs-home :is(p:has(> #agent-install) + h3 + p, h5) + div[class*="language-"]:hover,
+.docs-home :is(p:has(> #agent-install) + h3 + p, h5) + div[class*="language-"]:focus-within {
   border-color: var(--docs-accent-border);
   box-shadow: 0 8px 24px var(--docs-shadow);
 }
 
-.docs-home :is(#agent-install + h3 + p, h5) + div[class*="language-"]:hover > button.copy,
-.docs-home :is(#agent-install + h3 + p, h5) + div[class*="language-"]:focus-within > button.copy {
+.docs-home :is(p:has(> #agent-install) + h3 + p, h5) + div[class*="language-"]:hover > button.copy,
+.docs-home :is(p:has(> #agent-install) + h3 + p, h5) + div[class*="language-"]:focus-within > button.copy {
   opacity: 1;
 }
 
@@ -355,6 +408,11 @@ html[lang^="zh"] {
 }
 
 @media (max-width: 479px) {
+  .docs-home .vp-doc ul:has(+ p > #agent-install) a {
+    min-height: 88px;
+    padding: 12px 10px;
+  }
+
   .docs-home .vp-doc th,
   .docs-home .vp-doc td {
     padding: 10px;
@@ -373,7 +431,8 @@ html[lang^="zh"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .docs-home :is(#agent-install + h3 + p, h5) + div[class*="language-"],
+  .docs-home .vp-doc ul:has(+ p > #agent-install) a,
+  .docs-home :is(p:has(> #agent-install) + h3 + p, h5) + div[class*="language-"],
   .docs-home details.full-check,
   .docs-home details:not(.full-check) summary,
   .docs-home details:not(.full-check) summary::after,
@@ -381,6 +440,10 @@ html[lang^="zh"] {
   .docs-home details.full-check > summary::after {
     animation: none;
     transition: none;
+  }
+
+  .docs-home .vp-doc ul:has(+ p > #agent-install) a:active {
+    transform: none;
   }
 }
 
