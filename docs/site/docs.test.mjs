@@ -81,7 +81,7 @@ describe("documentation map", () => {
       assert.ok(document.sources.zh, `missing Simplified Chinese source for ${document.slug}`);
       assert.ok(document.sources.en, `missing English source for ${document.slug}`);
     }
-    for (const slug of ["guide", "architecture", "backend-api"]) {
+    for (const slug of ["guide", "distributions", "architecture", "backend-api"]) {
       const document = DOCUMENTS.find((entry) => entry.slug === slug);
       assert.match(document.sources.zh, /^docs\/zh-CN\/[^/]+\.md$/);
       assert.match(document.sources.en, /^docs\/en\/[^/]+\.md$/);

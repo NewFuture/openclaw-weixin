@@ -6,6 +6,12 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- **Node.js compatibility range:** the published package now declares support
+  for Node.js `>=22.22.3`, including Node.js 23 and 24; CI adds a Node.js 23
+  compatibility job.
+
 ## [3.1.4] - 2026-08-12
 
 ### Fixed

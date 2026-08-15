@@ -159,5 +159,6 @@ openclaw channels status --probe
 
 ## Developer Documentation
 
+- [Community and Tencent distributions](https://openclaw-weixin.newfuture.cc/en/distributions.html)
 - [Backend API protocol](https://openclaw-weixin.newfuture.cc/en/backend-api.html)
 - [Architecture](https://openclaw-weixin.newfuture.cc/en/architecture.html)

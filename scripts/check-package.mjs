@@ -190,6 +190,8 @@ for (const required of [
   "openclaw.plugin.json",
   "index.ts",
   "dist/index.js",
+  "docs/zh-CN/distributions.md",
+  "docs/en/distributions.md",
   "docs/zh-CN/architecture.md",
   "docs/en/architecture.md",
   "docs/zh-CN/guide.md",

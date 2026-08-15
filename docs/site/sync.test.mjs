@@ -74,9 +74,8 @@ describe("syncContent", () => {
     assert.deepEqual(assertRegistryReadmeOrder(overview, "npm", { fileName: "index.md" }).order, ["npm", "clawhub"]);
     const chinesePrompt = assertRegistryPrompt(overview, { fileName: "index.md" });
     assert.match(chinesePrompt.value, /全程只安装一个。\r?\n请遵循 OpenClaw 的安装策略/);
-    assert.match(overview, /腾讯官方 npm 包是 `@tencent-weixin\/openclaw-weixin`/);
-    assert.match(overview, /当前能力包括微信私聊、文本与媒体收发、扫码登录和多账号/);
-    assert.doesNotMatch(overview, /### 为什么选择社区版|\| 对比项 \|/);
+    assert.doesNotMatch(overview, /腾讯官方 npm 包|当前能力包括微信私聊|## 社区版与腾讯版/);
+    assert.match(overview, /\[社区版与腾讯版\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/distributions\.html\)/);
     assert.doesNotMatch(overview, /npm 优先，ClawHub 兜底|自己选择 npm 或 ClawHub/);
     assert.match(overview, /本插件需要 OpenClaw `>=2026\.6\.1` 和 Node\.js `>=22\.22\.3`/);
     assert.match(overview, /\[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
@@ -122,12 +121,14 @@ describe("syncContent", () => {
     );
     assert.match(english, /<a id="connect-wechat"><\/a>\n\n## Choose an installation method/);
     assert.doesNotMatch(english, /Copy the prompt, or run a command directly/);
-    assert.match(english, /how fixes, new features, and security updates are incorporated/);
+    assert.doesNotMatch(
+      english,
+      /Tencent's official npm package|Current capabilities include direct chats|## Community and Tencent distributions/,
+    );
     assert.match(
       english,
-      /Current capabilities include direct chats, text and media transfer, QR login,\s+and multiple accounts/,
+      /\[Community and Tencent distributions\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/en\/distributions\.html\)/,
     );
-    assert.doesNotMatch(english, /### Why choose the community distribution|\| Comparison \|/);
     assert.doesNotMatch(english, /ClawHub first, npm fallback|Choose npm or ClawHub yourself/);
     assert.doesNotMatch(english, /does not advertise group-chat support/);
     assert.match(english, /This plugin requires OpenClaw `>=2026\.6\.1` and Node\.js `>=22\.22\.3`/);
@@ -175,7 +176,7 @@ describe("syncContent", () => {
     assert.doesNotMatch(english, /\[简体中文\]\(/);
   });
 
-  it("keeps source choices in the table and explains Tencent compatibility below it", async () => {
+  it("keeps source choices in the README and publishes distribution comparison separately", async () => {
     const overview = await readFile(path.join(contentDir, "index.md"), "utf8");
     assert.match(overview, /npm \| \[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
     assert.match(
@@ -184,9 +185,6 @@ describe("syncContent", () => {
     );
     assert.doesNotMatch(overview, /\| 安装后 \|/);
     assert.doesNotMatch(overview, /\| 腾讯上游独立包 \|/);
-    assert.match(overview, /社区维护发行版；腾讯官方 npm 包是 `@tencent-weixin\/openclaw-weixin`/);
-    assert.match(overview, /沿用腾讯版的\s+插件、Channel 和状态 ID/);
-    assert.match(overview, /可原位替换并保留现有配置与登录状态/);
 
     const english = await readFile(path.join(contentDir, "en", "index.md"), "utf8");
     assert.match(english, /npm \| \[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
@@ -196,24 +194,36 @@ describe("syncContent", () => {
     );
     assert.doesNotMatch(english, /\| After installation \|/);
     assert.doesNotMatch(english, /\| Tencent upstream distribution \|/);
+
+    const distributions = await readFile(path.join(contentDir, "distributions.md"), "utf8");
+    assert.match(distributions, /社区维护发行版；腾讯官方 npm 包是 `@tencent-weixin\/openclaw-weixin`/);
+    assert.match(distributions, /沿用腾讯版的\s+插件、Channel 和状态 ID/);
+    assert.match(distributions, /可原位替换并保留现有配置与登录状态/);
+
+    const englishDistributions = await readFile(path.join(contentDir, "en", "distributions.md"), "utf8");
     assert.match(
-      english,
+      englishDistributions,
       /community-maintained distribution of[\s\S]*Tencent's\s+official npm package is `@tencent-weixin\/openclaw-weixin`/,
     );
-    assert.match(english, /retains Tencent's plugin, channel, and state\s+ID/);
-    assert.match(english, /in-place replacement that preserves configuration and login\s+state/);
+    assert.match(englishDistributions, /retains Tencent's plugin, channel, and state\s+ID/);
+    assert.match(englishDistributions, /in-place replacement that preserves configuration and login\s+state/);
 
     const guide = await readFile(path.join(contentDir, "guide.md"), "utf8");
     assert.match(guide, /### 在不同场景使用哪个名称/);
     assert.doesNotMatch(guide, /\| 安装后 \|/);
     assert.match(guide, /腾讯官方 npm 包是\s+`@tencent-weixin\/openclaw-weixin`/);
     assert.match(guide, /沿用\s+`openclaw-weixin` 插件、Channel 和状态 ID/);
+    assert.match(guide, /\[社区版与腾讯版\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/distributions\.html\)/);
 
     const englishGuide = await readFile(path.join(contentDir, "en", "guide.md"), "utf8");
     assert.match(englishGuide, /### Which name to use/);
     assert.doesNotMatch(englishGuide, /\| After installation \|/);
     assert.match(englishGuide, /Tencent's official npm package is `@tencent-weixin\/openclaw-weixin`/);
     assert.match(englishGuide, /keep the `openclaw-weixin` plugin,\s+channel, and state ID/);
+    assert.match(
+      englishGuide,
+      /\[Community and Tencent distributions\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/en\/distributions\.html\)/,
+    );
   });
 
   it("documents current backend and outbound behavior in both locales", async () => {

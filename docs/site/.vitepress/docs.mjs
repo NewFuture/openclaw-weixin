@@ -85,6 +85,15 @@ export const DOCUMENTS = [
     },
   },
   {
+    slug: "distributions",
+    sources: { zh: "docs/zh-CN/distributions.md", en: "docs/en/distributions.md" },
+    title: { en: "Community and Tencent distributions", zh: "社区版与腾讯版" },
+    description: {
+      en: "How the community and Tencent distributions differ in packaging, fixes, compatibility, and maintenance.",
+      zh: "社区版与腾讯版在发布、修复、兼容性与维护方式上的区别。",
+    },
+  },
+  {
     slug: "architecture",
     sources: { zh: "docs/zh-CN/architecture.md", en: "docs/en/architecture.md" },
     title: { en: "Architecture", zh: "架构说明" },
@@ -145,7 +154,7 @@ export const GROUPS = [
   { title: { en: "Getting Started", zh: "快速开始" }, documents: ["index", "guide"], collapsed: false },
   {
     title: { en: "Reference", zh: "参考文档" },
-    documents: ["architecture", "backend-api", "changelog"],
+    documents: ["distributions", "architecture", "backend-api", "changelog"],
     collapsed: true,
   },
   {
@@ -175,7 +184,7 @@ const TASK_NAV = {
 };
 
 const MORE_NAV_GROUPS = [
-  { label: "guides", documents: ["guide", "architecture", "backend-api", "changelog"] },
+  { label: "guides", documents: ["guide", "distributions", "architecture", "backend-api", "changelog"] },
   { label: "project", documents: ["contributing", "release", "security"] },
 ];
 

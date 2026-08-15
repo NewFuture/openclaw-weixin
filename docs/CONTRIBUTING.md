@@ -14,12 +14,12 @@ is approved.
 - npm
 
 Use the Node.js version in `.nvmrc` for the recommended development
-environment. The published package follows OpenClaw's supported Node.js ranges:
-`>=22.22.3 <23`, `>=24.15.0 <25`, or `>=25.9.0`. CI validates the exact
-Node.js 22.22.3 and 24.15.0 lower bounds. The recommended Node.js 24 and
-OpenClaw 2026.7.1 combinations run the full validation suite. Compatibility
-jobs build and register the packaged runtime on Node.js 22 and the minimum
-supported host, OpenClaw 2026.6.1.
+environment. The published package supports Node.js `>=22.22.3`, including
+Node.js 23 and 24. CI validates the exact Node.js 22.22.3 floor, a Node.js 23
+runtime, and the recommended Node.js 24.15.0 environment. The recommended
+Node.js 24 and OpenClaw 2026.7.1 combinations run the full validation suite.
+Compatibility jobs build and register the packaged runtime on Node.js 22 and
+the minimum supported host, OpenClaw 2026.6.1.
 
 ## Development
 

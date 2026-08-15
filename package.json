@@ -65,7 +65,7 @@
     "prepublishOnly": "npm run check:static && npm test"
   },
   "engines": {
-    "node": ">=22.22.3 <23 || >=24.15.0 <25 || >=25.9.0"
+    "node": ">=22.22.3"
   },
   "dependencies": {
     "qrcode-terminal": "0.12.0"

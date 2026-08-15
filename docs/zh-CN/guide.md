@@ -138,5 +138,6 @@ openclaw channels status --probe
 
 ## 开发者文档
 
+- [社区版与腾讯版](https://openclaw-weixin.newfuture.cc/distributions.html)
 - [后端 API 协议](https://openclaw-weixin.newfuture.cc/backend-api.html)
 - [架构说明](https://openclaw-weixin.newfuture.cc/architecture.html)

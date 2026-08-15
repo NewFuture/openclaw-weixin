@@ -101,6 +101,12 @@ jobs:
             validation: compatibility
             compatibility_profile: channel-message-only
           - os: ubuntu-latest
+            node-version: "23.11.1"
+            openclaw_version: "2026.7.1"
+            validation: compatibility
+            expected_openclaw_version: "2026.7.1"
+            compatibility_profile: supported
+          - os: ubuntu-latest
             node-version: "24.15.0"
             openclaw_version: "2026.7.1"
             validation: strict
