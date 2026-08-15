@@ -10,8 +10,8 @@
 - npm
 
 请使用 `.nvmrc` 中指定的 Node.js 版本作为推荐开发环境。发布的包支持 Node.js
-`>=22.22.3`，包括 Node.js 23 和 24。CI 会验证 Node.js 22.22.3 的精确下限、一个
-Node.js 23 运行时，以及推荐的 Node.js 24.15.0 环境。推荐的 Node.js 24 与 OpenClaw
+`>=22.22.3`，包括 Node.js 24 和 26。CI 会验证 Node.js 22.22.3 的精确下限、推荐的
+Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。推荐的 Node.js 24 与 OpenClaw
 2026.7.1 组合会运行完整验证流程。兼容性作业会在 Node.js 22 和最低支持的 OpenClaw
 宿主 OpenClaw 2026.6.1 上构建并注册打包后的运行时。
 
