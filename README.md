@@ -7,6 +7,7 @@
 **把 OpenClaw 接入微信**
 
 社区维护的 OpenClaw 微信渠道插件，提供 npm 与 ClawHub 两个安装源。
+本插件需要 OpenClaw `>=2026.6.1` 和 Node.js `>=22.22.3`。
 
 <a id="connect-wechat"></a>
 
@@ -31,13 +32,20 @@
 
 ### 直接运行命令
 
+> [!WARNING]
+> **替换腾讯版时不要先卸载。** 两个社区发布源都保留插件 ID、Channel ID、配置和
+> 登录状态。`--force` 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表；OpenClaw
+> 会自动轮换配置备份。
+
+`--force` 允许覆盖相同插件 ID 的现有安装。
+
+| 安装来源 | 包名 |
+| --- | --- |
+| npm | [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin) |
+| ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
+
 <!-- registry-source:npm:start -->
 #### npm：`openclaw-weixin`
-
-**npm 页面、GitHub README 和文档站默认使用此来源。** `--force` 表示你已审阅并
-明确选择该 npm 来源，同时允许覆盖相同插件 ID 的现有安装。
-
-##### npm 命令
 
 ```bash
 openclaw plugins install npm:openclaw-weixin --force
@@ -47,31 +55,12 @@ openclaw plugins install npm:openclaw-weixin --force
 <!-- registry-source:clawhub:start -->
 #### ClawHub：`openclaw-wechat`
 
-**ClawHub 包页面默认使用此来源。** 页面顶部不带 `--force` 的命令适合没有现有微信
-插件的全新安装；下面保留 `--force`，使同一条命令也能原位替换占用
-`openclaw-weixin` 插件 ID 的腾讯版或 npm 版。
-
-##### ClawHub 命令
+下面的命令也可原位替换占用 `openclaw-weixin` 插件 ID 的腾讯版或 npm 版。
 
 ```bash
 openclaw plugins install clawhub:openclaw-wechat --force
 ```
 <!-- registry-source:clawhub:end -->
-
-> [!WARNING]
-> **替换腾讯版时不要先卸载。** 两个社区发布源都保留插件 ID、Channel ID、配置和
-> 登录状态。`--force` 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表；OpenClaw
-> 会自动轮换配置备份。
-
-## 两个安装源
-
-| 安装来源 | 包名 |
-| --- | --- |
-| npm | [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin) |
-| ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
-
-两个安装源发布的是同一套社区版。本插件需要 OpenClaw `>=2026.6.1`，并遵循以下
-Node.js 范围：`>=22.22.3 <23`、`>=24.15.0 <25` 或 `>=25.9.0`。
 
 ## 社区版与腾讯版
 
