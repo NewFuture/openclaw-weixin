@@ -12,6 +12,14 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
   for Node.js `>=22.22.3`, including Node.js 24 and 26; CI adds compatibility
   coverage for the current Node.js 26 runtime.
 
+### Fixed
+
+- **OpenClaw beta config compatibility:** the plugin entry and channel
+  registration now share the host's JSON Schema boundary instead of the removed
+  `openclaw/plugin-sdk/zod` export. The schema covers the documented `botAgent`,
+  progress-message setting, and string or numeric route tags, allowing the plugin
+  to load on newer hosts without shipping a second Zod copy.
+
 ## [3.1.4] - 2026-08-12
 
 ### Fixed

@@ -42,6 +42,27 @@ function assertUnknownChannel(result, channelId) {
   }
 }
 
+function assertConfigSchema(configSchema, label) {
+  const parsed = configSchema?.runtime?.safeParse({
+    botAgent: "CompatibilityBot/1.0",
+    routeTag: "route-test",
+    accounts: {
+      "account-1": {},
+    },
+  });
+  if (
+    !parsed?.success ||
+    parsed.data?.botAgent !== "CompatibilityBot/1.0" ||
+    parsed.data?.routeTag !== "route-test" ||
+    parsed.data?.replyProgressMessages !== true
+  ) {
+    throw new Error(`${label} config schema did not preserve values and defaults`);
+  }
+  if (configSchema?.runtime?.safeParse({ botAgent: 42 })?.success !== false) {
+    throw new Error(`${label} config schema accepted an invalid botAgent`);
+  }
+}
+
 async function checkHostChannelAliasResolution(rootDirectory, hostVersion) {
   const stateDirectory = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-compat-"));
   const configPath = path.join(stateDirectory, "openclaw.json");
@@ -151,6 +172,7 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
     process.env.OPENCLAW_CHANGED_MODULE?.trim() || path.join("dist", "src", "messaging", "process-message.js");
   await import(pathToFileURL(path.resolve(rootDirectory, changedModule)).href);
   const plugin = (await import(pathToFileURL(path.join(rootDirectory, "dist", "index.js")).href)).default;
+  assertConfigSchema(plugin.configSchema, "plugin entry");
   const channels = [];
   plugin.register({
     runtime: { version: hostPackage.version },
@@ -167,6 +189,7 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
   ) {
     throw new Error("plugin registration smoke check failed");
   }
+  assertConfigSchema(channels[0]?.plugin?.configSchema, "registered channel");
 
   if (process.env.OPENCLAW_COMPATIBILITY_PROFILE !== "channel-message-only") {
     await checkHostChannelAliasResolution(rootDirectory, hostPackage.version);

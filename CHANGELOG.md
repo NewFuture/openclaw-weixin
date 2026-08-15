@@ -11,6 +11,13 @@
 - **Node.js 兼容范围：** 发布包现在声明支持 Node.js `>=22.22.3`，包括 Node.js 24 和
   26；CI 新增当前 Node.js 26 兼容性验证。
 
+### 修复
+
+- **OpenClaw beta 配置兼容：** 插件入口和 channel 注册现在共用宿主提供的 JSON Schema
+  边界，不再导入已移除的 `openclaw/plugin-sdk/zod`；该 schema 覆盖文档中的
+  `botAgent`、进度消息和字符串/数字路由标签，使插件可在新版宿主加载且不会携带第二份
+  Zod。
+
 ## [3.1.4] - 2026-08-12
 
 ### 修复
