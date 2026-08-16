@@ -18,8 +18,8 @@ environment. The published package supports Node.js `>=22.22.3`, including
 Node.js 24 and 26. CI validates the exact Node.js 22.22.3 floor, the recommended
 Node.js 24.15.0 environment, and a current Node.js 26 runtime. The recommended
 Node.js 24 and OpenClaw 2026.7.1 combinations run the full validation suite.
-Compatibility jobs build and register the packaged runtime on Node.js 22 and
-the minimum supported host, OpenClaw 2026.6.1.
+The Node.js 22 floor job uses OpenClaw 2026.7.1; the minimum supported host,
+OpenClaw 2026.6.1, and the moving beta job use Node.js 24.15.0.
 
 ## Development
 

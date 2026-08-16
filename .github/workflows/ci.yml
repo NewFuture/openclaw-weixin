@@ -90,7 +90,7 @@ jobs:
             expected_openclaw_version: "2026.7.1"
             compatibility_profile: supported
           - os: ubuntu-latest
-            node-version: "22.22.3"
+            node-version: "24.15.0"
             openclaw_version: "2026.6.1"
             validation: compatibility
             expected_openclaw_version: "2026.6.1"
