@@ -46,6 +46,7 @@ matching skill before editing:
 | --- | --- |
 | [`stateful-message-processing`](.github/skills/stateful-message-processing/SKILL.md) | Persistent or account-scoped state, dedupe identity, claims, locks, monitor lanes, abort/retry, or resource cleanup changes |
 | [`openclaw-host-compatibility`](.github/skills/openclaw-host-compatibility/SKILL.md) | OpenClaw SDK imports, exported subpaths, host APIs, plugin entry points, peer/minimum versions, or compatibility claims |
+| [`release-preparation`](.github/skills/release-preparation/SKILL.md) | Preparing a version-release pull request that only changes release metadata, changelog headings, and focused release checks |
 
 Skills supplement the contracts below; they never override privacy, account
 isolation, migration, release, or validation requirements.
