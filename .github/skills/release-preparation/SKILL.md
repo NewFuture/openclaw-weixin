@@ -46,7 +46,8 @@ git diff -- package.json package-lock.json openclaw.plugin.json CHANGELOG.md CHA
 Do not run `npm ci`, `npm run check`, host compatibility matrices,
 `npm run pack:check`, or documentation-site builds for a metadata-only release.
 Run broader checks only when explicitly requested or when the actual diff
-extends beyond release metadata.
+extends beyond release metadata; the CI pipeline validates pull-request
+compatibility.
 
 Commit the prepared changes, push the branch, and open a release pull request
 using `.github/pull_request_template.md`. Never create or move tags, publish
