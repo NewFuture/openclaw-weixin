@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.5] - 2026-08-16
+
 ### Changed
 
 - **Node.js compatibility range:** the published package now declares support
