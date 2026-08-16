@@ -11,6 +11,7 @@ const weixinAccountProperties = {
   enabled: { type: "boolean" },
   baseUrl: { type: "string", default: DEFAULT_BASE_URL },
   cdnBaseUrl: { type: "string", default: CDN_BASE_URL },
+  routeTag: { type: "number" },
 } as const;
 
 const weixinAccountSchema = {
@@ -36,6 +37,7 @@ const weixinChannelConfigJsonSchema = {
   additionalProperties: true,
   properties: {
     ...weixinAccountProperties,
+    // Section-level routing also accepts the string form read by loadConfigRouteTag.
     routeTag: routeTagSchema,
     accounts: {
       type: "object",

@@ -57,6 +57,7 @@ describe("plugin config schema", () => {
           enabled: true,
           baseUrl: "https://account.api.test",
           cdnBaseUrl: "https://account.cdn.test",
+          routeTag: 42,
         },
       },
     };
@@ -90,6 +91,7 @@ describe("plugin config schema", () => {
     ["accounts container", { accounts: [] }],
     ["account value", { accounts: { account1: "invalid" } }],
     ["account field", { accounts: { account1: { enabled: "yes" } } }],
+    ["account routeTag", { accounts: { account1: { routeTag: false } } }],
   ])("rejects invalid %s types", (_label, value) => {
     expect(plugin.configSchema.runtime?.safeParse(value)).toMatchObject({
       success: false,
