@@ -7,6 +7,20 @@ import { pathToFileURL } from "node:url";
 const CANONICAL_ID = "openclaw-weixin";
 const COMPATIBILITY_ALIAS = "openclaw-wechat";
 const UNRELATED_ID = "openclaw-unrelated";
+const CHANNEL_ALIAS_MIN_VERSION = [2026, 7, 1];
+
+export function hostSupportsChannelAliases(hostVersion) {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-|$)/.exec(hostVersion.trim());
+  if (!match) {
+    throw new Error(`cannot compare invalid OpenClaw version ${JSON.stringify(hostVersion)}`);
+  }
+  const version = match.slice(1).map(Number);
+  for (let index = 0; index < CHANNEL_ALIAS_MIN_VERSION.length; index += 1) {
+    if (version[index] > CHANNEL_ALIAS_MIN_VERSION[index]) return true;
+    if (version[index] < CHANNEL_ALIAS_MIN_VERSION[index]) return false;
+  }
+  return true;
+}
 
 function runOpenClaw(rootDirectory, args, env) {
   const result = spawnSync(
@@ -103,7 +117,7 @@ async function checkHostChannelAliasResolution(rootDirectory, hostVersion) {
       ["channels", "capabilities", "--channel", COMPATIBILITY_ALIAS, "--json"],
       env,
     );
-    if (hostVersion === "2026.7.1") {
+    if (hostSupportsChannelAliases(hostVersion)) {
       const aliasCapabilities = readSuccessfulJson(aliasResult, `channel id check for ${COMPATIBILITY_ALIAS}`);
       if (aliasCapabilities.channels?.length !== 1 || aliasCapabilities.channels[0]?.channel !== CANONICAL_ID) {
         throw new Error(`channel id ${COMPATIBILITY_ALIAS} did not resolve to ${CANONICAL_ID}`);
