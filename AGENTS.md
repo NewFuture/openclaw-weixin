@@ -37,19 +37,6 @@ contract.
 | Persistent state | `src/storage/`, `src/auth/accounts.ts` |
 | Documentation website | `docs/site/` |
 
-## Specialized skills
-
-Project skills provide detailed playbooks for higher-risk changes. Use every
-matching skill before editing:
-
-| Skill | Use when |
-| --- | --- |
-| [`stateful-message-processing`](.github/skills/stateful-message-processing/SKILL.md) | Persistent or account-scoped state, dedupe identity, claims, locks, monitor lanes, abort/retry, or resource cleanup changes |
-| [`openclaw-host-compatibility`](.github/skills/openclaw-host-compatibility/SKILL.md) | OpenClaw SDK imports, exported subpaths, host APIs, plugin entry points, peer/minimum versions, or compatibility claims |
-
-Skills supplement the contracts below; they never override privacy, account
-isolation, migration, release, or validation requirements.
-
 ## Repository contracts
 
 ### Compatibility and identity
