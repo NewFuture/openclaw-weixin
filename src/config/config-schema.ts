@@ -1,23 +1,53 @@
-import { z } from "openclaw/plugin-sdk/zod";
+import { buildJsonChannelConfigSchema } from "openclaw/plugin-sdk/channel-config-schema";
 
 import { CDN_BASE_URL, DEFAULT_BASE_URL } from "../auth/accounts.js";
 
-// ---------------------------------------------------------------------------
-// Zod config schema
-// ---------------------------------------------------------------------------
+const routeTagSchema = {
+  anyOf: [{ type: "number" }, { type: "string" }],
+} as const;
 
-const weixinAccountSchema = z.object({
-  name: z.string().optional(),
-  enabled: z.boolean().optional(),
-  baseUrl: z.string().default(DEFAULT_BASE_URL),
-  cdnBaseUrl: z.string().default(CDN_BASE_URL),
-  routeTag: z.number().optional(),
-});
+const weixinAccountProperties = {
+  name: { type: "string" },
+  enabled: { type: "boolean" },
+  baseUrl: { type: "string", default: DEFAULT_BASE_URL },
+  cdnBaseUrl: { type: "string", default: CDN_BASE_URL },
+  routeTag: { type: "number" },
+} as const;
+
+const weixinAccountSchema = {
+  type: "object",
+  additionalProperties: true,
+  properties: weixinAccountProperties,
+} as const;
+
+const botAgentSchema = {
+  type: "string",
+  description: "Self-declared bot_agent identifier for backend observability.",
+} as const;
+
+const replyProgressMessagesSchema = {
+  type: "boolean",
+  default: true,
+  description: "Send structured tool-call progress messages.",
+} as const;
 
 /** Top-level weixin config schema (token is stored in credentials file, not config). */
-export const WeixinConfigSchema = weixinAccountSchema.extend({
-  accounts: z.record(z.string(), weixinAccountSchema).optional(),
-  replyProgressMessages: z.boolean().default(true),
-  /** ISO 8601; bumped on each successful login to refresh gateway config from disk. */
-  channelConfigUpdatedAt: z.string().optional(),
-});
+const weixinChannelConfigJsonSchema = {
+  type: "object",
+  additionalProperties: true,
+  properties: {
+    ...weixinAccountProperties,
+    // Section-level routing also accepts the string form read by loadConfigRouteTag.
+    routeTag: routeTagSchema,
+    accounts: {
+      type: "object",
+      additionalProperties: weixinAccountSchema,
+    },
+    botAgent: botAgentSchema,
+    replyProgressMessages: replyProgressMessagesSchema,
+    /** ISO 8601; bumped on each successful login to refresh gateway config from disk. */
+    channelConfigUpdatedAt: { type: "string" },
+  },
+} as const;
+
+export const WeixinChannelConfigSchema = buildJsonChannelConfigSchema(weixinChannelConfigJsonSchema);

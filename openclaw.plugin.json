@@ -9,7 +9,18 @@
     "openclaw-weixin": {
       "schema": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "properties": {
+          "botAgent": {
+            "type": "string",
+            "description": "Self-declared bot_agent identifier for backend observability."
+          },
+          "replyProgressMessages": {
+            "type": "boolean",
+            "default": true,
+            "description": "Send structured tool-call progress messages."
+          }
+        }
       },
       "label": "WeChat",
       "description": "Weixin channel configuration."

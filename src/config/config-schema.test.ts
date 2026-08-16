@@ -1,51 +1,114 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
-import { WeixinConfigSchema } from "./config-schema.js";
 
-describe("WeixinConfigSchema", () => {
-  it("parses minimal config with defaults", () => {
-    const result = WeixinConfigSchema.parse({});
-    expect(result.baseUrl).toBe("https://ilinkai.weixin.qq.com");
-    expect(result.cdnBaseUrl).toBe("https://novac2c.cdn.weixin.qq.com/c2c");
-    expect(result.replyProgressMessages).toBe(true);
-  });
+import plugin from "../../index.js";
+import { weixinPlugin } from "../channel.js";
 
-  it("accepts custom baseUrl and cdnBaseUrl", () => {
-    const result = WeixinConfigSchema.parse({
-      baseUrl: "https://custom.api.com",
-      cdnBaseUrl: "https://custom.cdn.com",
-    });
-    expect(result.baseUrl).toBe("https://custom.api.com");
-    expect(result.cdnBaseUrl).toBe("https://custom.cdn.com");
-  });
+const pluginManifest = JSON.parse(readFileSync(new URL("../../openclaw.plugin.json", import.meta.url), "utf8")) as {
+  channelConfigs: Record<
+    string,
+    {
+      schema: {
+        additionalProperties?: boolean;
+        properties?: Record<string, unknown>;
+      };
+    }
+  >;
+};
 
-  it("accepts optional name and enabled fields", () => {
-    const result = WeixinConfigSchema.parse({
-      name: "my-bot",
-      enabled: false,
-    });
-    expect(result.name).toBe("my-bot");
-    expect(result.enabled).toBe(false);
-  });
+function parseConfig(value: unknown) {
+  const result = plugin.configSchema.runtime?.safeParse(value);
+  expect(result).toMatchObject({ success: true });
+  if (!result?.success) {
+    throw new Error("expected config to parse");
+  }
+  return result.data;
+}
 
-  it("accepts disabling reply progress messages", () => {
-    const result = WeixinConfigSchema.parse({
-      replyProgressMessages: false,
-    });
-    expect(result.replyProgressMessages).toBe(false);
-  });
-
-  it("accepts accounts map", () => {
-    const result = WeixinConfigSchema.parse({
+describe("plugin config schema", () => {
+  it("applies root and account defaults", () => {
+    expect(parseConfig({ accounts: { account1: {} } })).toMatchObject({
+      baseUrl: "https://ilinkai.weixin.qq.com",
+      cdnBaseUrl: "https://novac2c.cdn.weixin.qq.com/c2c",
+      replyProgressMessages: true,
       accounts: {
-        acc1: { name: "Bot 1", enabled: true },
-        acc2: { name: "Bot 2" },
+        account1: {
+          baseUrl: "https://ilinkai.weixin.qq.com",
+          cdnBaseUrl: "https://novac2c.cdn.weixin.qq.com/c2c",
+        },
       },
     });
-    expect(result.accounts?.acc1?.name).toBe("Bot 1");
-    expect(result.accounts?.acc2?.name).toBe("Bot 2");
   });
 
-  it("rejects invalid types", () => {
-    expect(() => WeixinConfigSchema.parse({ enabled: "yes" })).toThrow();
+  it("accepts every declared config option", () => {
+    const config = {
+      name: "Primary Bot",
+      enabled: false,
+      baseUrl: "https://custom.api.test",
+      cdnBaseUrl: "https://custom.cdn.test",
+      routeTag: "route-primary",
+      botAgent: "MyBot/1.2.0",
+      replyProgressMessages: false,
+      channelConfigUpdatedAt: "2026-08-16T00:00:00.000Z",
+      accounts: {
+        account1: {
+          name: "Account Bot",
+          enabled: true,
+          baseUrl: "https://account.api.test",
+          cdnBaseUrl: "https://account.cdn.test",
+          routeTag: 42,
+        },
+      },
+    };
+
+    expect(parseConfig(config)).toMatchObject(config);
+    expect(parseConfig({ routeTag: 42 })).toMatchObject({ routeTag: 42 });
+  });
+
+  it("keeps unknown fields permissive", () => {
+    const config = {
+      futureOption: "value",
+      accounts: {
+        account1: { futureAccountOption: true },
+      },
+    };
+
+    expect(parseConfig(config)).toMatchObject(config);
+  });
+
+  it.each([
+    ["root value", null],
+    ["root array", []],
+    ["name", { name: 1 }],
+    ["enabled", { enabled: "yes" }],
+    ["baseUrl", { baseUrl: false }],
+    ["cdnBaseUrl", { cdnBaseUrl: 1 }],
+    ["routeTag", { routeTag: false }],
+    ["botAgent", { botAgent: 1 }],
+    ["replyProgressMessages", { replyProgressMessages: "yes" }],
+    ["channelConfigUpdatedAt", { channelConfigUpdatedAt: 1 }],
+    ["accounts container", { accounts: [] }],
+    ["account value", { accounts: { account1: "invalid" } }],
+    ["account field", { accounts: { account1: { enabled: "yes" } } }],
+    ["account routeTag", { accounts: { account1: { routeTag: false } } }],
+  ])("rejects invalid %s types", (_label, value) => {
+    expect(plugin.configSchema.runtime?.safeParse(value)).toMatchObject({
+      success: false,
+    });
+  });
+
+  it("uses the same runtime schema for entry and channel registration", () => {
+    expect(weixinPlugin.configSchema).toBe(plugin.configSchema);
+  });
+
+  it("advertises documented settings in the static channel manifest", () => {
+    expect(pluginManifest.channelConfigs["openclaw-weixin"]?.schema).toMatchObject({
+      additionalProperties: true,
+      properties: {
+        botAgent: { type: "string" },
+        replyProgressMessages: { type: "boolean", default: true },
+      },
+    });
   });
 });

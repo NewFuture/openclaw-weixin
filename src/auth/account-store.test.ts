@@ -3,11 +3,18 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const configRuntimeMocks = vi.hoisted(() => ({
+  loadConfig: vi.fn(),
+  writeConfigFile: vi.fn(),
+}));
+
 import {
   clearStaleAccountsForUserId,
   clearWeixinAccount,
   listIndexedWeixinAccountIds,
   listWeixinAccountIds,
+  loadConfigBotAgent,
+  loadConfigRouteTag,
   loadWeixinAccount,
   migrateBoundAccountToAlias,
   persistWeixinLoginAccounts,
@@ -18,8 +25,11 @@ import {
   resolvePublicAccountId,
   resolveWeixinAccount,
   saveWeixinAccount,
+  triggerWeixinChannelReload,
 } from "./accounts.js";
 import { resolveFrameworkAllowFromPath } from "./pairing.js";
+
+vi.mock("openclaw/plugin-sdk/config-runtime", () => configRuntimeMocks);
 
 // Mock dependencies before importing module under test
 vi.mock("../util/logger.js", () => ({
@@ -37,11 +47,72 @@ let tmpDir: string;
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "account-store-test-"));
   process.env.OPENCLAW_STATE_DIR = tmpDir;
+  configRuntimeMocks.loadConfig.mockReset();
+  configRuntimeMocks.writeConfigFile.mockReset();
 });
 
 afterEach(() => {
   delete process.env.OPENCLAW_STATE_DIR;
   fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+describe("raw channel config", () => {
+  it("loads documented botAgent and numeric routeTag values", () => {
+    const configPath = path.join(tmpDir, "openclaw.json");
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        channels: {
+          "openclaw-weixin": {
+            botAgent: "MyBot/1.2.0",
+            routeTag: 42,
+          },
+        },
+      }),
+    );
+    const previousConfigPath = process.env.OPENCLAW_CONFIG;
+    process.env.OPENCLAW_CONFIG = configPath;
+
+    try {
+      expect(loadConfigBotAgent()).toBe("MyBot/1.2.0");
+      expect(loadConfigRouteTag()).toBe("42");
+    } finally {
+      if (previousConfigPath === undefined) {
+        delete process.env.OPENCLAW_CONFIG;
+      } else {
+        process.env.OPENCLAW_CONFIG = previousConfigPath;
+      }
+    }
+  });
+
+  it("preserves channel config while bumping the reload timestamp", async () => {
+    configRuntimeMocks.loadConfig.mockReturnValue({
+      channels: {
+        "openclaw-weixin": {
+          botAgent: "MyBot/1.2.0",
+          replyProgressMessages: false,
+        },
+      },
+    });
+    configRuntimeMocks.writeConfigFile.mockResolvedValue(undefined);
+
+    await triggerWeixinChannelReload();
+
+    expect(configRuntimeMocks.writeConfigFile).toHaveBeenCalledOnce();
+    expect(configRuntimeMocks.writeConfigFile).toHaveBeenCalledWith({
+      channels: {
+        "openclaw-weixin": {
+          botAgent: "MyBot/1.2.0",
+          replyProgressMessages: false,
+          channelConfigUpdatedAt: expect.any(String),
+        },
+      },
+    });
+    const written = configRuntimeMocks.writeConfigFile.mock.calls[0]?.[0] as {
+      channels?: Record<string, { channelConfigUpdatedAt?: string }>;
+    };
+    expect(Number.isNaN(Date.parse(written.channels?.["openclaw-weixin"]?.channelConfigUpdatedAt ?? ""))).toBe(false);
+  });
 });
 
 describe("loadWeixinAccount", () => {
@@ -324,7 +395,11 @@ describe("persistWeixinLoginAccounts", () => {
         channels: {
           "openclaw-weixin": {
             accounts: {
-              leader: { name: "Leader Desk" },
+              leader: {
+                name: "Leader Desk",
+                enabled: false,
+                cdnBaseUrl: "https://cdn.example.test",
+              },
             },
           },
         },
@@ -337,6 +412,8 @@ describe("persistWeixinLoginAccounts", () => {
       primaryId: "bot-im-bot",
       aliasId: "leader",
       configured: true,
+      cdnBaseUrl: "https://cdn.example.test",
+      enabled: false,
       name: "Leader Desk",
       token: "tok-resolve",
     });

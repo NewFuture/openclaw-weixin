@@ -17,6 +17,7 @@ import {
 import type { WeixinQrStartResult, WeixinQrWaitResult } from "./auth/login-qr.js";
 import { DEFAULT_ILINK_BOT_TYPE, displayQRCode, startWeixinLoginWithQr, waitForWeixinLogin } from "./auth/login-qr.js";
 import { downloadRemoteImageToTemp } from "./cdn/upload.js";
+import { WeixinChannelConfigSchema } from "./config/config-schema.js";
 import {
   appendWeixinExecApprovalQuickReplies,
   splitWeixinExecApprovalOtherOptions,
@@ -168,19 +169,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
     blurb: "getUpdates long-poll upstream, sendMessage downstream; token auth.",
     order: 75,
   },
-  configSchema: {
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        replyProgressMessages: {
-          type: "boolean",
-          default: true,
-          description: "Send structured tool-call progress messages.",
-        },
-      },
-    },
-  },
+  configSchema: WeixinChannelConfigSchema,
   capabilities: {
     chatTypes: ["direct"],
     media: true,

@@ -36,6 +36,7 @@ vi.mock("./api/session-guard.js", () => ({
 }));
 
 vi.mock("./auth/accounts.js", () => ({
+  CDN_BASE_URL: "https://cdn.example.test",
   DEFAULT_BASE_URL: "https://api.example.test",
   listWeixinAccountIds: mocks.listAccountIds,
   loadWeixinAccount: vi.fn(),

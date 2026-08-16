@@ -90,16 +90,16 @@ jobs:
             expected_openclaw_version: "2026.7.1"
             compatibility_profile: supported
           - os: ubuntu-latest
-            node-version: "22.22.3"
+            node-version: "24.15.0"
             openclaw_version: "2026.6.1"
             validation: compatibility
             expected_openclaw_version: "2026.6.1"
             compatibility_profile: supported
           - os: ubuntu-latest
-            node-version: "22.22.3"
+            node-version: "24.15.0"
             openclaw_version: beta
             validation: compatibility
-            compatibility_profile: channel-message-only
+            compatibility_profile: supported
           - os: ubuntu-latest
             node-version: "24.15.0"
             openclaw_version: "2026.7.1"
@@ -143,6 +143,7 @@ jobs:
         run: npm run build
 
       - name: Install compatibility OpenClaw
+        id: openclaw
         if: matrix.validation == 'compatibility'
         shell: bash
         env:
@@ -151,6 +152,8 @@ jobs:
           set -euo pipefail
           npm install --no-save --package-lock=false --ignore-scripts \
             "openclaw@${OPENCLAW_SPEC}"
+          installed_version="$(node -p 'require("./node_modules/openclaw/package.json").version')"
+          echo "installed_version=${installed_version}" >> "$GITHUB_OUTPUT"
 
       - name: Typecheck and build supported OpenClaw runtime
         if: matrix.compatibility_profile == 'supported'
@@ -179,7 +182,7 @@ jobs:
       - name: Smoke test compatibility runtime
         if: matrix.validation == 'compatibility'
         env:
-          OPENCLAW_EXPECTED_VERSION: ${{ matrix.expected_openclaw_version }}
+          OPENCLAW_EXPECTED_VERSION: ${{ matrix.expected_openclaw_version || steps.openclaw.outputs.installed_version }}
           OPENCLAW_COMPATIBILITY_PROFILE: ${{ matrix.compatibility_profile }}
           OPENCLAW_CHANGED_MODULE: .host-compat-dist/src/messaging/process-message.js
         run: node scripts/check-host-compatibility.mjs
