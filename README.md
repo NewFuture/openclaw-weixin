@@ -32,10 +32,9 @@
 
 ### 直接运行命令
 
-> [!WARNING]
-> **替换腾讯版时不要先卸载。** 两个社区发布源都保留插件 ID、Channel ID、配置和
-> 登录状态。`--force` 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表；OpenClaw
-> 会自动轮换配置备份。
+**替换腾讯版时不要先卸载。** 两个社区发布源都保留插件 ID、Channel ID、配置和
+登录状态。`--force` 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表；OpenClaw
+会自动轮换配置备份。
 
 `--force` 允许覆盖相同插件 ID 的现有安装。
 
@@ -70,9 +69,8 @@ openclaw plugins install clawhub:openclaw-wechat --force
 ```
 <!-- registry-source:clawhub:end -->
 
-> [!TIP]
-> **如果当前 OpenClaw 已有微信登录状态，安装后通常只需确认连接。** 全新安装需要
-> 展开完整检查并扫码绑定；安装报错、未自动恢复连接或需要确认目标账号时，也在此检查。
+**如果当前 OpenClaw 已有微信登录状态，安装后通常只需确认连接。** 全新安装需要
+展开完整检查并扫码绑定；安装报错、未自动恢复连接或需要确认目标账号时，也在此检查。
 
 <details id="verify-connection" class="full-check">
 <summary>完整检查、扫码与恢复</summary>
