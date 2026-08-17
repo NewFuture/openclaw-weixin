@@ -1,6 +1,7 @@
 /* Weixin branding on top of the default VitePress documentation theme. */
 
 :root {
+  --vp-layout-max-width: min(1680px, 100vw);
   --vp-c-brand-1: #087a3e;
   --vp-c-brand-2: #066f37;
   --vp-c-brand-3: #07c160;
@@ -411,6 +412,22 @@ html[lang^="zh"] {
 
 .docs-home .vp-doc tr:last-child td {
   border-bottom: 0;
+}
+
+@media (min-width: 1440px) {
+  .VPDoc.has-aside .content-container {
+    max-width: 880px;
+  }
+
+  .VPDoc.has-aside .vp-doc > :where(p, ul, ol, blockquote) {
+    max-width: 74ch;
+  }
+
+  .docs-home .VPDoc:not(.has-sidebar) .container,
+  .docs-home .VPDoc:not(.has-sidebar) .content,
+  .docs-home .VPDoc:not(.has-sidebar) .content-container {
+    max-width: 1120px;
+  }
 }
 
 @media (max-width: 767px) {

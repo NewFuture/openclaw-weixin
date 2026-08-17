@@ -151,41 +151,24 @@ export const DOCUMENTS = [
 
 /** Navigation grouping. Every document slug must appear exactly once. */
 export const GROUPS = [
-  { title: { en: "Getting Started", zh: "快速开始" }, documents: ["index", "guide"], collapsed: false },
   {
-    title: { en: "Reference", zh: "参考文档" },
+    title: { en: "Getting Started", zh: "快速开始" },
+    navTitle: { en: "Start", zh: "快速开始" },
+    documents: ["index", "guide"],
+    collapsed: false,
+  },
+  {
+    title: { en: "Guides and reference", zh: "指南与参考" },
+    navTitle: { en: "Reference", zh: "指南与参考" },
     documents: ["distributions", "architecture", "backend-api", "changelog"],
     collapsed: true,
   },
   {
     title: { en: "Project", zh: "项目信息" },
+    navTitle: { en: "Project", zh: "项目信息" },
     documents: ["contributing", "release", "security"],
     collapsed: true,
   },
-];
-
-const TASK_NAV = {
-  en: {
-    install: "Install",
-    verify: "Full check",
-    troubleshoot: "Troubleshoot",
-    more: "More",
-    guides: "Guides and reference",
-    project: "Project",
-  },
-  zh: {
-    install: "安装",
-    verify: "完整检查",
-    troubleshoot: "故障排查",
-    more: "更多",
-    guides: "指南与参考",
-    project: "项目信息",
-  },
-};
-
-const MORE_NAV_GROUPS = [
-  { label: "guides", documents: ["guide", "distributions", "architecture", "backend-api", "changelog"] },
-  { label: "project", documents: ["contributing", "release", "security"] },
 ];
 
 export function documentBySlug(slug) {
@@ -303,25 +286,13 @@ function localizedDocumentTitle(document, locale) {
 }
 
 export function createNav(locale) {
-  const labels = TASK_NAV[locale];
-  const home = linkFor(documentBySlug("index"), locale);
-  const guide = linkFor(documentBySlug("guide"), locale);
-  const troubleshootingHash = locale === "zh" ? "故障排查" : "troubleshooting";
-  return [
-    { text: labels.install, link: `${home}#connect-wechat` },
-    { text: labels.verify, link: `${home}#verify-connection` },
-    { text: labels.troubleshoot, link: `${guide}#${troubleshootingHash}` },
-    {
-      text: labels.more,
-      items: MORE_NAV_GROUPS.map((group) => ({
-        text: labels[group.label],
-        items: group.documents.map((slug) => {
-          const document = documentBySlug(slug);
-          return { text: localizedDocumentTitle(document, locale), link: linkFor(document, locale) };
-        }),
-      })),
-    },
-  ];
+  return GROUPS.map((group) => ({
+    text: group.navTitle[locale],
+    items: group.documents.map((slug) => {
+      const document = documentBySlug(slug);
+      return { text: localizedDocumentTitle(document, locale), link: linkFor(document, locale) };
+    }),
+  }));
 }
 
 export function createSidebar(locale) {

@@ -33,11 +33,10 @@ Follow OpenClaw's install policy and use in-place replacement for an existing in
 
 ### Run a command directly
 
-> [!WARNING]
-> **Do not uninstall Tencent's package first when replacing it.** Both community
-> sources preserve the plugin id, channel id, configuration, and login state.
-> `--force` does not bypass OpenClaw's install policy or built-in dependency
-> denylist. OpenClaw rotates configuration backups automatically.
+**Do not uninstall Tencent's package first when replacing it.** Both community
+sources preserve the plugin id, channel id, configuration, and login state.
+`--force` does not bypass OpenClaw's install policy or built-in dependency
+denylist. OpenClaw rotates configuration backups automatically.
 
 `--force` allows replacement of an existing installation with the same plugin
 id.
@@ -74,12 +73,11 @@ openclaw plugins install clawhub:openclaw-wechat --force
 ```
 <!-- registry-source:clawhub:end -->
 
-> [!TIP]
-> **If this OpenClaw instance already has a WeChat login, you usually only need
-> to confirm the connection after installation.** For a new installation, open
-> the full check and scan the QR code. Use it as well when installation fails,
-> the connection does not return automatically, or you need to confirm the
-> intended account.
+**If this OpenClaw instance already has a WeChat login, you usually only need
+to confirm the connection after installation.** For a new installation, open
+the full check and scan the QR code. Use it as well when installation fails,
+the connection does not return automatically, or you need to confirm the
+intended account.
 
 <details id="verify-connection" class="full-check">
 <summary>Full check, QR login, and recovery</summary>

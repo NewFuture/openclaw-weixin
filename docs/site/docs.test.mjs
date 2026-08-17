@@ -143,24 +143,28 @@ describe("documentation map", () => {
     );
   });
 
-  it("uses task-led top navigation and keeps every secondary page reachable", () => {
+  it("groups top navigation by documentation section", () => {
     const chinese = createNav("zh");
     assert.deepEqual(
-      chinese.slice(0, 3).map((item) => [item.text, item.link]),
+      chinese.map((group) => group.text),
+      ["快速开始", "指南与参考", "项目信息"],
+    );
+    assert.deepEqual(
+      chinese.map((group) => group.items.map((item) => item.link)),
       [
-        ["安装", "/#connect-wechat"],
-        ["完整检查", "/#verify-connection"],
-        ["故障排查", "/guide#故障排查"],
+        ["/", "/guide"],
+        ["/distributions", "/architecture", "/backend-api", "/changelog"],
+        ["/contributing", "/release", "/security"],
       ],
     );
-    const secondaryLinks = chinese[3].items.flatMap((group) => group.items.map((item) => item.link));
-    assert.equal(secondaryLinks.length, DOCUMENTS.length - 1);
-    assert.ok(secondaryLinks.includes("/architecture"));
+    assert.equal(chinese.flatMap((group) => group.items).length, DOCUMENTS.length);
 
     const english = createNav("en");
-    assert.equal(english[0].link, "/en/#connect-wechat");
-    assert.equal(english[1].text, "Full check");
-    assert.equal(english[2].link, "/en/guide#troubleshooting");
+    assert.deepEqual(
+      english.map((group) => group.text),
+      ["Start", "Reference", "Project"],
+    );
+    assert.ok(english.flatMap((group) => group.items).every((item) => item.link.startsWith("/en/")));
   });
 
   it("resolves a source document to the reader's locale", () => {
