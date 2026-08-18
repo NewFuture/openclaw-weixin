@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { redactBody, redactToken, redactUrl, truncate } from "./redact.js";
+import { redactError, redactToken, redactUrl, truncate } from "./redact.js";
 
 describe("truncate", () => {
   it("returns empty string for undefined", () => {
@@ -30,51 +30,36 @@ describe("redactToken", () => {
     expect(redactToken("abc", 6)).toBe("****(len=3)");
   });
 
-  it("shows prefix for longer tokens", () => {
-    expect(redactToken("abcdef1234567890")).toBe("abcdef…(len=16)");
+  it("fully masks tokens by default", () => {
+    expect(redactToken("abcdef1234567890")).toBe("****(len=16)");
   });
 
-  it("respects custom prefix length", () => {
+  it("shows an explicit prefix for opt-in debug diagnostics", () => {
     expect(redactToken("abcdef1234567890", 3)).toBe("abc…(len=16)");
+  });
+
+  it("does not reveal a short token even when a longer debug prefix is requested", () => {
+    expect(redactToken("abc", 6)).toBe("****(len=3)");
   });
 });
 
-describe("redactBody", () => {
-  it("returns (empty) for undefined", () => {
-    expect(redactBody(undefined)).toBe("(empty)");
+describe("redactError", () => {
+  it("keeps only the error type and safe code", () => {
+    const error = new Error("request failed for https://example.test/?token=secret");
+    Object.assign(error, { code: "ETIMEDOUT" });
+    expect(redactError(error)).toBe("Error(code=ETIMEDOUT)");
   });
 
-  it("returns original when within limit", () => {
-    const body = '{"key":"value"}';
-    expect(redactBody(body)).toBe(body);
+  it("omits arbitrary thrown values and unsafe codes", () => {
+    expect(redactError("secret message")).toBe("Error");
+    const error = Object.assign(new Error("secret message"), { code: "token-abc123" });
+    expect(redactError(error)).toBe("Error");
   });
 
-  it("truncates long bodies", () => {
-    const body = "x".repeat(300);
-    const result = redactBody(body);
-    expect(result).toContain("…(truncated, totalLen=300)");
-    expect(result.length).toBeLessThan(300);
-  });
-
-  it("respects custom max length", () => {
-    const body = "x".repeat(50);
-    const result = redactBody(body, 10);
-    expect(result).toBe("xxxxxxxxxx…(truncated, totalLen=50)");
-  });
-
-  it("redacts context_token values", () => {
-    const body = '{"to":"user1","context_token":"secret123","text":"hello"}';
-    expect(redactBody(body)).toBe('{"to":"user1","context_token":"<redacted>","text":"hello"}');
-  });
-
-  it("redacts bot_token values", () => {
-    const body = '{"bot_token":"abc-xyz-secret"}';
-    expect(redactBody(body)).toBe('{"bot_token":"<redacted>"}');
-  });
-
-  it("redacts token values", () => {
-    const body = '{"token":"my-secret-token"}';
-    expect(redactBody(body)).toBe('{"token":"<redacted>"}');
+  it("normalizes an unsafe error name", () => {
+    const error = new Error("secret");
+    error.name = "SecretToken123";
+    expect(redactError(error)).toBe("Error");
   });
 });
 
@@ -87,8 +72,11 @@ describe("redactUrl", () => {
     expect(redactUrl("https://example.com/upload?sig=secret&token=abc")).toBe("https://example.com/upload?<redacted>");
   });
 
-  it("handles invalid URLs gracefully", () => {
-    const result = redactUrl(`not-a-url-but-very-long-${"x".repeat(100)}`);
-    expect(result).toContain("…(len=");
+  it("strips URL fragments", () => {
+    expect(redactUrl("https://example.com/upload#secret")).toBe("https://example.com/upload?<redacted>");
+  });
+
+  it("does not echo invalid URLs", () => {
+    expect(redactUrl("not-a-url?token=secret")).toBe("(invalid-url)");
   });
 });

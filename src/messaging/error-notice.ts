@@ -1,5 +1,5 @@
 import { logger } from "../util/logger.js";
-import { redactToken } from "../util/redact.js";
+import { redactError, redactToken } from "../util/redact.js";
 import { sendMessageWeixin } from "./send.js";
 
 /**
@@ -31,8 +31,8 @@ export async function sendWeixinErrorNotice(params: {
         ...(params.runId ? { runId: params.runId } : {}),
       },
     });
-    logger.debug(`sendWeixinErrorNotice: sent to=${params.to}`);
+    logger.debug(`sendWeixinErrorNotice: sent to=${redactToken(params.to, 6)}`);
   } catch (err) {
-    params.errLog(`[weixin] sendWeixinErrorNotice failed to=${params.to}: ${String(err)}`);
+    params.errLog(`[weixin] sendWeixinErrorNotice failed to=${redactToken(params.to)}: ${redactError(err)}`);
   }
 }

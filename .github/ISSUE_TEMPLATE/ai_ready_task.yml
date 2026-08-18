@@ -1,6 +1,8 @@
 name: AI-ready Implementation Task
 description: Define a bounded implementation task with a verifiable test oracle
 title: "[Task]: "
+labels:
+  - agent:ready
 body:
   - type: markdown
     attributes:

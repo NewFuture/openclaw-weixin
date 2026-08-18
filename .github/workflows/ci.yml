@@ -199,12 +199,32 @@ jobs:
         if: matrix.pack_check
         run: npm run pack:check
 
+  gate:
+    name: Gate
+    if: always()
+    needs:
+      - release-metadata
+      - validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Require all validation jobs
+        env:
+          RELEASE_METADATA_RESULT: ${{ needs.release-metadata.result }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+        run: |
+          if [[ "$RELEASE_METADATA_RESULT" != "success" || "$VALIDATE_RESULT" != "success" ]]; then
+            echo "::error::Required CI jobs did not succeed (release-metadata=$RELEASE_METADATA_RESULT, validate=$VALIDATE_RESULT)."
+            exit 1
+          fi
+
   tag-release:
     name: Reconcile release tag
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - release-metadata
-      - validate
+      - gate
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:

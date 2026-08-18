@@ -1,4 +1,5 @@
 import { logger } from "../util/logger.js";
+import { redactToken } from "../util/redact.js";
 
 const SESSION_PAUSE_DURATION_MS = 60 * 60 * 1000;
 
@@ -12,7 +13,7 @@ export function pauseSession(accountId: string): void {
   const until = Date.now() + SESSION_PAUSE_DURATION_MS;
   pauseUntilMap.set(accountId, until);
   logger.info(
-    `session-guard: paused accountId=${accountId} until=${new Date(until).toISOString()} (${SESSION_PAUSE_DURATION_MS / 1000}s)`,
+    `session-guard: paused account=${redactToken(accountId)} until=${new Date(until).toISOString()} (${SESSION_PAUSE_DURATION_MS / 1000}s)`,
   );
 }
 
@@ -43,9 +44,7 @@ export function getRemainingPauseMs(accountId: string): number {
 export function assertSessionActive(accountId: string): void {
   if (isSessionPaused(accountId)) {
     const remainingMin = Math.ceil(getRemainingPauseMs(accountId) / 60_000);
-    throw new Error(
-      `session paused for accountId=${accountId}, ${remainingMin} min remaining (errcode ${STALE_TOKEN_ERRCODE})`,
-    );
+    throw new Error(`session paused for account, ${remainingMin} min remaining (errcode ${STALE_TOKEN_ERRCODE})`);
   }
 }
 

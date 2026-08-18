@@ -115,7 +115,8 @@ describe("applyWeixinMessageSendingHook", () => {
       cancelled: false,
       text: "hello",
     });
-    expect(mocks.logger.warn).toHaveBeenCalledWith("message_sending hook error, proceeding with send: Error: boom");
+    expect(mocks.logger.warn).toHaveBeenCalledWith("message_sending hook error, proceeding with send: Error");
+    expect(mocks.logger.warn.mock.calls.flat().join(" ")).not.toContain("boom");
   });
 });
 

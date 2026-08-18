@@ -2,6 +2,7 @@ import type { WeixinApiOptions } from "../api/api.js";
 import type { MessageItem } from "../api/types.js";
 import { MessageItemType } from "../api/types.js";
 import { logger } from "../util/logger.js";
+import { redactError, redactToken } from "../util/redact.js";
 
 import { sendMessageItemWeixin } from "./send.js";
 
@@ -67,7 +68,7 @@ export class WeixinReplyProgressSender {
       })
       .catch((err) => {
         logger.warn(
-          `${label}: failed to=${this.to} accountId=${this.accountId} runId=${this.runId} err=${String(err)}`,
+          `${label}: failed to=${redactToken(this.to)} account=${redactToken(this.accountId)} runId=${this.runId} err=${redactError(err)}`,
         );
       });
   }
@@ -118,7 +119,7 @@ export class WeixinReplyProgressSender {
     try {
       await this.sendChain;
     } catch (err) {
-      logger.warn(`WeixinReplyProgressSender.finalize: send drain failed runId=${this.runId} err=${String(err)}`);
+      logger.warn(`WeixinReplyProgressSender.finalize: send drain failed runId=${this.runId} err=${redactError(err)}`);
     }
   }
 }

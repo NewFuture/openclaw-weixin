@@ -7,7 +7,7 @@ import { UploadMediaType } from "../api/types.js";
 import { getExtensionFromContentTypeOrUrl } from "../media/mime.js";
 import { logger } from "../util/logger.js";
 import { tempFileName } from "../util/random.js";
-import { redactUrl } from "../util/redact.js";
+import { redactError, redactUrl } from "../util/redact.js";
 import { aesEcbPaddedSize } from "./aes-ecb.js";
 import { uploadBufferToCdn } from "./cdn-upload.js";
 
@@ -35,12 +35,12 @@ export async function downloadRemoteImageToTemp(url: string, destDir: string): P
   } catch (err) {
     const cause = (err as NodeJS.ErrnoException).cause ?? (err as NodeJS.ErrnoException).code ?? "";
     logger.error(
-      `downloadRemoteImageToTemp: fetch network error url=${redactUrl(url)} error=${String(err)}${cause ? ` cause=${cause}` : ""}`,
+      `downloadRemoteImageToTemp: fetch network error url=${redactUrl(url)} error=${redactError(err)} hasCause=${Boolean(cause)}`,
     );
     throw err;
   }
   if (!res.ok) {
-    const msg = `remote media download failed: ${res.status} ${res.statusText} url=${redactUrl(url)}`;
+    const msg = `remote media download failed: status=${res.status} url=${redactUrl(url)}`;
     logger.error(`downloadRemoteImageToTemp: ${msg}`);
     throw new Error(msg);
   }
@@ -51,7 +51,7 @@ export async function downloadRemoteImageToTemp(url: string, destDir: string): P
   const name = tempFileName("weixin-remote", ext);
   const filePath = path.join(destDir, name);
   await fs.writeFile(filePath, buf);
-  logger.debug(`downloadRemoteImageToTemp: saved to ${filePath} ext=${ext}`);
+  logger.debug(`downloadRemoteImageToTemp: saved ext=${ext}`);
   return filePath;
 }
 
@@ -75,9 +75,7 @@ async function uploadMediaToCdn(params: {
   const filekey = crypto.randomBytes(16).toString("hex");
   const aeskey = crypto.randomBytes(16);
 
-  logger.debug(
-    `${label}: file=${filePath} rawsize=${rawsize} filesize=${filesize} md5=${rawfilemd5} filekey=${filekey}`,
-  );
+  logger.debug(`${label}: rawsize=${rawsize} filesize=${filesize}`);
 
   const uploadUrlResp = await getUploadUrl({
     ...opts,
@@ -94,9 +92,7 @@ async function uploadMediaToCdn(params: {
   const uploadFullUrl = uploadUrlResp.upload_full_url?.trim();
   const uploadParam = uploadUrlResp.upload_param;
   if (!uploadFullUrl && !uploadParam) {
-    logger.error(
-      `${label}: getUploadUrl returned no upload URL (need upload_full_url or upload_param), resp=${JSON.stringify(uploadUrlResp)}`,
-    );
+    logger.error(`${label}: getUploadUrl returned no upload URL (need upload_full_url or upload_param)`);
     throw new Error(`${label}: getUploadUrl returned no upload URL`);
   }
 
@@ -107,7 +103,7 @@ async function uploadMediaToCdn(params: {
     filekey,
     cdnBaseUrl,
     aeskey,
-    label: `${label}[orig filekey=${filekey}]`,
+    label,
   });
 
   return {

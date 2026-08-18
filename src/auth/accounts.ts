@@ -6,6 +6,7 @@ import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
 
 import { resolveStateDir } from "../storage/state-dir.js";
 import { logger } from "../util/logger.js";
+import { redactError } from "../util/redact.js";
 import { resolveFrameworkAllowFromPath } from "./pairing.js";
 
 export const DEFAULT_BASE_URL = "https://ilinkai.weixin.qq.com";
@@ -648,7 +649,7 @@ export async function triggerWeixinChannelReload(): Promise<void> {
     await writeConfigFile(updated);
     logger.info("triggerWeixinChannelReload: wrote channel config to openclaw.json");
   } catch (err) {
-    logger.warn(`triggerWeixinChannelReload: failed to update config: ${String(err)}`);
+    logger.warn(`triggerWeixinChannelReload: failed to update config: ${redactError(err)}`);
   }
 }
 

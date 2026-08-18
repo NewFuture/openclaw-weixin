@@ -1,4 +1,5 @@
 import { logger } from "../util/logger.js";
+import { redactError } from "../util/redact.js";
 
 /** Default sample rate for Weixin voice messages. */
 const SILK_SAMPLE_RATE = 24_000;
@@ -66,7 +67,7 @@ export async function silkToWav(silkBuf: Buffer): Promise<Buffer | null> {
     logger.debug(`silkToWav: WAV size=${wav.length}`);
     return wav;
   } catch (err) {
-    logger.warn(`silkToWav: transcode failed, will use raw silk err=${String(err)}`);
+    logger.warn(`silkToWav: transcode failed, will use raw silk err=${redactError(err)}`);
     return null;
   }
 }

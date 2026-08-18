@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockLoggerInfo } = vi.hoisted(() => ({
+  mockLoggerInfo: vi.fn(),
+}));
+
 vi.mock("../util/logger.js", () => ({
   logger: {
-    info: vi.fn(),
+    info: mockLoggerInfo,
     debug: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
@@ -86,6 +90,11 @@ describe("sendWeixinMediaFile", () => {
       uploaded: fakeUploaded,
       opts: baseParams.opts,
     });
+    const logs = mockLoggerInfo.mock.calls.flat().join(" ");
+    expect(logs).not.toContain("/tmp/doc.pdf");
+    expect(logs).not.toContain("doc.pdf");
+    expect(logs).not.toContain(baseParams.to);
+    expect(logs).not.toContain(fakeUploaded.filekey);
   });
 
   it("routes .webm as video", async () => {
