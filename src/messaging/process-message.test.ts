@@ -289,7 +289,10 @@ describe("processOneMessage", () => {
       };
     });
 
-    await processOneMessage(makeTextMessage("private inbound body"), makeDeps(harness.channelRuntime));
+    await processOneMessage(
+      makeTextMessage("private inbound body", { session_id: "private-session-id" }),
+      makeDeps(harness.channelRuntime),
+    );
 
     expect(mocks.applySendingHook).toHaveBeenCalledTimes(2);
     const timingText = String(mocks.applySendingHook.mock.calls[1]?.[0].text ?? "");
@@ -297,6 +300,7 @@ describe("processOneMessage", () => {
     for (const sensitive of [
       "private suppressed reply",
       "private inbound body",
+      "private-session-id",
       SYNTHETIC_ACCOUNT_ID,
       SYNTHETIC_USER_ID,
       "agent:agent-test:openclaw-weixin:account-test:user-test",

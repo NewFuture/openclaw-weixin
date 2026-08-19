@@ -140,7 +140,7 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
       "── 收消息 ──",
       `│ hasSeq=${full.seq !== undefined} hasMsgId=${full.message_id !== undefined} from=${redactToken(full.from_user_id, 6)}`,
       `│ bodyLen=${textBody.length} itemTypes=[${itemTypes}]`,
-      `│ sessionId=${full.session_id ?? "?"} contextToken=${full.context_token ? "present" : "none"}`,
+      `│ hasSessionId=${Boolean(full.session_id)} contextToken=${full.context_token ? "present" : "none"}`,
     );
   }
 
