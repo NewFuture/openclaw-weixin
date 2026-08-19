@@ -111,6 +111,28 @@ describe("downloadMediaFromItem", () => {
     expect(logs).not.toContain("C:\\synthetic\\image.bin");
   });
 
+  it.each([
+    ["image", makeImageItem],
+    ["voice", makeVoiceItem],
+    ["file", makeFileItem],
+    ["video", makeVideoItem],
+  ])("redacts arbitrary errors from %s download diagnostics", async (_kind, makeItem) => {
+    const secret = "synthetic-private-error-detail";
+    const errLog = vi.fn();
+    mocks.downloadAndDecryptBuffer.mockRejectedValueOnce(new Error(secret));
+
+    await downloadMediaFromItem(makeItem(), {
+      ...COMMON_DEPS,
+      errLog,
+      saveMedia: vi.fn(),
+    });
+
+    const diagnostics = [...mocks.logger.error.mock.calls, ...errLog.mock.calls].flat().join(" ");
+    expect(diagnostics).not.toContain(secret);
+    expect(mocks.logger.error).toHaveBeenCalled();
+    expect(errLog).toHaveBeenCalled();
+  });
+
   it("propagates a caller-supplied subdir through every media branch", async () => {
     // Per-agent isolation relies on the calling layer (process-message.ts) passing
     // a per-agent subdir. This test pins the contract that `downloadMediaFromItem`

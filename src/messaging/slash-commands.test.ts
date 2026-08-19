@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { logger } from "../util/logger.js";
 import { isDebugMode, _resetForTest as resetDebugMode } from "./debug-mode.js";
 import type { SlashCommandContext } from "./slash-commands.js";
 import { handleSlashCommand } from "./slash-commands.js";
@@ -43,9 +44,13 @@ describe("handleSlashCommand", () => {
   });
 
   it("returns handled=false for unknown slash commands", async () => {
-    const result = await handleSlashCommand("/unknown arg", ctx, Date.now());
+    const result = await handleSlashCommand("/secret-value private-argument", ctx, Date.now());
     expect(result.handled).toBe(false);
     expect(mockSendMessageWeixin).not.toHaveBeenCalled();
+    const logs = (logger.info as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(logs).toContain("Slash command: (unknown) hasArgs=true");
+    expect(logs).not.toContain("secret-value");
+    expect(logs).not.toContain("private-argument");
   });
 
   it("handles /echo with message and timing", async () => {
@@ -60,6 +65,7 @@ describe("handleSlashCommand", () => {
     expect(firstCall.to).toBe("user123");
     expect(firstCall.text).toBe("hello");
     expect(firstCall.opts.contextToken).toBe("token123");
+    expect(logger.info).toHaveBeenCalledWith("[weixin] Slash command: /echo hasArgs=true");
 
     const secondCall = mockSendMessageWeixin.mock.calls[1][0];
     expect(secondCall.text).toContain("⏱ 通道耗时");
