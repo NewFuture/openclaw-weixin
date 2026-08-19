@@ -99,6 +99,7 @@ export function redactError(error: unknown): string {
 export function redactUrl(rawUrl: string): string {
   try {
     const u = new URL(rawUrl);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "(unsupported-url)";
     const base = `${u.origin}${u.pathname}`;
     return u.search || u.hash ? `${base}?<redacted>` : base;
   } catch {

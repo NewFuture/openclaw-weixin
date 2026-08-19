@@ -135,4 +135,16 @@ describe("redactUrl", () => {
   it("does not echo invalid URLs", () => {
     expect(redactUrl("not-a-url?token=secret")).toBe("(invalid-url)");
   });
+
+  it("does not echo data URL payloads", () => {
+    const result = redactUrl("data:text/plain,secret");
+    expect(result).toBe("(unsupported-url)");
+    expect(result).not.toContain("secret");
+  });
+
+  it("does not echo file URL paths", () => {
+    const result = redactUrl("file:///private/path");
+    expect(result).toBe("(unsupported-url)");
+    expect(result).not.toContain("/private/path");
+  });
 });
