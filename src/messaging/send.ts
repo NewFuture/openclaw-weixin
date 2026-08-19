@@ -6,7 +6,7 @@ import { MessageItemType, MessageState, MessageType } from "../api/types.js";
 import type { UploadedFileInfo } from "../cdn/upload.js";
 import { logger } from "../util/logger.js";
 import { generateId } from "../util/random.js";
-import { redactToken } from "../util/redact.js";
+import { redactError, redactToken } from "../util/redact.js";
 
 export { StreamingMarkdownFilter } from "./markdown-filter.js";
 
@@ -92,7 +92,7 @@ export async function sendMessageWeixin(params: {
       body: req,
     });
   } catch (err) {
-    logger.error(`sendMessageWeixin: failed to=${redactToken(to)} clientId=${clientId} err=${String(err)}`);
+    logger.error(`sendMessageWeixin: failed to=${redactToken(to)} clientId=${clientId} err=${redactError(err)}`);
     throw err;
   }
   return { messageId: clientId };
@@ -135,7 +135,7 @@ export async function sendMessageItemWeixin(params: {
     });
   } catch (err) {
     logger.error(
-      `${params.label ?? "sendMessageItemWeixin"}: failed to=${redactToken(to)} clientId=${clientId} err=${String(err)}`,
+      `${params.label ?? "sendMessageItemWeixin"}: failed to=${redactToken(to)} clientId=${clientId} err=${redactError(err)}`,
     );
     throw err;
   }
@@ -185,7 +185,7 @@ async function sendMediaItems(params: {
         body: req,
       });
     } catch (err) {
-      logger.error(`${label}: failed to=${redactToken(to)} clientId=${lastClientId} err=${String(err)}`);
+      logger.error(`${label}: failed to=${redactToken(to)} clientId=${lastClientId} err=${redactError(err)}`);
       throw err;
     }
   }
@@ -217,7 +217,7 @@ export async function sendImageMessageWeixin(params: {
     );
   }
   logger.info(
-    `sendImageMessageWeixin: to=${redactToken(to)} filekey=${uploaded.filekey} fileSize=${uploaded.fileSize} aeskey=present`,
+    `sendImageMessageWeixin: to=${redactToken(to)} filekey=${redactToken(uploaded.filekey)} fileSize=${uploaded.fileSize} aeskey=present`,
   );
 
   const imageItem: MessageItem = {

@@ -7,6 +7,7 @@ import {
 import { getGlobalHookRunner } from "openclaw/plugin-sdk/plugin-runtime";
 
 import { logger } from "../util/logger.js";
+import { redactError } from "../util/redact.js";
 
 const CHANNEL_ID = "openclaw-weixin";
 
@@ -48,7 +49,7 @@ export async function applyWeixinMessageSendingHook(params: {
       text: hookResult?.content ?? params.text,
     };
   } catch (err) {
-    logger.warn(`message_sending hook error, proceeding with send: ${String(err)}`);
+    logger.warn(`message_sending hook error, proceeding with send: ${redactError(err)}`);
     return { cancelled: false, text: params.text };
   }
 }

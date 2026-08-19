@@ -106,6 +106,9 @@ describe("downloadMediaFromItem", () => {
     );
     expect(saveMedia).toHaveBeenCalledWith(Buffer.from("image"), undefined, "inbound", 100 * 1024 * 1024);
     expect(result).toEqual({ decryptedPicPath: "C:\\synthetic\\image.bin" });
+    const logs = [...mocks.logger.debug.mock.calls, ...mocks.logger.error.mock.calls].flat().join(" ");
+    expect(logs).not.toContain("synthetic-encrypted-query");
+    expect(logs).not.toContain("C:\\synthetic\\image.bin");
   });
 
   it("propagates a caller-supplied subdir through every media branch", async () => {

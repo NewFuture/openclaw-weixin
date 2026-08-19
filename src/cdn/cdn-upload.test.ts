@@ -152,7 +152,7 @@ describe("uploadBufferToCdn", () => {
     ).rejects.toThrow("x-encrypted-param");
   });
 
-  it("uses x-error-message header for 4xx when available", async () => {
+  it("does not expose a 4xx response message", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 400,
@@ -160,15 +160,14 @@ describe("uploadBufferToCdn", () => {
       text: () => Promise.resolve("fallback text"),
     });
 
-    await expect(
-      uploadBufferToCdn({
-        buf: Buffer.from("data"),
-        uploadParam: "up",
-        filekey: "fk",
-        cdnBaseUrl: "https://cdn.com",
-        label: "test",
-        aeskey,
-      }),
-    ).rejects.toThrow("bad request detail");
+    const upload = uploadBufferToCdn({
+      buf: Buffer.from("data"),
+      uploadParam: "up",
+      filekey: "fk",
+      cdnBaseUrl: "https://cdn.com",
+      label: "test",
+      aeskey,
+    });
+    await expect(upload).rejects.toThrow(/^CDN upload client error 400$/);
   });
 });

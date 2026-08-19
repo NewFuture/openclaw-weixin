@@ -1,5 +1,5 @@
 import { logger } from "../util/logger.js";
-import { redactUrl } from "../util/redact.js";
+import { redactError, redactUrl } from "../util/redact.js";
 import { encryptAesEcb } from "./aes-ecb.js";
 import { buildCdnUploadUrl } from "./cdn-url.js";
 
@@ -45,14 +45,14 @@ export async function uploadBufferToCdn(params: {
         body: new Uint8Array(ciphertext),
       });
       if (res.status >= 400 && res.status < 500) {
-        const errMsg = res.headers.get("x-error-message") ?? (await res.text());
-        logger.error(`${label}: CDN client error attempt=${attempt} status=${res.status} errMsg=${errMsg}`);
-        throw new Error(`CDN upload client error ${res.status}: ${errMsg}`);
+        await res.body?.cancel();
+        logger.error(`${label}: CDN client error attempt=${attempt} status=${res.status}`);
+        throw new Error(`CDN upload client error ${res.status}`);
       }
       if (res.status !== 200) {
-        const errMsg = res.headers.get("x-error-message") ?? `status ${res.status}`;
-        logger.error(`${label}: CDN server error attempt=${attempt} status=${res.status} errMsg=${errMsg}`);
-        throw new Error(`CDN upload server error: ${errMsg}`);
+        await res.body?.cancel();
+        logger.error(`${label}: CDN server error attempt=${attempt} status=${res.status}`);
+        throw new Error(`CDN upload server error ${res.status}`);
       }
       downloadParam = res.headers.get("x-encrypted-param") ?? undefined;
       if (!downloadParam) {
@@ -64,14 +64,13 @@ export async function uploadBufferToCdn(params: {
     } catch (err) {
       lastError = err;
       if (err instanceof Error && err.message.includes("client error")) throw err;
-      const cause = (err as NodeJS.ErrnoException).cause ?? (err as NodeJS.ErrnoException).code ?? "";
       if (attempt < UPLOAD_MAX_RETRIES) {
         logger.error(
-          `${label}: attempt ${attempt} failed, retrying... url=${redactUrl(cdnUrl)} error=${String(err)}${cause ? ` cause=${cause}` : ""}`,
+          `${label}: attempt ${attempt} failed, retrying... url=${redactUrl(cdnUrl)} error=${redactError(err)}`,
         );
       } else {
         logger.error(
-          `${label}: all ${UPLOAD_MAX_RETRIES} attempts failed url=${redactUrl(cdnUrl)} error=${String(err)}${cause ? ` cause=${cause}` : ""}`,
+          `${label}: all ${UPLOAD_MAX_RETRIES} attempts failed url=${redactUrl(cdnUrl)} error=${redactError(err)}`,
         );
       }
     }

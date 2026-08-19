@@ -1,4 +1,5 @@
 import { logger } from "../util/logger.js";
+import { redactError, redactUrl } from "../util/redact.js";
 import { decryptAesEcb } from "./aes-ecb.js";
 import { buildCdnDownloadUrl, ENABLE_CDN_URL_FALLBACK } from "./cdn-url.js";
 
@@ -10,14 +11,13 @@ async function fetchCdnBytes(url: string, label: string): Promise<Buffer> {
   try {
     res = await fetch(url);
   } catch (err) {
-    const cause = (err as NodeJS.ErrnoException).cause ?? (err as NodeJS.ErrnoException).code ?? "(no cause)";
-    logger.error(`${label}: fetch network error url=${url} err=${String(err)} cause=${String(cause)}`);
+    logger.error(`${label}: fetch network error url=${redactUrl(url)} err=${redactError(err)}`);
     throw err;
   }
   logger.debug(`${label}: response status=${res.status} ok=${res.ok}`);
   if (!res.ok) {
-    const body = await res.text().catch(() => "(unreadable)");
-    const msg = `${label}: CDN download ${res.status} ${res.statusText} body=${body}`;
+    await res.body?.cancel();
+    const msg = `${label}: CDN download failed status=${res.status}`;
     logger.error(msg);
     throw new Error(msg);
   }
@@ -43,7 +43,7 @@ function parseAesKey(aesKeyBase64: string, label: string): Buffer {
     // hex-encoded key: base64 → hex string → raw bytes
     return Buffer.from(decoded.toString("ascii"), "hex");
   }
-  const msg = `${label}: aes_key must decode to 16 raw bytes or 32-char hex string, got ${decoded.length} bytes (base64="${aesKeyBase64}")`;
+  const msg = `${label}: aes_key must decode to 16 raw bytes or 32-char hex string, got ${decoded.length} bytes`;
   logger.error(msg);
   throw new Error(msg);
 }
@@ -68,7 +68,7 @@ export async function downloadAndDecryptBuffer(
   } else {
     throw new Error(`${label}: fullUrl is required (CDN URL fallback is disabled)`);
   }
-  logger.debug(`${label}: fetching url=${url}`);
+  logger.debug(`${label}: fetching url=${redactUrl(url)}`);
   const encrypted = await fetchCdnBytes(url, label);
   logger.debug(`${label}: downloaded ${encrypted.byteLength} bytes, decrypting`);
   const decrypted = decryptAesEcb(encrypted, key);
@@ -93,6 +93,6 @@ export async function downloadPlainCdnBuffer(
   } else {
     throw new Error(`${label}: fullUrl is required (CDN URL fallback is disabled)`);
   }
-  logger.debug(`${label}: fetching url=${url}`);
+  logger.debug(`${label}: fetching url=${redactUrl(url)}`);
   return fetchCdnBytes(url, label);
 }

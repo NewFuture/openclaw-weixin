@@ -81,13 +81,12 @@ describe("CDN downloads", () => {
   it("reports a non-success CDN response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("synthetic failure", { status: 403 })));
 
-    await expect(
-      downloadPlainCdnBuffer(
-        "unused-query",
-        "https://cdn.example.test",
-        "inbound image",
-        "https://cdn.example.test/download",
-      ),
-    ).rejects.toThrow("CDN download 403");
+    const download = downloadPlainCdnBuffer(
+      "unused-query",
+      "https://cdn.example.test",
+      "inbound image",
+      "https://cdn.example.test/download",
+    );
+    await expect(download).rejects.toThrow(/^inbound image: CDN download failed status=403$/);
   });
 });
