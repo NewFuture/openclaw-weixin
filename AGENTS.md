@@ -54,6 +54,9 @@ contract.
   embed these values. Never add real values to source, fixtures, logs, issues,
   screenshots, or examples. Route diagnostics through the existing redaction
   helpers and test that sensitive values are absent.
+- INFO, WARN, and ERROR logs fully mask identifiers and tokens. DEBUG logs may
+  expose only a short prefix through the explicit redaction helper. No log level
+  may contain message text, URL query strings, QR URLs, or raw filesystem paths.
 - Account state and context tokens are account-scoped. Do not introduce a global
   fallback that can send from the wrong account.
 - Stop and hot-reload must abort an in-flight long poll. Polling must continue

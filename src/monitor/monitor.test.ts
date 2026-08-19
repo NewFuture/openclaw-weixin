@@ -16,6 +16,12 @@ const pauseSessionMock = vi.fn<(accountId: string) => void>();
 const processOneMessageMock = vi.fn<(message: WeixinMessage, deps: ProcessMessageDeps) => Promise<void>>();
 const saveGetUpdatesBufMock = vi.fn<(filePath: string, value: string) => void>();
 const setContextTokenMock = vi.fn<(accountId: string, userId: string, token: string) => void>();
+const accountLogger = vi.hoisted(() => ({
+  info: vi.fn(),
+  debug: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 
 vi.mock("../api/api.js", () => ({
   getUpdates: (opts: { abortSignal?: AbortSignal; get_updates_buf?: string; timeoutMs?: number }) =>
@@ -57,12 +63,7 @@ vi.mock("../storage/sync-buf.js", () => ({
 
 vi.mock("../util/logger.js", () => ({
   logger: {
-    withAccount: () => ({
-      info: vi.fn(),
-      debug: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    }),
+    withAccount: () => accountLogger,
   },
 }));
 
@@ -141,14 +142,15 @@ describe("monitorWeixinProvider", () => {
     });
 
     const harness = createChannelRuntimeHarness();
+    const runtimeLog = vi.fn();
     const monitor = monitorWeixinProvider({
-      baseUrl: "https://example.test",
+      baseUrl: "https://example.test?token=secret-monitor",
       cdnBaseUrl: "https://cdn.example.test",
       accountId: "acc-monitor",
       config: {},
       channelRuntime: harness.channelRuntime,
       abortSignal: abortController.signal,
-      runtime: { log: vi.fn(), error: vi.fn() },
+      runtime: { log: runtimeLog, error: vi.fn() },
     });
 
     try {
@@ -166,6 +168,18 @@ describe("monitorWeixinProvider", () => {
         ["acc-monitor", "user-a", "token-4"],
         ["acc-monitor", "user-a", "token-3"],
       ]);
+      const logs = [
+        ...runtimeLog.mock.calls,
+        ...accountLogger.info.mock.calls,
+        ...accountLogger.debug.mock.calls,
+        ...accountLogger.warn.mock.calls,
+        ...accountLogger.error.mock.calls,
+      ]
+        .flat()
+        .join(" ");
+      for (const sensitive of ["secret-monitor", "acc-monitor", "user-a", "sync-buf"]) {
+        expect(logs).not.toContain(sensitive);
+      }
     } finally {
       firstPreprocessing.resolve();
       firstRun.resolve();
@@ -420,7 +434,8 @@ describe("monitorWeixinProvider", () => {
     const monitor = startMonitor(abortController, harness.channelRuntime, errLog);
     await expect(monitor).resolves.toBeUndefined();
     await vi.waitFor(() => expect(started).toEqual(["first-retry"]));
-    expect(errLog).toHaveBeenCalledWith(expect.stringContaining("synthetic config lookup failure"));
+    expect(errLog).toHaveBeenCalledWith("weixin inbound message failed: Error");
+    expect(errLog.mock.calls.flat().join(" ")).not.toContain("synthetic config lookup failure");
     expect(processOneMessageMock).toHaveBeenCalledTimes(1);
   });
 
@@ -451,7 +466,8 @@ describe("monitorWeixinProvider", () => {
     await expect(monitor).resolves.toBeUndefined();
     await vi.waitFor(() => expect(started).toEqual(["first", "second"]));
 
-    expect(errLog).toHaveBeenCalledWith(expect.stringContaining("synthetic preprocessing failure"));
+    expect(errLog).toHaveBeenCalledWith("weixin inbound message failed: Error");
+    expect(errLog.mock.calls.flat().join(" ")).not.toContain("synthetic preprocessing failure");
   });
 });
 

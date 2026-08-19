@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getSafeErrorCode, redactBody, redactError, redactToken, redactUrl, truncate } from "./redact.js";
+import { getSafeErrorCode, redactError, redactToken, redactUrl, truncate } from "./redact.js";
 
 describe("truncate", () => {
   it("returns empty string for undefined", () => {
@@ -44,45 +44,6 @@ describe("redactToken", () => {
 
   it("bounds an oversized debug prefix", () => {
     expect(redactToken("abcdefghijklmnopqrstuvwxyz", 100)).toBe("abcdef…(len=26)");
-  });
-});
-
-describe("redactBody", () => {
-  it("returns (empty) for undefined", () => {
-    expect(redactBody(undefined)).toBe("(empty)");
-  });
-
-  it("returns original when within limit", () => {
-    const body = '{"key":"value"}';
-    expect(redactBody(body)).toBe(body);
-  });
-
-  it("truncates long bodies", () => {
-    const body = "x".repeat(300);
-    const result = redactBody(body);
-    expect(result).toContain("…(truncated, totalLen=300)");
-    expect(result.length).toBeLessThan(300);
-  });
-
-  it("respects custom max length", () => {
-    const body = "x".repeat(50);
-    const result = redactBody(body, 10);
-    expect(result).toBe("xxxxxxxxxx…(truncated, totalLen=50)");
-  });
-
-  it("redacts context_token values", () => {
-    const body = '{"to":"user1","context_token":"secret123","text":"hello"}';
-    expect(redactBody(body)).toBe('{"to":"user1","context_token":"<redacted>","text":"hello"}');
-  });
-
-  it("redacts bot_token values", () => {
-    const body = '{"bot_token":"abc-xyz-secret"}';
-    expect(redactBody(body)).toBe('{"bot_token":"<redacted>"}');
-  });
-
-  it("redacts token values", () => {
-    const body = '{"token":"my-secret-token"}';
-    expect(redactBody(body)).toBe('{"token":"<redacted>"}');
   });
 });
 

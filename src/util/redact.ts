@@ -1,4 +1,3 @@
-const DEFAULT_BODY_MAX_LEN = 200;
 const DEFAULT_TOKEN_PREFIX_LEN = 0;
 const MAX_TOKEN_PREFIX_LEN = 6;
 const SAFE_ERROR_NAMES = new Set([
@@ -61,21 +60,6 @@ export function redactToken(token: string | undefined, prefixLen = DEFAULT_TOKEN
 
 export function getSafeErrorCode(code: unknown): string | undefined {
   return typeof code === "string" && SAFE_ERROR_CODES.has(code) ? code : undefined;
-}
-
-/**
- * Truncate a JSON body string to `maxLen` chars for safe logging.
- * Redacts known sensitive fields before truncating.
- */
-export function redactBody(body: string | undefined, maxLen = DEFAULT_BODY_MAX_LEN): string {
-  if (!body) return "(empty)";
-  // Mask values of known sensitive JSON keys: "key":"value" → "key":"<redacted>"
-  const redacted = body.replace(
-    /"(context_token|bot_token|token|authorization|Authorization)"\s*:\s*"[^"]*"/g,
-    '"$1":"<redacted>"',
-  );
-  if (redacted.length <= maxLen) return redacted;
-  return `${redacted.slice(0, maxLen)}…(truncated, totalLen=${redacted.length})`;
 }
 
 /**

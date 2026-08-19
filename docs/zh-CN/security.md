@@ -16,4 +16,10 @@
 
 请勿包含凭据、账号标识符、二维码或私信内容。仓库管理员会在草稿安全公告中跟踪已确认的报告。
 
+## 诊断隐私
+
+INFO、WARN 和 ERROR 日志会完全遮盖标识符与令牌。仅在显式启用 DEBUG 时，日志才可显示
+经过脱敏的短前缀。任何日志级别都不得包含消息正文、URL 查询参数、二维码 URL 或原始文件
+系统路径。报告问题时应提供事件名称、状态码、计数和耗时，而不是敏感值。
+
 [advisory]: https://github.com/NewFuture/openclaw-weixin/security/advisories/new

@@ -16,6 +16,12 @@ const mocks = vi.hoisted(() => ({
   downloadMedia: vi.fn(),
   emitMessageSent: vi.fn(),
   handleSlashCommand: vi.fn(),
+  logger: {
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+  },
   resolveSenderAuthorization: vi.fn(),
   sendErrorNotice: vi.fn(),
   sendMedia: vi.fn(),
@@ -61,12 +67,7 @@ vi.mock("../media/media-download.js", () => ({
 }));
 
 vi.mock("../util/logger.js", () => ({
-  logger: {
-    debug: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-  },
+  logger: mocks.logger,
 }));
 
 vi.mock("./debug-mode.js", () => ({
@@ -210,6 +211,23 @@ describe("processOneMessage", () => {
     );
     expect(onReplyAdmitted).toHaveBeenCalledOnce();
     expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+    const logs = [
+      ...mocks.logger.info.mock.calls,
+      ...mocks.logger.debug.mock.calls,
+      ...mocks.logger.warn.mock.calls,
+      ...mocks.logger.error.mock.calls,
+    ]
+      .flat()
+      .join(" ");
+    for (const sensitive of [
+      "hello",
+      SYNTHETIC_ACCOUNT_ID,
+      SYNTHETIC_USER_ID,
+      "sessions-test.json",
+      "agent:agent-test:openclaw-weixin:account-test:user-test",
+    ]) {
+      expect(logs).not.toContain(sensitive);
+    }
   });
 
   it.each(["queued-followup", "adopted-turn"] as const)("reports %s admission", async (admission) => {
