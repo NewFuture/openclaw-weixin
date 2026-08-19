@@ -559,6 +559,7 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
       const timingText = `⏱ Debug 全链路\n${debugTrace.join("\n")}`;
 
       logger.info(`debug-timing: sending to=${redactToken(ctx.To)}`);
+      let debugSentContent: string | undefined;
       try {
         const debugSendingResult = await applyWeixinMessageSendingHook({
           to: ctx.To,
@@ -569,14 +570,32 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
         if (debugSendingResult.cancelled) {
           logger.info(`debug-timing: cancelled by message_sending hook to=${redactToken(ctx.To)}`);
         } else {
+          debugSentContent = debugSendingResult.text;
           await sendMessageWeixin({
             to: ctx.To,
-            text: debugSendingResult.text,
+            text: debugSentContent,
             opts: { baseUrl: deps.baseUrl, token: deps.token, contextToken, runId },
+          });
+          emitWeixinMessageSent({
+            to: ctx.To,
+            content: debugSentContent,
+            success: true,
+            accountId: deps.accountId,
+            runId,
           });
           logger.info(`debug-timing: sent OK`);
         }
       } catch (debugErr) {
+        if (debugSentContent !== undefined) {
+          emitWeixinMessageSent({
+            to: ctx.To,
+            content: debugSentContent,
+            success: false,
+            error: redactError(debugErr),
+            accountId: deps.accountId,
+            runId,
+          });
+        }
         logger.error(`debug-timing: send FAILED err=${redactError(debugErr)}`);
       }
     }
