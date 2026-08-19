@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const loggerMocks = vi.hoisted(() => ({
+  info: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  warn: vi.fn(),
+}));
+
 import {
   _resetForTest,
   assertSessionActive,
@@ -10,11 +17,12 @@ import {
 } from "./session-guard.js";
 
 vi.mock("../util/logger.js", () => ({
-  logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() },
+  logger: loggerMocks,
 }));
 
 describe("session-guard", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     _resetForTest();
     vi.useFakeTimers();
   });
@@ -42,6 +50,17 @@ describe("session-guard", () => {
     const remaining = getRemainingPauseMs("acc1");
     expect(remaining).toBeGreaterThan(59 * 60 * 1000);
     expect(remaining).toBeLessThanOrEqual(60 * 60 * 1000);
+  });
+
+  it("masks the account identifier in pause diagnostics", () => {
+    const accountId = "private-account-1234";
+
+    pauseSession(accountId);
+
+    const logged = loggerMocks.info.mock.calls.flat().join(" ");
+    expect(logged).toContain(`****(len=${accountId.length})`);
+    expect(logged).not.toContain(accountId);
+    expect(logged).not.toContain(accountId.slice(0, 6));
   });
 
   it("pause expires after 1 hour", () => {

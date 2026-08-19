@@ -3,18 +3,19 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../util/logger.js", () => ({
-  logger: {
+const { loggerMocks, mockWithFileLock } = vi.hoisted(() => ({
+  loggerMocks: {
     info: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
   },
+  mockWithFileLock: vi.fn(async (_path: string, _opts: unknown, fn: () => Promise<unknown>) => fn()),
 }));
 
-const mockWithFileLock = vi.hoisted(() =>
-  vi.fn(async (_path: string, _opts: unknown, fn: () => Promise<unknown>) => fn()),
-);
+vi.mock("../util/logger.js", () => ({
+  logger: loggerMocks,
+}));
 
 vi.mock("openclaw/plugin-sdk/infra-runtime", () => ({
   withFileLock: mockWithFileLock,
@@ -23,6 +24,7 @@ vi.mock("openclaw/plugin-sdk/infra-runtime", () => ({
 let tmpDir: string;
 
 beforeEach(() => {
+  vi.clearAllMocks();
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pairing-test-"));
   process.env.OPENCLAW_STATE_DIR = tmpDir;
 });
@@ -89,6 +91,19 @@ describe("registerUserInFrameworkStore", () => {
 
     const content = JSON.parse(fs.readFileSync(filePath, "utf-8"));
     expect(content.allowFrom).toEqual(["existing-user", "new-user"]);
+  });
+
+  it("masks user and account identifiers in registration diagnostics", async () => {
+    const accountId = "private-account-1234";
+    const userId = "private-user-5678";
+    const { registerUserInFrameworkStore } = await loadModule();
+
+    await registerUserInFrameworkStore({ accountId, userId });
+
+    const logged = loggerMocks.info.mock.calls.flat().join(" ");
+    for (const sensitive of [accountId, accountId.slice(0, 6), userId, userId.slice(0, 6)]) {
+      expect(logged).not.toContain(sensitive);
+    }
   });
 
   it("returns changed=false when userId already exists", async () => {

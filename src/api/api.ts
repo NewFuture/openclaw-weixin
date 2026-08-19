@@ -328,7 +328,7 @@ export async function apiGetFetch(params: {
     const rawText = await res.text();
     logger.debug(`${params.label} status=${res.status} bodyBytes=${Buffer.byteLength(rawText)}`);
     if (!res.ok) {
-      throw new Error(`${params.label} ${res.status}: ${rawText}`);
+      throw new Error(`${params.label} ${res.status}`);
     }
     return rawText;
   } catch (err) {
@@ -412,7 +412,7 @@ export async function apiPostFetch(params: {
     const rawText = await res.text();
     logger.debug(`${params.label} status=${res.status} bodyBytes=${Buffer.byteLength(rawText)}`);
     if (!res.ok) {
-      throw new Error(`${params.label} ${res.status}: ${rawText}`);
+      throw new Error(`${params.label} ${res.status}`);
     }
     return rawText;
   } catch (err) {

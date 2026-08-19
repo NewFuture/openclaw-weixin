@@ -1,5 +1,6 @@
 const DEFAULT_BODY_MAX_LEN = 200;
 const DEFAULT_TOKEN_PREFIX_LEN = 0;
+const MAX_TOKEN_PREFIX_LEN = 6;
 const SAFE_ERROR_NAMES = new Set([
   "AbortError",
   "AggregateError",
@@ -51,7 +52,9 @@ export function truncate(s: string | undefined, max: number): string {
  */
 export function redactToken(token: string | undefined, prefixLen = DEFAULT_TOKEN_PREFIX_LEN): string {
   if (!token) return "(none)";
-  const safePrefixLen = Number.isFinite(prefixLen) ? Math.max(0, Math.floor(prefixLen)) : 0;
+  const safePrefixLen = Number.isFinite(prefixLen)
+    ? Math.min(MAX_TOKEN_PREFIX_LEN, Math.max(0, Math.floor(prefixLen)))
+    : 0;
   if (safePrefixLen === 0 || token.length <= safePrefixLen) return `****(len=${token.length})`;
   return `${token.slice(0, safePrefixLen)}…(len=${token.length})`;
 }
@@ -85,8 +88,7 @@ export function redactError(error: unknown): string {
   const cause = (error as NodeJS.ErrnoException).cause;
   const causeCode =
     typeof cause === "object" && cause !== null && "code" in cause ? (cause as { code?: unknown }).code : undefined;
-  const code = directCode ?? causeCode;
-  const safeCode = getSafeErrorCode(code);
+  const safeCode = getSafeErrorCode(directCode) ?? getSafeErrorCode(causeCode);
   return safeCode ? `${name}(code=${safeCode})` : name;
 }
 

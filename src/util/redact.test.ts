@@ -41,6 +41,10 @@ describe("redactToken", () => {
   it("does not reveal a short token even when a longer debug prefix is requested", () => {
     expect(redactToken("abc", 6)).toBe("****(len=3)");
   });
+
+  it("bounds an oversized debug prefix", () => {
+    expect(redactToken("abcdefghijklmnopqrstuvwxyz", 100)).toBe("abcdef…(len=26)");
+  });
 });
 
 describe("redactBody", () => {
@@ -98,6 +102,14 @@ describe("redactError", () => {
     expect(redactError("secret message")).toBe("Error");
     const error = Object.assign(new Error("secret message"), { code: "token-abc123" });
     expect(redactError(error)).toBe("Error");
+  });
+
+  it("uses a safe cause code when the direct code is unsafe", () => {
+    const error = Object.assign(new Error("secret message"), {
+      code: "ERR_NETWORK",
+      cause: { code: "ETIMEDOUT" },
+    });
+    expect(redactError(error)).toBe("Error(code=ETIMEDOUT)");
   });
 
   it("normalizes an unsafe error name", () => {

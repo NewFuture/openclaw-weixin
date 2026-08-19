@@ -7,6 +7,12 @@ const configRuntimeMocks = vi.hoisted(() => ({
   loadConfig: vi.fn(),
   writeConfigFile: vi.fn(),
 }));
+const loggerMocks = vi.hoisted(() => ({
+  info: vi.fn(),
+  debug: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 
 import {
   clearStaleAccountsForUserId,
@@ -33,12 +39,7 @@ vi.mock("openclaw/plugin-sdk/config-runtime", () => configRuntimeMocks);
 
 // Mock dependencies before importing module under test
 vi.mock("../util/logger.js", () => ({
-  logger: {
-    info: vi.fn(),
-    debug: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
+  logger: loggerMocks,
 }));
 
 // Use a temp directory for all fs operations
@@ -49,6 +50,7 @@ beforeEach(() => {
   process.env.OPENCLAW_STATE_DIR = tmpDir;
   configRuntimeMocks.loadConfig.mockReset();
   configRuntimeMocks.writeConfigFile.mockReset();
+  vi.clearAllMocks();
 });
 
 afterEach(() => {
@@ -112,6 +114,18 @@ describe("raw channel config", () => {
       channels?: Record<string, { channelConfigUpdatedAt?: string }>;
     };
     expect(Number.isNaN(Date.parse(written.channels?.["openclaw-weixin"]?.channelConfigUpdatedAt ?? ""))).toBe(false);
+  });
+
+  it("omits arbitrary config-write errors from reload diagnostics", async () => {
+    const secret = "private-config-path";
+    configRuntimeMocks.loadConfig.mockReturnValue({});
+    configRuntimeMocks.writeConfigFile.mockRejectedValueOnce(Object.assign(new Error(secret), { code: "ENOENT" }));
+
+    await triggerWeixinChannelReload();
+
+    const logged = loggerMocks.warn.mock.calls.flat().join(" ");
+    expect(logged).toContain("Error(code=ENOENT)");
+    expect(logged).not.toContain(secret);
   });
 });
 
