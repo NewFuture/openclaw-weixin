@@ -138,8 +138,8 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
     const itemTypes = full.item_list?.map((i) => i.type).join(",") ?? "none";
     debugTrace.push(
       "── 收消息 ──",
-      `│ seq=${full.seq ?? "?"} msgId=${full.message_id ?? "?"} from=${full.from_user_id ?? "?"}`,
-      `│ body="${textBody.slice(0, 40)}${textBody.length > 40 ? "…" : ""}" (len=${textBody.length}) itemTypes=[${itemTypes}]`,
+      `│ hasSeq=${full.seq !== undefined} hasMsgId=${full.message_id !== undefined} from=${redactToken(full.from_user_id, 6)}`,
+      `│ bodyLen=${textBody.length} itemTypes=[${itemTypes}]`,
       `│ sessionId=${full.session_id ?? "?"} contextToken=${full.context_token ? "present" : "none"}`,
     );
   }
@@ -179,7 +179,10 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   logger.debug(`mediaSubdir: agentScoped=${Boolean(sanitizedAgentId)}`);
 
   if (debug) {
-    debugTrace.push("── 路由 ──", `│ route: agent=${route.agentId ?? "none"} session=${route.sessionKey ?? "none"}`);
+    debugTrace.push(
+      "── 路由 ──",
+      `│ route: agent=${redactToken(route.agentId, 6)} session=${redactToken(route.sessionKey, 6)}`,
+    );
   }
 
   const mediaOpts: WeixinInboundMediaOpts = {};
@@ -353,7 +356,7 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   });
 
   /** Delivery records populated synchronously at deliver() entry, safe to read in finally. */
-  const debugDeliveries: Array<{ textLen: number; media: string; preview: string; ts: number }> = [];
+  const debugDeliveries: Array<{ textLen: number; media: string; ts: number }> = [];
 
   const { dispatcher, replyOptions, markDispatchIdle } = deps.channelRuntime.reply.createReplyDispatcherWithTyping({
     humanDelay,
@@ -369,15 +372,6 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
         `outbound: to=${redactToken(ctx.To)} contextToken=${redactToken(contextToken)} textLen=${text.length} mediaUrl=${mediaUrl ? "present" : "none"}`,
       );
 
-      if (debug) {
-        debugDeliveries.push({
-          textLen: text.length,
-          media: mediaUrl ? "present" : "none",
-          preview: `${text.slice(0, 60)}${text.length > 60 ? "…" : ""}`,
-          ts: Date.now(),
-        });
-      }
-
       const sendingResult = await applyWeixinMessageSendingHook({
         to: ctx.To,
         text,
@@ -390,6 +384,14 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
         return;
       }
       text = sendingResult.text;
+
+      if (debug) {
+        debugDeliveries.push({
+          textLen: text.length,
+          media: mediaUrl ? "present" : "none",
+          ts: Date.now(),
+        });
+      }
 
       try {
         if (mediaUrl) {
@@ -537,7 +539,7 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
       if (debugDeliveries.length > 0) {
         debugTrace.push("── 回复 ──");
         for (const d of debugDeliveries) {
-          debugTrace.push(`│ textLen=${d.textLen} media=${d.media}`, `│ text="${d.preview}"`);
+          debugTrace.push(`│ textLen=${d.textLen} media=${d.media}`);
         }
         const firstTs = debugDeliveries[0].ts;
         debugTrace.push(`│ deliver耗时: ${dispatchDoneAt - firstTs}ms`);
@@ -558,12 +560,22 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
 
       logger.info(`debug-timing: sending to=${redactToken(ctx.To)}`);
       try {
-        await sendMessageWeixin({
+        const debugSendingResult = await applyWeixinMessageSendingHook({
           to: ctx.To,
           text: timingText,
-          opts: { baseUrl: deps.baseUrl, token: deps.token, contextToken, runId },
+          accountId: deps.accountId,
+          runId,
         });
-        logger.info(`debug-timing: sent OK`);
+        if (debugSendingResult.cancelled) {
+          logger.info(`debug-timing: cancelled by message_sending hook to=${redactToken(ctx.To)}`);
+        } else {
+          await sendMessageWeixin({
+            to: ctx.To,
+            text: debugSendingResult.text,
+            opts: { baseUrl: deps.baseUrl, token: deps.token, contextToken, runId },
+          });
+          logger.info(`debug-timing: sent OK`);
+        }
       } catch (debugErr) {
         logger.error(`debug-timing: send FAILED err=${redactError(debugErr)}`);
       }

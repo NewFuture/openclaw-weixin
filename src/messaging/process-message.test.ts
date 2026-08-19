@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   downloadMedia: vi.fn(),
   emitMessageSent: vi.fn(),
   handleSlashCommand: vi.fn(),
+  isDebugMode: vi.fn(),
   logger: {
     debug: vi.fn(),
     error: vi.fn(),
@@ -71,7 +72,7 @@ vi.mock("../util/logger.js", () => ({
 }));
 
 vi.mock("./debug-mode.js", () => ({
-  isDebugMode: vi.fn(() => false),
+  isDebugMode: mocks.isDebugMode,
 }));
 
 vi.mock("./error-notice.js", () => ({
@@ -121,6 +122,7 @@ describe("processOneMessage", () => {
     mocks.directDmOutcome.mockReturnValue("allowed");
     mocks.downloadMedia.mockResolvedValue({});
     mocks.handleSlashCommand.mockResolvedValue({ handled: false });
+    mocks.isDebugMode.mockReturnValue(false);
     mocks.resolveSenderAuthorization.mockResolvedValue({
       shouldComputeAuth: true,
       effectiveAllowFrom: [SYNTHETIC_USER_ID],
@@ -271,6 +273,37 @@ describe("processOneMessage", () => {
       expect.stringMatching(/^dispatchReplyFromConfig: error agentId=\*{4}\(len=\d+\) err=Error$/),
     );
     expect(mocks.logger.error.mock.calls.flat().join(" ")).not.toContain("private payload");
+  });
+
+  it("routes safe debug timing through the outbound hook without leaking suppressed content", async () => {
+    const harness = createChannelRuntimeHarness();
+    mocks.isDebugMode.mockReturnValue(true);
+    mocks.applySendingHook.mockResolvedValue({ cancelled: true, text: "" });
+    harness.mocks.dispatchReplyFromConfig.mockImplementation(async () => {
+      const deliver = harness.mocks.createReplyDispatcherWithTyping.mock.calls[0]?.[0].deliver;
+      if (!deliver) throw new Error("deliver callback missing");
+      await deliver({ text: "private suppressed reply" }, { kind: "final" });
+      return {
+        queuedFinal: false,
+        counts: { tool: 0, block: 0, final: 1 },
+      };
+    });
+
+    await processOneMessage(makeTextMessage("private inbound body"), makeDeps(harness.channelRuntime));
+
+    expect(mocks.applySendingHook).toHaveBeenCalledTimes(2);
+    const timingText = String(mocks.applySendingHook.mock.calls[1]?.[0].text ?? "");
+    expect(timingText).toContain("⏱ Debug 全链路");
+    for (const sensitive of [
+      "private suppressed reply",
+      "private inbound body",
+      SYNTHETIC_ACCOUNT_ID,
+      SYNTHETIC_USER_ID,
+      "agent:agent-test:openclaw-weixin:account-test:user-test",
+    ]) {
+      expect(timingText).not.toContain(sensitive);
+    }
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
 
   it("downloads referenced media and records it in the inbound context", async () => {
