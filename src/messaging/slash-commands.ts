@@ -78,9 +78,11 @@ export async function handleSlashCommand(
   const spaceIdx = trimmed.indexOf(" ");
   const command = spaceIdx === -1 ? trimmed.toLowerCase() : trimmed.slice(0, spaceIdx).toLowerCase();
   const args = spaceIdx === -1 ? "" : trimmed.slice(spaceIdx + 1);
-  const loggedCommand = command === "/echo" || command === "/toggle-debug" ? command : "(unknown)";
+  const knownCommand = command === "/echo" || command === "/toggle-debug";
 
-  logger.info(`[weixin] Slash command: ${loggedCommand} hasArgs=${Boolean(args)}`);
+  logger.info(
+    knownCommand ? `[weixin] Slash command: ${command} hasArgs=${Boolean(args)}` : "[weixin] Slash command: (unknown)",
+  );
 
   try {
     switch (command) {

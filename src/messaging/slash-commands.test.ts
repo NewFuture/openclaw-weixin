@@ -45,12 +45,15 @@ describe("handleSlashCommand", () => {
 
   it("returns handled=false for unknown slash commands", async () => {
     const result = await handleSlashCommand("/secret-value private-argument", ctx, Date.now());
+    await handleSlashCommand("/different-secret", ctx, Date.now());
     expect(result.handled).toBe(false);
     expect(mockSendMessageWeixin).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenNthCalledWith(1, "[weixin] Slash command: (unknown)");
+    expect(logger.info).toHaveBeenNthCalledWith(2, "[weixin] Slash command: (unknown)");
     const logs = (logger.info as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
-    expect(logs).toContain("Slash command: (unknown) hasArgs=true");
     expect(logs).not.toContain("secret-value");
     expect(logs).not.toContain("private-argument");
+    expect(logs).not.toContain("hasArgs");
   });
 
   it("handles /echo with message and timing", async () => {
