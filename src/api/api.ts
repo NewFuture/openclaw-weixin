@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { loadConfigBotAgent, loadConfigRouteTag } from "../auth/accounts.js";
 import { logger } from "../util/logger.js";
-import { redactBody, redactUrl } from "../util/redact.js";
+import { getSafeErrorCode, redactError, redactUrl } from "../util/redact.js";
 
 import type {
   BaseInfo,
@@ -272,7 +272,7 @@ export function classifyFetchError(err: unknown): {
       ? String((cause as { code?: unknown }).code ?? "")
       : "";
   const causeStr = `${String(cause ?? err ?? "")} ${String(causeCode)}`;
-  const matchedCode = causeCode || (typeof cause === "string" ? cause : "");
+  const matchedCode = getSafeErrorCode(causeCode) ?? getSafeErrorCode(cause);
 
   if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(causeStr)) {
     return {
@@ -326,7 +326,7 @@ export async function apiGetFetch(params: {
     });
     if (t !== undefined) clearTimeout(t);
     const rawText = await res.text();
-    logger.debug(`${params.label} status=${res.status} raw=${redactBody(rawText)}`);
+    logger.debug(`${params.label} status=${res.status} bodyBytes=${Buffer.byteLength(rawText)}`);
     if (!res.ok) {
       throw new Error(`${params.label} ${res.status}: ${rawText}`);
     }
@@ -335,7 +335,7 @@ export async function apiGetFetch(params: {
     if (t !== undefined) clearTimeout(t);
     const classified = classifyFetchError(err);
     logger.error(
-      `${params.label}: GET fetch failed url=${redactUrl(url.toString())} timeoutMs=${timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${String(err)}`,
+      `${params.label}: GET fetch failed url=${redactUrl(url.toString())} timeoutMs=${timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${redactError(err)}`,
     );
     throw err;
   }
@@ -390,7 +390,7 @@ export async function apiPostFetch(params: {
   const base = ensureTrailingSlash(params.baseUrl);
   const url = new URL(params.endpoint, base);
   const hdrs = buildHeaders({ token: params.token });
-  logger.debug(`POST ${redactUrl(url.toString())} body=${redactBody(params.body)}`);
+  logger.debug(`POST ${redactUrl(url.toString())} bodyBytes=${Buffer.byteLength(params.body)}`);
 
   const controller = params.timeoutMs !== undefined ? new AbortController() : undefined;
   const t =
@@ -410,7 +410,7 @@ export async function apiPostFetch(params: {
     });
     if (t !== undefined) clearTimeout(t);
     const rawText = await res.text();
-    logger.debug(`${params.label} status=${res.status} raw=${redactBody(rawText)}`);
+    logger.debug(`${params.label} status=${res.status} bodyBytes=${Buffer.byteLength(rawText)}`);
     if (!res.ok) {
       throw new Error(`${params.label} ${res.status}: ${rawText}`);
     }
@@ -419,7 +419,7 @@ export async function apiPostFetch(params: {
     if (t !== undefined) clearTimeout(t);
     const classified = classifyFetchError(err);
     logger.error(
-      `${params.label}: POST fetch failed url=${redactUrl(url.toString())} timeoutMs=${params.timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${String(err)}`,
+      `${params.label}: POST fetch failed url=${redactUrl(url.toString())} timeoutMs=${params.timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${redactError(err)}`,
     );
     throw err;
   } finally {

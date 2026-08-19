@@ -82,5 +82,17 @@ describe("QR login lifecycle", () => {
       timeoutMs: 35_000,
       label: "pollQRStatus",
     });
+    const logs = [
+      ...mocks.logger.info.mock.calls,
+      ...mocks.logger.debug.mock.calls,
+      ...mocks.logger.warn.mock.calls,
+      ...mocks.logger.error.mock.calls,
+    ]
+      .flat()
+      .join(" ");
+    for (const sensitive of [qrcode, qrcodeUrl, botToken, accountId, sessionKey]) {
+      expect(logs).not.toContain(sensitive);
+    }
+    expect(logs).not.toContain(qrcode.slice(0, 6));
   });
 });

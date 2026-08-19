@@ -5,6 +5,7 @@ import { withFileLock } from "openclaw/plugin-sdk/infra-runtime";
 
 import { resolveStateDir } from "../storage/state-dir.js";
 import { logger } from "../util/logger.js";
+import { redactToken } from "../util/redact.js";
 
 /**
  * Resolve the framework credentials directory (mirrors core resolveOAuthDir).
@@ -112,7 +113,9 @@ export async function registerUserInFrameworkStore(params: {
 
     content.allowFrom.push(trimmedUserId);
     fs.writeFileSync(filePath, JSON.stringify(content, null, 2), "utf-8");
-    logger.info(`registerUserInFrameworkStore: added userId=${trimmedUserId} accountId=${accountId} path=${filePath}`);
+    logger.info(
+      `registerUserInFrameworkStore: added user=${redactToken(trimmedUserId)} account=${redactToken(accountId)}`,
+    );
     return { changed: true };
   });
 }

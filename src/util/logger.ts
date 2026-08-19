@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/infra-runtime";
 
+import { redactToken } from "./redact.js";
+
 /**
  * Plugin logger — writes JSON lines to the main openclaw log file:
  *   <tmpDir>/openclaw-YYYY-MM-DD.log
@@ -79,7 +81,7 @@ export type Logger = {
 };
 
 function buildLoggerName(accountId?: string): string {
-  return accountId ? `${SUBSYSTEM}/${accountId}` : SUBSYSTEM;
+  return accountId ? `${SUBSYSTEM}/${redactToken(accountId)}` : SUBSYSTEM;
 }
 
 function writeLog(level: string, message: string, accountId?: string): void {
@@ -88,7 +90,7 @@ function writeLog(level: string, message: string, accountId?: string): void {
 
   const now = new Date();
   const loggerName = buildLoggerName(accountId);
-  const prefixedMessage = accountId ? `[${accountId}] ${message}` : message;
+  const prefixedMessage = accountId ? `[${redactToken(accountId)}] ${message}` : message;
   const entry = JSON.stringify({
     "0": loggerName,
     "1": prefixedMessage,
