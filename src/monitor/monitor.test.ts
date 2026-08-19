@@ -26,9 +26,9 @@ const accountLogger = vi.hoisted(() => ({
 vi.mock("../api/api.js", () => ({
   getUpdates: (opts: { abortSignal?: AbortSignal; get_updates_buf?: string; timeoutMs?: number }) =>
     getUpdatesMock(opts),
-  classifyFetchError: (err: unknown) => ({
+  classifyFetchError: () => ({
     type: "mock",
-    description: String(err),
+    description: "network request failed",
     code: undefined,
   }),
 }));
@@ -234,6 +234,37 @@ describe("monitorWeixinProvider", () => {
 
     await expect(monitor).resolves.toBeUndefined();
     expect(getUpdatesMock).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("redacts rejected poll errors while preserving retry behavior", async () => {
+    vi.useFakeTimers();
+    const abortController = new AbortController();
+    const harness = createChannelRuntimeHarness();
+    const errLog = vi.fn();
+    const secret = "https://example.test/private?token=poll-secret C:\\sensitive\\poll.json";
+    getUpdatesMock.mockRejectedValueOnce(new Error(secret)).mockImplementationOnce(
+      async ({ abortSignal }) =>
+        await new Promise<GetUpdatesResp>((_, reject) => {
+          abortSignal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+        }),
+    );
+
+    const monitor = startMonitor(abortController, harness.channelRuntime, errLog);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getUpdatesMock).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(getUpdatesMock).toHaveBeenCalledTimes(2);
+
+    const diagnostics = [...errLog.mock.calls, ...accountLogger.error.mock.calls].flat().join(" ");
+    expect(diagnostics).toContain("Error");
+    expect(diagnostics).toContain("type=mock");
+    expect(diagnostics).not.toContain("poll-secret");
+    expect(diagnostics).not.toContain("poll.json");
+
+    abortController.abort();
+    await expect(monitor).resolves.toBeUndefined();
     expect(vi.getTimerCount()).toBe(0);
   });
 

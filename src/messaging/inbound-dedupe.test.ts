@@ -218,6 +218,44 @@ describe("tryClaimWeixinInboundMessage", () => {
       }
     }
   });
+
+  it("redacts persistent disk errors and still allows released claims to retry", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "weixin-replay-dedupe-error-"));
+    const blockedStateDir = path.join(dir, "blocked-state");
+    fs.writeFileSync(blockedStateDir, "not-a-directory", "utf-8");
+    const previousStateDir = process.env.OPENCLAW_STATE_DIR;
+    const previousOauthDir = process.env.OPENCLAW_OAUTH_DIR;
+    process.env.OPENCLAW_STATE_DIR = blockedStateDir;
+    process.env.OPENCLAW_OAUTH_DIR = path.join(dir, "oauth");
+    try {
+      resetWeixinInboundDedupeForTests({ persistent: true });
+      const key = buildWeixinInboundDedupeKey("account-disk", textMsg());
+      expect(key).toBeTruthy();
+      if (!key) return;
+
+      expect(await tryClaimWeixinInboundMessage(key, { namespace: "account-disk" })).toEqual({ kind: "claimed" });
+      const warnings = vi.mocked(logger.warn).mock.calls.flat().join(" ");
+      expect(warnings).toContain("inbound replay-dedupe disk error: Error");
+      expect(warnings).not.toContain("blocked-state");
+      expect(warnings).not.toContain(dir);
+
+      releaseWeixinInboundMessage(key, { namespace: "account-disk", error: new Error("owner failed") });
+      expect(await tryClaimWeixinInboundMessage(key, { namespace: "account-disk" })).toEqual({ kind: "claimed" });
+    } finally {
+      if (previousStateDir === undefined) {
+        delete process.env.OPENCLAW_STATE_DIR;
+      } else {
+        process.env.OPENCLAW_STATE_DIR = previousStateDir;
+      }
+      if (previousOauthDir === undefined) {
+        delete process.env.OPENCLAW_OAUTH_DIR;
+      } else {
+        process.env.OPENCLAW_OAUTH_DIR = previousOauthDir;
+      }
+      resetWeixinInboundDedupeForTests({ persistent: false });
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("logWeixinInboundDuplicate", () => {

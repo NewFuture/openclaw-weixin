@@ -137,9 +137,10 @@ describe("context-token-store", () => {
 
   it("redacts account-scoped paths from filesystem error logs", async () => {
     const store = await loadStore();
+    const privatePayload = "private-filesystem-payload";
     const persistPath = accountFilePath("account-persist-error");
     vi.spyOn(fs, "writeFileSync").mockImplementationOnce(() => {
-      throw new Error(`denied ${persistPath}`);
+      throw new Error(`${privatePayload} ${persistPath}`);
     });
 
     store.setContextToken("account-persist-error", "user-persist", "token-persist");
@@ -147,7 +148,7 @@ describe("context-token-store", () => {
     const restorePath = accountFilePath("account-restore-error");
     writeAccountFile("account-restore-error", { "User-Restore": "token-restore" });
     vi.spyOn(fs, "readFileSync").mockImplementationOnce(() => {
-      throw new Error(`denied ${restorePath}`);
+      throw new Error(`${privatePayload} ${restorePath}`);
     });
 
     store.restoreContextTokens("account-restore-error");
@@ -155,7 +156,7 @@ describe("context-token-store", () => {
     const clearPath = accountFilePath("account-clear-error");
     writeAccountFile("account-clear-error", { "user-clear": "token-clear" });
     vi.spyOn(fs, "unlinkSync").mockImplementationOnce(() => {
-      throw new Error(`denied ${clearPath}`);
+      throw new Error(`${privatePayload} ${clearPath}`);
     });
 
     store.clearContextTokensForAccount("account-clear-error");
@@ -165,6 +166,7 @@ describe("context-token-store", () => {
     expect(warnings).not.toContain("account-persist-error");
     expect(warnings).not.toContain("account-restore-error");
     expect(warnings).not.toContain("account-clear-error");
+    expect(warnings).not.toContain(privatePayload);
   });
 });
 

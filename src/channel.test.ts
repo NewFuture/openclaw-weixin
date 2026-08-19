@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   applySendingHook:
     vi.fn<(params: { to: string; text: string; accountId: string }) => Promise<{ cancelled: boolean; text: string }>>(),
   assertSessionActive: vi.fn<(accountId: string) => void>(),
+  displayQRCode: vi.fn(),
   emitMessageSent: vi.fn(),
   findAccountIdsByContextToken: vi.fn<(accountIds: string[], userId: string) => string[]>(),
   getContextToken: vi.fn<(accountId: string, userId: string) => string | undefined>(),
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   monitorProvider: vi.fn<(opts: { accountId: string; abortSignal?: AbortSignal }) => Promise<void>>(),
   notifyStart: vi.fn(),
   notifyStop: vi.fn(),
+  persistLoginAccounts: vi.fn(),
   resolveAccount: vi.fn<(cfg: OpenClawConfig, accountId?: string | null) => ResolvedWeixinAccount>(),
   restoreContextTokens: vi.fn<(accountId: string) => void>(),
   sendMessage:
@@ -24,7 +26,29 @@ const mocks = vi.hoisted(() => ({
         opts: { baseUrl: string; token?: string; contextToken?: string };
       }) => Promise<{ messageId: string }>
     >(),
+  startLogin: vi.fn(),
+  waitLogin: vi.fn(),
 }));
+
+const loggerMocks = vi.hoisted(() => {
+  const accountLogger = {
+    debug: vi.fn(),
+    error: vi.fn(),
+    getLogFilePath: vi.fn(() => "C:\\synthetic\\weixin.log"),
+    info: vi.fn(),
+    warn: vi.fn(),
+  };
+  return {
+    accountLogger,
+    logger: {
+      debug: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      withAccount: vi.fn(() => accountLogger),
+    },
+  };
+});
 
 vi.mock("./api/api.js", () => ({
   notifyStart: mocks.notifyStart,
@@ -40,11 +64,7 @@ vi.mock("./auth/accounts.js", () => ({
   DEFAULT_BASE_URL: "https://api.example.test",
   listWeixinAccountIds: mocks.listAccountIds,
   loadWeixinAccount: vi.fn(),
-  persistWeixinLoginAccounts: vi.fn(() => ({
-    primaryId: "bot-im-bot",
-    aliasId: null,
-    canonicalId: "bot-im-bot",
-  })),
+  persistWeixinLoginAccounts: mocks.persistLoginAccounts,
   migrateBoundAccountToAlias: vi.fn(() => null),
   resolvePrimaryAccountId: (accountId: string) => accountId,
   resolveWeixinAccount: mocks.resolveAccount,
@@ -53,9 +73,9 @@ vi.mock("./auth/accounts.js", () => ({
 
 vi.mock("./auth/login-qr.js", () => ({
   DEFAULT_ILINK_BOT_TYPE: "3",
-  displayQRCode: vi.fn(),
-  startWeixinLoginWithQr: vi.fn(),
-  waitForWeixinLogin: vi.fn(),
+  displayQRCode: mocks.displayQRCode,
+  startWeixinLoginWithQr: mocks.startLogin,
+  waitForWeixinLogin: mocks.waitLogin,
 }));
 
 vi.mock("./cdn/upload.js", () => ({
@@ -95,24 +115,7 @@ vi.mock("./messaging/send-media.js", () => ({
   sendWeixinMediaFile: vi.fn(),
 }));
 
-vi.mock("./util/logger.js", () => {
-  const accountLogger = {
-    debug: vi.fn(),
-    error: vi.fn(),
-    getLogFilePath: vi.fn(() => "C:\\synthetic\\weixin.log"),
-    info: vi.fn(),
-    warn: vi.fn(),
-  };
-  return {
-    logger: {
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      withAccount: vi.fn(() => accountLogger),
-    },
-  };
-});
+vi.mock("./util/logger.js", () => ({ logger: loggerMocks.logger }));
 
 import { weixinPlugin } from "./channel.js";
 
@@ -163,6 +166,12 @@ function requireNormalizePayload() {
   const normalizePayload = weixinPlugin.outbound?.normalizePayload;
   if (!normalizePayload) throw new Error("Weixin normalizePayload adapter is missing");
   return normalizePayload;
+}
+
+function requireLogin() {
+  const login = weixinPlugin.auth?.login;
+  if (!login) throw new Error("Weixin login adapter is missing");
+  return login;
 }
 
 function requireStartAccount(): StartAccount {
@@ -230,6 +239,11 @@ describe("weixinPlugin outbound account resolution", () => {
     mocks.getContextToken.mockReturnValue("context-token-test");
     mocks.resolveAccount.mockImplementation((_config, accountId) => makeAccount(accountId ?? "account-test"));
     mocks.sendMessage.mockResolvedValue({ messageId: "message-test" });
+    mocks.persistLoginAccounts.mockReturnValue({
+      primaryId: "bot-im-bot",
+      aliasId: null,
+      canonicalId: "bot-im-bot",
+    });
   });
 
   it("uses the only registered account and propagates its context token", async () => {
@@ -305,6 +319,49 @@ describe("weixinPlugin outbound account resolution", () => {
 
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     expect(result).toEqual({ channel: "openclaw-weixin", messageId: "" });
+  });
+});
+
+describe("weixinPlugin auth.login", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resolveAccount.mockReturnValue(makeAccount("account-login"));
+    mocks.startLogin.mockResolvedValue({
+      qrcodeUrl: "https://qr.example.test/code",
+      message: "scan",
+      sessionKey: "session-login",
+    });
+    mocks.waitLogin.mockResolvedValue({
+      connected: true,
+      botToken: "token-login",
+      accountId: "bot-im-login",
+      baseUrl: "https://api.example.test",
+      userId: "user-login",
+      message: "connected",
+    });
+  });
+
+  it("shows a generic persistence failure while propagating the original error", async () => {
+    const failure = new Error("private-save-payload C:\\sensitive\\accounts.json");
+    const runtimeLog = vi.fn();
+    mocks.persistLoginAccounts.mockImplementation(() => {
+      throw failure;
+    });
+
+    await expect(
+      requireLogin()({
+        cfg,
+        accountId: "account-login",
+        verbose: false,
+        runtime: { log: runtimeLog, error: vi.fn(), exit: vi.fn() },
+      }),
+    ).rejects.toBe(failure);
+
+    expect(runtimeLog).toHaveBeenLastCalledWith("⚠️  保存账号数据失败，请稍后重试。");
+    expect(loggerMocks.logger.error).toHaveBeenCalledWith("auth.login: failed to save account data err=Error");
+    const diagnostics = [...runtimeLog.mock.calls, ...loggerMocks.logger.error.mock.calls].flat().join(" ");
+    expect(diagnostics).not.toContain("private-save-payload");
+    expect(diagnostics).not.toContain("accounts.json");
   });
 });
 

@@ -258,14 +258,19 @@ describe("processOneMessage", () => {
   it("marks dispatch idle and leaves admission unreleased when dispatch setup fails", async () => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();
-    harness.mocks.dispatchReplyFromConfig.mockRejectedValue(new Error("synthetic dispatch failure"));
+    const failure = new Error("synthetic dispatch failure with private payload");
+    harness.mocks.dispatchReplyFromConfig.mockRejectedValue(failure);
 
     await expect(
       processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted)),
-    ).rejects.toThrow("synthetic dispatch failure");
+    ).rejects.toBe(failure);
 
     expect(onReplyAdmitted).not.toHaveBeenCalled();
     expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      expect.stringMatching(/^dispatchReplyFromConfig: error agentId=\*{4}\(len=\d+\) err=Error$/),
+    );
+    expect(mocks.logger.error.mock.calls.flat().join(" ")).not.toContain("private payload");
   });
 
   it("downloads referenced media and records it in the inbound context", async () => {
