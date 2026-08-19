@@ -1,13 +1,12 @@
 name: AI-ready Implementation Task
 description: Define a bounded implementation task with a verifiable test oracle
 title: "[Task]: "
-labels:
-  - agent:ready
 body:
   - type: markdown
     attributes:
       value: |
-        Use this form for work that is ready to delegate to a contributor or coding agent.
+        Use this form for work that may be delegated after maintainer triage.
+        Maintainers add `agent:ready` only after confirming the scope, test oracle, and required risk labels.
         Do not include credentials, account identifiers, QR codes, CDN query parameters, or private message content.
   - type: textarea
     id: problem
