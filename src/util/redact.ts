@@ -82,14 +82,18 @@ export function redactBody(body: string | undefined, maxLen = DEFAULT_BODY_MAX_L
  * Return non-payload error metadata suitable for persisted diagnostics.
  */
 export function redactError(error: unknown): string {
-  if (!(error instanceof Error)) return "Error";
-  const name = SAFE_ERROR_NAMES.has(error.name) ? error.name : "Error";
-  const directCode = (error as NodeJS.ErrnoException).code;
-  const cause = (error as NodeJS.ErrnoException).cause;
-  const causeCode =
-    typeof cause === "object" && cause !== null && "code" in cause ? (cause as { code?: unknown }).code : undefined;
-  const safeCode = getSafeErrorCode(directCode) ?? getSafeErrorCode(causeCode);
-  return safeCode ? `${name}(code=${safeCode})` : name;
+  try {
+    if (!(error instanceof Error)) return "Error";
+    const name = SAFE_ERROR_NAMES.has(error.name) ? error.name : "Error";
+    const directCode = (error as NodeJS.ErrnoException).code;
+    const cause = (error as NodeJS.ErrnoException).cause;
+    const causeCode =
+      typeof cause === "object" && cause !== null && "code" in cause ? (cause as { code?: unknown }).code : undefined;
+    const safeCode = getSafeErrorCode(directCode) ?? getSafeErrorCode(causeCode);
+    return safeCode ? `${name}(code=${safeCode})` : name;
+  } catch {
+    return "Error";
+  }
 }
 
 /**

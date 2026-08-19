@@ -117,7 +117,36 @@ describe("redactError", () => {
     error.name = "SecretToken123";
     expect(redactError(error)).toBe("Error");
   });
+
+  it.each([
+    ["name", () => Object.defineProperty(new Error("secret"), "name", { get: () => assertMetadataAccessThrows() })],
+    ["code", () => Object.defineProperty(new Error("secret"), "code", { get: () => assertMetadataAccessThrows() })],
+    ["cause", () => Object.defineProperty(new Error("secret"), "cause", { get: () => assertMetadataAccessThrows() })],
+    [
+      "cause.code",
+      () =>
+        Object.assign(new Error("secret"), {
+          cause: Object.defineProperty({}, "code", { get: () => assertMetadataAccessThrows() }),
+        }),
+    ],
+    [
+      "proxy metadata",
+      () =>
+        new Proxy(new Error("secret"), {
+          get(target, property, receiver) {
+            if (property === "name") return assertMetadataAccessThrows();
+            return Reflect.get(target, property, receiver);
+          },
+        }),
+    ],
+  ])("returns a fixed fallback when %s access throws", (_label, createError) => {
+    expect(redactError(createError())).toBe("Error");
+  });
 });
+
+function assertMetadataAccessThrows(): never {
+  throw new Error("private metadata accessor");
+}
 
 describe("redactUrl", () => {
   it("preserves URL without query", () => {
