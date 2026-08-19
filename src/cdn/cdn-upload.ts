@@ -6,6 +6,14 @@ import { buildCdnUploadUrl } from "./cdn-url.js";
 /** Maximum retry attempts for CDN upload. */
 const UPLOAD_MAX_RETRIES = 3;
 
+async function discardResponseBody(res: Response, label: string): Promise<void> {
+  try {
+    await res.body?.cancel();
+  } catch (err) {
+    logger.debug(`${label}: failed to discard CDN response body error=${redactError(err)}`);
+  }
+}
+
 /**
  * Upload one buffer to the Weixin CDN with AES-128-ECB encryption.
  * Returns the download encrypted_query_param from the CDN response.
@@ -45,12 +53,12 @@ export async function uploadBufferToCdn(params: {
         body: new Uint8Array(ciphertext),
       });
       if (res.status >= 400 && res.status < 500) {
-        await res.body?.cancel();
+        await discardResponseBody(res, label);
         logger.error(`${label}: CDN client error attempt=${attempt} status=${res.status}`);
         throw new Error(`CDN upload client error ${res.status}`);
       }
       if (res.status !== 200) {
-        await res.body?.cancel();
+        await discardResponseBody(res, label);
         logger.error(`${label}: CDN server error attempt=${attempt} status=${res.status}`);
         throw new Error(`CDN upload server error ${res.status}`);
       }

@@ -3,6 +3,14 @@ import { redactError, redactUrl } from "../util/redact.js";
 import { decryptAesEcb } from "./aes-ecb.js";
 import { buildCdnDownloadUrl, ENABLE_CDN_URL_FALLBACK } from "./cdn-url.js";
 
+async function discardResponseBody(res: Response, label: string): Promise<void> {
+  try {
+    await res.body?.cancel();
+  } catch (err) {
+    logger.debug(`${label}: failed to discard CDN response body error=${redactError(err)}`);
+  }
+}
+
 /**
  * Download raw bytes from the CDN (no decryption).
  */
@@ -16,7 +24,7 @@ async function fetchCdnBytes(url: string, label: string): Promise<Buffer> {
   }
   logger.debug(`${label}: response status=${res.status} ok=${res.ok}`);
   if (!res.ok) {
-    await res.body?.cancel();
+    await discardResponseBody(res, label);
     const msg = `${label}: CDN download failed status=${res.status}`;
     logger.error(msg);
     throw new Error(msg);
