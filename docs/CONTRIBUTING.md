@@ -173,6 +173,19 @@ still published in every locale, carrying the Markdown it does have plus an
 untranslated notice, so register new pages in `docs/site/.vitepress/docs.mjs`
 with whichever locale sources exist.
 
+## Agent-assisted work
+
+Use the **AI-ready Implementation Task** issue form for bounded work with an
+observable test oracle. `agent:ready` means the task may be delegated;
+`risk:privileged` marks authentication, persistent state, workflows, release,
+security, or package/plugin metadata; `maintainer-only` forbids delegation.
+Agent-assisted PRs must link the task and state the observable result, focused
+oracle, highest risk, and remaining uncertainty. Agents must not receive Weixin
+secrets or access the live backend.
+
+`.github/workflows/copilot-setup-steps.yml` prepares the standard Node.js 24.15.0
+environment with `npm ci`. It does not replace focused tests or `npm run check`.
+
 ## Pull requests
 
 - Keep changes focused and include tests for behavior changes.
@@ -181,5 +194,8 @@ with whichever locale sources exist.
   changes need no changelog entry.
 - Remove credentials, account identifiers, QR codes, and private message
   content from tests, logs, screenshots, and issue descriptions.
+- Pull requests receive Copilot code review and require resolved review threads.
+  The ruleset does not require human approval; maintainers remain responsible
+  for the final merge decision.
 - Review and take responsibility for all submitted changes, including
   AI-assisted changes.

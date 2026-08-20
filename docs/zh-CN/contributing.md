@@ -135,10 +135,23 @@ Git 忽略；在 `docs/site/` 内只提交源文件。
 每种语言中发布，保留现有语言的 Markdown 内容并附上未翻译提示，因此应在
 `docs/site/.vitepress/docs.mjs` 中按已存在的语言源注册新页面。
 
+## Agent 辅助工作
+
+对于范围明确且有可观察测试判据的工作，请使用 **AI-ready Implementation Task** issue
+表单。`agent:ready` 表示任务可以委派；`risk:privileged` 标记鉴权、持久状态、工作流、
+发布、安全或包/插件元数据；`maintainer-only` 表示不得委派实现。Agent 辅助创建的 PR
+必须关联任务，并说明可观察结果、定向判据、最高风险和剩余不确定性。不得向 Agent 提供
+微信凭据，也不得让其访问真实后端。
+
+`.github/workflows/copilot-setup-steps.yml` 使用 `npm ci` 准备标准 Node.js 24.15.0
+环境，但不能替代定向测试或 `npm run check`。
+
 ## Pull request 要求
 
 - 保持改动聚焦，并为行为变更加入测试。
 - 为面向用户的文档更新 `README.md` 和 `README_EN.md`。
 - 当改动影响用户时，更新两份 changelog。仅文档改动无需 changelog 条目。
 - 从测试、日志、截图和 issue 描述中移除凭据、账号标识符、二维码和私信内容。
+- Pull request 会接受 Copilot code review，并且必须解决审阅线程。规则集不要求人工批准；
+  最终合并决定仍由维护者负责。
 - 审阅并对提交的所有改动负责，包括由 AI 协助完成的改动。
