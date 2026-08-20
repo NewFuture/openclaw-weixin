@@ -550,6 +550,44 @@ describe("classifyFetchError", () => {
     });
   });
 
+  it("returns unknown when error metadata inspection throws", () => {
+    const expected = {
+      type: "unknown",
+      description: "network request failed",
+    };
+    const throwingName = new Error("sensitive");
+    Object.defineProperty(throwingName, "name", {
+      get() {
+        throw new Error("sensitive name getter");
+      },
+    });
+    const throwingCause = new Error("sensitive");
+    Object.defineProperty(throwingCause, "cause", {
+      get() {
+        throw new Error("sensitive cause getter");
+      },
+    });
+    const throwingProxy = new Proxy(new Error("sensitive"), {
+      get(_target, property) {
+        if (property === "cause") {
+          return new Proxy(
+            {},
+            {
+              has() {
+                throw new Error("sensitive proxy trap");
+              },
+            },
+          );
+        }
+        return Reflect.get(_target, property);
+      },
+    });
+
+    expect(classifyFetchError(throwingName)).toEqual(expected);
+    expect(classifyFetchError(throwingCause)).toEqual(expected);
+    expect(classifyFetchError(throwingProxy)).toEqual(expected);
+  });
+
   it("reads cause from err.cause when available", () => {
     const err = Object.assign(new Error("fetch failed"), {
       cause: "ETIMEDOUT",

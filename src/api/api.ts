@@ -262,37 +262,41 @@ export function classifyFetchError(err: unknown): {
   description: string;
   code?: string;
 } {
-  if (err instanceof Error && err.name === "AbortError") {
-    return { type: "timeout", description: "request timeout" };
-  }
+  try {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { type: "timeout", description: "request timeout" };
+    }
 
-  const cause = (err as NodeJS.ErrnoException)?.cause;
-  const causeCode =
-    typeof cause === "object" && cause !== null && "code" in cause
-      ? String((cause as { code?: unknown }).code ?? "")
-      : "";
-  const causeStr = `${String(cause ?? err ?? "")} ${String(causeCode)}`;
-  const matchedCode = getSafeErrorCode(causeCode) ?? getSafeErrorCode(cause);
+    const cause = (err as NodeJS.ErrnoException)?.cause;
+    const causeCode =
+      typeof cause === "object" && cause !== null && "code" in cause
+        ? String((cause as { code?: unknown }).code ?? "")
+        : "";
+    const causeStr = `${String(cause ?? err ?? "")} ${String(causeCode)}`;
+    const matchedCode = getSafeErrorCode(causeCode) ?? getSafeErrorCode(cause);
 
-  if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(causeStr)) {
-    return {
-      type: "dns",
-      description: "DNS resolution failed, check DNS configuration",
-      ...(matchedCode ? { code: matchedCode } : {}),
-    };
-  }
-  if (/ECONNREFUSED/i.test(causeStr)) {
-    return { type: "tcp", description: "TCP connection refused", ...(matchedCode ? { code: matchedCode } : {}) };
-  }
-  if (/UND_ERR_CONNECT_TIMEOUT|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH/i.test(causeStr)) {
-    return {
-      type: "tcp",
-      description: "TCP connection timeout or unreachable",
-      ...(matchedCode ? { code: matchedCode } : {}),
-    };
-  }
-  if (/UND_ERR_SOCKET|SSL|TLS|CERT|UNABLE_TO_VERIFY|DEPTH_ZERO/i.test(causeStr)) {
-    return { type: "tls", description: "TLS handshake error", ...(matchedCode ? { code: matchedCode } : {}) };
+    if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(causeStr)) {
+      return {
+        type: "dns",
+        description: "DNS resolution failed, check DNS configuration",
+        ...(matchedCode ? { code: matchedCode } : {}),
+      };
+    }
+    if (/ECONNREFUSED/i.test(causeStr)) {
+      return { type: "tcp", description: "TCP connection refused", ...(matchedCode ? { code: matchedCode } : {}) };
+    }
+    if (/UND_ERR_CONNECT_TIMEOUT|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH/i.test(causeStr)) {
+      return {
+        type: "tcp",
+        description: "TCP connection timeout or unreachable",
+        ...(matchedCode ? { code: matchedCode } : {}),
+      };
+    }
+    if (/UND_ERR_SOCKET|SSL|TLS|CERT|UNABLE_TO_VERIFY|DEPTH_ZERO/i.test(causeStr)) {
+      return { type: "tls", description: "TLS handshake error", ...(matchedCode ? { code: matchedCode } : {}) };
+    }
+  } catch {
+    return { type: "unknown", description: "network request failed" };
   }
 
   return { type: "unknown", description: "network request failed" };
