@@ -194,7 +194,8 @@ environment with `npm ci`. It does not replace focused tests or `npm run check`.
   changes need no changelog entry.
 - Remove credentials, account identifiers, QR codes, and private message
   content from tests, logs, screenshots, and issue descriptions.
-- Pull requests require a review and resolved review threads. The maintainer
-  bypass is reserved for necessary single-maintainer work and remains auditable.
+- Pull requests receive Copilot code review and require resolved review threads.
+  The ruleset does not require human approval; maintainers remain responsible
+  for the final merge decision.
 - Review and take responsibility for all submitted changes, including
   AI-assisted changes.

@@ -152,6 +152,6 @@ Git 忽略；在 `docs/site/` 内只提交源文件。
 - 为面向用户的文档更新 `README.md` 和 `README_EN.md`。
 - 当改动影响用户时，更新两份 changelog。仅文档改动无需 changelog 条目。
 - 从测试、日志、截图和 issue 描述中移除凭据、账号标识符、二维码和私信内容。
-- Pull request 必须经过审阅并解决审阅线程。maintainer bypass 仅用于单维护者确有必要的
-  工作，并保留可审计记录。
+- Pull request 会接受 Copilot code review，并且必须解决审阅线程。规则集不要求人工批准；
+  最终合并决定仍由维护者负责。
 - 审阅并对提交的所有改动负责，包括由 AI 协助完成的改动。
