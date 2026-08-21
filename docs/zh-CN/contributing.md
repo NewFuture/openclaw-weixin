@@ -15,6 +15,42 @@ Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。推荐的 Node.js 2
 2026.7.1 组合会运行完整验证流程。Node.js 22 下限作业使用 OpenClaw 2026.7.1；最低支持
 宿主 OpenClaw 2026.6.1 和浮动 beta 作业使用 Node.js 24.15.0。
 
+## 选择贡献路径
+
+### 报告 Bug
+
+提交前先搜索[现有 issue](https://github.com/NewFuture/openclaw-weixin/issues)，然后使用
+[Bug Report](https://github.com/NewFuture/openclaw-weixin/issues/new?template=bug_report.yml)
+表单。请提供受影响的插件、OpenClaw、Node.js 和平台版本，最后正常工作的版本组合（未知或
+从未正常工作时写 `未知 / 从未正常工作`）、最小复现步骤、预期与实际结果，以及脱敏后的
+关键诊断信息。
+
+关键诊断可以保留事件名、白名单内的错误码或状态码、计数、大小、耗时、重试次数和版本。
+提交前必须移除 token、context token、账号或用户标识、消息正文、二维码数据、URL 查询
+参数、原始文件系统路径、任意错误文本和堆栈。自动化客户端也必须在本地按相同字段和规则
+完成脱敏；不得附加原始日志、配置或状态文件。
+
+疑似安全漏洞必须通过
+[GitHub 私密漏洞报告](https://github.com/NewFuture/openclaw-weixin/security/advisories/new)
+提交，不得创建公开 issue。
+
+### 修复 Bug
+
+优先选择已经分诊且具有可观察测试判据的 issue。Agent 只能实现带有 `agent:ready` 标签的
+任务；`maintainer-only` 任务不得委派。按照 [AGENTS.md](../../AGENTS.md) 和
+[架构指南](./architecture.md) 工作，先复现原始故障，再同时添加定向回归测试和反例。
+
+兼容性修复必须保留旧版受支持行为和当前行为的测试用例。涉及 OpenClaw API 边界时，应
+覆盖最低支持宿主、lockfile/当前宿主，并在相关时覆盖浮动 beta。状态格式改动必须分别覆盖
+旧状态迁移和当前格式写入。不得为了让新版本通过而删除或弱化旧版本测试。
+
+### 提议或实现新功能
+
+推荐先提交
+[Feature Request](https://github.com/NewFuture/openclaw-weixin/issues/new?template=feature_request.yml)，
+但这不是强制前置条件。范围明确的小型功能在使用场景、验收标准、非目标和替代方案清楚时
+可以直接提交 PR；较大、高风险或影响兼容性的改动应在实现前先与维护者确认范围。
+
 ## 开发
 
 安装 lockfile 中记录的精确依赖版本：
@@ -146,12 +182,32 @@ Git 忽略；在 `docs/site/` 内只提交源文件。
 `.github/workflows/copilot-setup-steps.yml` 使用 `npm ci` 准备标准 Node.js 24.15.0
 环境，但不能替代定向测试或 `npm run check`。
 
+## 整机实测
+
+自动化测试不得调用真实微信后端、执行二维码登录或使用开发者的 OpenClaw 状态。改变运行时
+行为的 PR 必须在 PR 模板中另行记录由人工完成的整机实测：
+
+- 操作系统和架构、Node.js、OpenClaw，以及插件版本或 commit；
+- 安装方式和每个测试场景；
+- 预期结果与实际结果；
+- 符合上述报告规则的脱敏关键诊断。
+
+整机实测应使用隔离的非生产测试账号。不得在 PR 中包含凭据、二维码数据、账号标识或私聊
+内容。实测结果只证明列出的环境和场景，不能替代自动化回归测试。Agent 可以先创建将本节
+标为 `等待人工实测` 的 draft PR，但在人工补充结果前不得进入可合并状态。仅文档或测试
+改动可以填写 `不适用`，但必须说明无需运行时实测的原因。
+
 ## Pull request 要求
 
 - 保持改动聚焦，并为行为变更加入测试。
+- 列出完整的受影响测试矩阵：原始故障、反例，以及每个受影响的互斥分支、错误出口和持久化
+  边界。
+- 兼容性修复必须保留旧版本和当前版本测试，并记录实际运行的兼容性组合。
+- 运行时行为改动必须包含上述整机实测结果。
 - 为面向用户的文档更新 `README.md` 和 `README_EN.md`。
 - 当改动影响用户时，更新两份 changelog。仅文档改动无需 changelog 条目。
 - 从测试、日志、截图和 issue 描述中移除凭据、账号标识符、二维码和私信内容。
 - Pull request 会接受 Copilot code review，并且必须解决审阅线程。规则集不要求人工批准；
   最终合并决定仍由维护者负责。
+- PR 达到可合并状态前必须通过 `npm run check`，以及受影响区域要求的所有额外验证。
 - 审阅并对提交的所有改动负责，包括由 AI 协助完成的改动。

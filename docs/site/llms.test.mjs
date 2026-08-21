@@ -45,6 +45,8 @@ describe("emitMachineReadable", () => {
     assert.match(llms, /- Generated: 2026-01-02T03:04:05\.000Z\n/);
     assert.match(llms, /- npm: https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\n/);
     assert.match(llms, /- ClawHub: https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\n/);
+    assert.match(llms, /参与贡献.*Bug 报告、修复与新功能流程/);
+    assert.match(llms, /Contributing.*Bug-report, bug-fix, and feature workflows/);
     assert.ok(llms.indexOf("## Docs (简体中文)\n") < llms.indexOf("## Docs (English)\n"));
     for (const page of result.pages) {
       assert.ok(llms.includes(`(${BASE_URL}/${page.path}.md)`), `llms.txt is missing ${page.path}`);
@@ -67,6 +69,8 @@ describe("emitMachineReadable", () => {
     }
     assert.ok(full.includes(`url: ${BASE_URL}/architecture.md`), "Chinese architecture must be inlined");
     assert.ok(full.includes(`url: ${BASE_URL}/contributing.md`), "Chinese contributing guide must be inlined");
+    assert.ok(full.includes("## 选择贡献路径"), "Chinese contribution workflows must be inlined");
+    assert.ok(full.includes("## Choose a contribution path"), "English contribution workflows must be inlined");
   });
 
   it("points robots.txt at the sitemap and disables Jekyll", async () => {

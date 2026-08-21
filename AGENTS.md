@@ -24,6 +24,29 @@ contract.
    ladder. Review the evidence separately: a green broad suite, test count,
    coverage floor, or mocked boundary is not proof of the reported behavior.
 
+## Contribution entry points
+
+- To report a bug, search existing issues and follow the
+  [Bug Report](https://github.com/NewFuture/openclaw-weixin/issues/new?template=bug_report.yml)
+  form. Include the affected plugin, OpenClaw, Node.js, and platform versions;
+  the last known working combination (or `Unknown / never worked`); a minimal
+  reproduction; expected and actual results; and sanitized key diagnostics.
+- Sanitized diagnostics may retain event names, allowlisted error or status
+  codes, counts, sizes, timings, retry counts, and version information. Remove
+  tokens, context tokens, account or user identifiers, message bodies, QR data,
+  URL query parameters, raw filesystem paths, arbitrary error text, and stack
+  traces before submission. Automated reporters must redact locally and must not
+  attach raw logs, config, or state files.
+- Report suspected vulnerabilities through GitHub private vulnerability
+  reporting, never through a public issue.
+- To fix a bug, prefer a triaged issue with an observable test oracle. Delegated
+  agent work requires `agent:ready`; `maintainer-only` work must not be delegated.
+- A
+  [Feature Request](https://github.com/NewFuture/openclaw-weixin/issues/new?template=feature_request.yml)
+  is recommended, not required. A small, well-bounded feature may be submitted
+  directly as a pull request. Discuss broad, high-risk, or
+  compatibility-affecting changes with maintainers before implementation.
+
 ## Module map
 
 | Area | Entry points |
@@ -57,6 +80,9 @@ contract.
 - INFO, WARN, and ERROR logs fully mask identifiers and tokens. DEBUG logs may
   expose only a short prefix through the explicit redaction helper. No log level
   may contain message text, URL query strings, QR URLs, or raw filesystem paths.
+- Diagnostics and reports should preserve useful sanitized metadata such as event
+  names, allowlisted status or error codes, counts, sizes, timings, retry counts,
+  and versions rather than removing all operational context.
 - Account state and context tokens are account-scoped. Do not introduce a global
   fallback that can send from the wrong account.
 - Stop and hot-reload must abort an in-flight long poll. Polling must continue
@@ -100,6 +126,11 @@ contract.
 - For helper selection or parameter plumbing, include a counterexample that
   distinguishes the chosen semantics and separately enter every affected
   mutually exclusive branch and production write site.
+- For a compatibility fix, retain test cases for both the previous supported
+  behavior and the current behavior. When an OpenClaw API boundary changes,
+  cover the minimum supported host, the lockfile/current host, and the moving
+  beta when relevant. State-format changes must separately cover legacy
+  migration and current-format writes.
 - Keep tests safe under Vitest's default parallelism. Restore environment
   variables, timers, globals, mocks, and temporary directories.
 - Prefer fake timers and explicit deferred promises over sleeps.
@@ -137,6 +168,10 @@ but do not mix broad formatting with behavioral changes.
   only on mocks, the current dependency version, aggregate coverage, or green CI.
 - Comments, diagnostics, architecture, bilingual documentation, and release
   metadata match the behavior and ownership that will actually ship.
+- A behavior-changing pull request records the human-run whole-system
+  environment, scenarios, expected and actual results, and sanitized key
+  diagnostics. Use `Not applicable` with a reason only when no runtime behavior
+  needs whole-system validation. Agents must not perform live Weixin validation.
 - `npm run check` and every applicable additional validation pass without warnings
   or generated-file drift.
 - Compatibility, privacy, state migration, multi-account behavior, and related

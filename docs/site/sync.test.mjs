@@ -170,12 +170,40 @@ describe("syncContent", () => {
     const overview = (await readFile(path.join(contentDir, "index.md"), "utf8")).replaceAll("\r\n", "\n");
     assert.match(overview, /\[详细指南\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/guide\.html\)/);
     assert.match(overview, /\[架构说明\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/architecture\.html\)/);
+    assert.match(
+      overview,
+      /\[参与贡献与 Agent 工作流\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/contributing\.html\)/,
+    );
     assert.doesNotMatch(overview, /docs-site:repo-only/);
     assert.doesNotMatch(overview, /\[English\]\(/);
 
     const english = (await readFile(path.join(contentDir, "en", "index.md"), "utf8")).replaceAll("\r\n", "\n");
     assert.match(english, /\[Detailed guide\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/en\/guide\.html\)/);
+    assert.match(
+      english,
+      /\[Contributing and agent workflows\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/en\/contributing\.html\)/,
+    );
     assert.doesNotMatch(english, /\[简体中文\]\(/);
+  });
+
+  it("publishes the external contribution workflows in both locales", async () => {
+    const chinese = await readFile(path.join(contentDir, "contributing.md"), "utf8");
+    assert.match(chinese, /## 选择贡献路径/);
+    assert.match(chinese, /### 报告 Bug/);
+    assert.match(chinese, /### 修复 Bug/);
+    assert.match(chinese, /但这不是强制前置条件/);
+    assert.match(chinese, /兼容性修复必须保留旧版受支持行为和当前行为的测试用例/);
+    assert.match(chinese, /## 整机实测/);
+    assert.match(chinese, /脱敏后的\s+关键诊断信息/);
+
+    const english = await readFile(path.join(contentDir, "en", "contributing.md"), "utf8");
+    assert.match(english, /## Choose a contribution path/);
+    assert.match(english, /### Report a bug/);
+    assert.match(english, /### Fix a bug/);
+    assert.match(english, /is recommended, not required/);
+    assert.match(english, /retain test cases for the previous supported behavior\s+and the current behavior/);
+    assert.match(english, /## Whole-system validation/);
+    assert.match(english, /sanitized key diagnostics/);
   });
 
   it("keeps source choices in the README and publishes distribution comparison separately", async () => {

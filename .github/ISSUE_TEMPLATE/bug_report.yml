@@ -1,16 +1,20 @@
 name: 问题反馈 / Bug Report
 description: 反馈可稳定复现的插件问题
 title: "[问题]: "
+labels:
+  - bug
 body:
   - type: markdown
     attributes:
       value: |
-        感谢反馈问题。提交前请移除凭据、账号标识、二维码和私聊内容等敏感信息。
+        感谢反馈问题。提交前请先搜索现有 issue，并阅读[贡献指南](https://openclaw-weixin.newfuture.cc/contributing.html)。
+        请保留脱敏后的关键诊断信息，但必须移除凭据、账号标识、二维码、私聊内容、URL 查询参数和原始路径。
+        疑似安全漏洞请改用 [GitHub 私密漏洞报告](https://github.com/NewFuture/openclaw-weixin/security/advisories/new)。
   - type: input
     id: plugin-version
     attributes:
-      label: 插件版本
-      placeholder: "3.1.0"
+      label: 受影响的插件版本
+      placeholder: "例如：3.1.5"
     validations:
       required: true
   - type: input
@@ -32,6 +36,14 @@ body:
     attributes:
       label: 操作系统
       placeholder: "例如：Windows 11、macOS 15、Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: last-working-version
+    attributes:
+      label: 最后正常工作的版本组合
+      description: 请填写最后正常工作的插件、OpenClaw 和 Node.js 版本；未知或从未正常工作时请明确说明。
+      placeholder: "例如：插件 3.1.4 / OpenClaw 2026.6.1 / Node.js 24.15.0，或“未知”"
     validations:
       required: true
   - type: textarea
@@ -60,6 +72,19 @@ body:
   - type: textarea
     id: logs
     attributes:
-      label: 相关日志
-      description: 粘贴日志前请移除或遮盖所有敏感信息。
+      label: 脱敏关键日志 / Sanitized key diagnostics
+      description: 保留事件名、安全错误码或状态码、计数、大小、耗时、重试次数和版本。移除 token、账号或用户标识、消息正文、二维码、URL 查询参数、原始路径、任意错误文本和堆栈；没有日志时请写“无”。
+      placeholder: |
+        event=poll_failed status=504 code=ETIMEDOUT attempts=2 elapsedMs=1200
       render: shell
+    validations:
+      required: true
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: 提交确认
+      options:
+        - label: 我已搜索现有 issue，没有找到相同报告。
+          required: true
+        - label: 我只保留了允许的脱敏诊断信息，未附加原始日志、配置或状态文件。
+          required: true

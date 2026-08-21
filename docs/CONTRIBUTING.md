@@ -21,6 +21,52 @@ Node.js 24 and OpenClaw 2026.7.1 combinations run the full validation suite.
 The Node.js 22 floor job uses OpenClaw 2026.7.1; the minimum supported host,
 OpenClaw 2026.6.1, and the moving beta job use Node.js 24.15.0.
 
+## Choose a contribution path
+
+### Report a bug
+
+Search [existing issues](https://github.com/NewFuture/openclaw-weixin/issues)
+before opening a
+[Bug Report](https://github.com/NewFuture/openclaw-weixin/issues/new?template=bug_report.yml).
+Include the affected plugin, OpenClaw, Node.js, and platform versions; the last
+known working combination (or `Unknown / never worked`); minimal reproduction
+steps; expected and actual results; and sanitized key diagnostics.
+
+Keep useful diagnostic metadata such as event names, allowlisted error or status
+codes, counts, sizes, timings, retry counts, and versions. Before submission,
+remove tokens, context tokens, account or user identifiers, message bodies, QR
+data, URL query parameters, raw filesystem paths, arbitrary error text, and
+stack traces. Automated clients must apply the same schema and redaction locally;
+never attach raw logs, configuration, or state files.
+
+Report a suspected vulnerability through
+[GitHub private vulnerability reporting](https://github.com/NewFuture/openclaw-weixin/security/advisories/new),
+not through a public issue.
+
+### Fix a bug
+
+Prefer a triaged issue with an observable test oracle. An agent may implement
+only work labeled `agent:ready`; `maintainer-only` work must not be delegated.
+Follow [AGENTS.md](../AGENTS.md) and
+[the architecture guide](./en/architecture.md), reproduce the original failure,
+and add both a focused regression test and a counterexample.
+
+For a compatibility fix, retain test cases for the previous supported behavior
+and the current behavior. When an OpenClaw API boundary is affected, cover the
+minimum supported host, the lockfile/current host, and the moving beta when
+relevant. State-format changes must separately cover legacy migration and
+current-format writes. Do not delete or weaken an old-version test to make a new
+version pass.
+
+### Propose or implement a feature
+
+A
+[Feature Request](https://github.com/NewFuture/openclaw-weixin/issues/new?template=feature_request.yml)
+is recommended, not required. A small, well-bounded feature may be submitted
+directly as a pull request when its use case, acceptance criteria, non-goals, and
+alternatives are clear. Discuss broad, high-risk, or compatibility-affecting
+changes with maintainers before implementation.
+
 ## Development
 
 Install the exact dependency versions recorded in the lockfile:
@@ -186,9 +232,36 @@ secrets or access the live backend.
 `.github/workflows/copilot-setup-steps.yml` prepares the standard Node.js 24.15.0
 environment with `npm ci`. It does not replace focused tests or `npm run check`.
 
+## Whole-system validation
+
+Automated tests must not call the live Weixin backend, perform QR login, or use a
+developer's OpenClaw state. A pull request that changes runtime behavior must
+separately record human-run whole-system validation in the pull request template:
+
+- operating system and architecture, Node.js, OpenClaw, and plugin version or
+  commit;
+- installation method and each tested scenario;
+- expected and actual results; and
+- sanitized key diagnostics that follow the reporting rules above.
+
+Use an isolated, non-production test account. Never put credentials, QR data,
+account identifiers, or private message content in the pull request. The result
+supports only the listed environment and scenarios and does not replace
+automated regression tests. An agent may open a draft pull request with this
+result marked `Pending human validation`, but the pull request is not ready to
+merge until a human records the result. For documentation or test-only changes,
+write `Not applicable` and explain why no runtime validation is needed.
+
 ## Pull requests
 
 - Keep changes focused and include tests for behavior changes.
+- List the complete affected test matrix: the original failure, a
+  counterexample, and every affected mutually exclusive branch, error exit, and
+  persistence boundary.
+- For compatibility fixes, retain both old-version and current-version test
+  cases and record the compatibility combinations that were run.
+- Include the whole-system validation result described above for runtime
+  behavior changes.
 - Update `README.md` and `README_EN.md` for user-facing documentation.
 - Update both changelogs when a change affects users. Documentation-only
   changes need no changelog entry.
@@ -197,5 +270,7 @@ environment with `npm ci`. It does not replace focused tests or `npm run check`.
 - Pull requests receive Copilot code review and require resolved review threads.
   The ruleset does not require human approval; maintainers remain responsible
   for the final merge decision.
+- Run `npm run check` and every additional validation required by the affected
+  area before the pull request is ready to merge.
 - Review and take responsibility for all submitted changes, including
   AI-assisted changes.
