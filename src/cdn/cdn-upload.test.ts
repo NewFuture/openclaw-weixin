@@ -15,6 +15,7 @@ const { mockFetch } = vi.hoisted(() => ({
 vi.stubGlobal("fetch", mockFetch);
 
 import crypto from "node:crypto";
+import { logger } from "../util/logger.js";
 import { aesEcbPaddedSize, encryptAesEcb } from "./aes-ecb.js";
 import { uploadBufferToCdn } from "./cdn-upload.js";
 
@@ -152,23 +153,30 @@ describe("uploadBufferToCdn", () => {
     ).rejects.toThrow("x-encrypted-param");
   });
 
-  it("uses x-error-message header for 4xx when available", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      headers: new Headers({ "x-error-message": "bad request detail" }),
-      text: () => Promise.resolve("fallback text"),
+  it("preserves a sanitized 4xx error when response-body cleanup fails", async () => {
+    const bodyError = "synthetic-private-body-error";
+    const body = new ReadableStream({
+      start(controller) {
+        controller.error(new Error(bodyError));
+      },
     });
-
-    await expect(
-      uploadBufferToCdn({
-        buf: Buffer.from("data"),
-        uploadParam: "up",
-        filekey: "fk",
-        cdnBaseUrl: "https://cdn.com",
-        label: "test",
-        aeskey,
+    mockFetch.mockResolvedValueOnce(
+      new Response(body, {
+        status: 400,
+        headers: new Headers({ "x-error-message": "bad request detail" }),
       }),
-    ).rejects.toThrow("bad request detail");
+    );
+
+    const upload = uploadBufferToCdn({
+      buf: Buffer.from("data"),
+      uploadParam: "up",
+      filekey: "fk",
+      cdnBaseUrl: "https://cdn.com",
+      label: "test",
+      aeskey,
+    });
+    await expect(upload).rejects.toThrow(/^CDN upload client error 400$/);
+    expect(mockFetch).toHaveBeenCalledOnce();
+    expect((logger.debug as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ")).not.toContain(bodyError);
   });
 });

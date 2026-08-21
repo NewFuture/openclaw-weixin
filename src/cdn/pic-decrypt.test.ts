@@ -78,16 +78,22 @@ describe("CDN downloads", () => {
     expect(fetchMock).toHaveBeenCalledWith("https://cdn.example.test/download?synthetic=1");
   });
 
-  it("reports a non-success CDN response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("synthetic failure", { status: 403 })));
+  it("reports a non-success CDN response when body cleanup fails", async () => {
+    const bodyError = "synthetic-private-body-error";
+    const body = new ReadableStream({
+      start(controller) {
+        controller.error(new Error(bodyError));
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body, { status: 403 })));
 
-    await expect(
-      downloadPlainCdnBuffer(
-        "unused-query",
-        "https://cdn.example.test",
-        "inbound image",
-        "https://cdn.example.test/download",
-      ),
-    ).rejects.toThrow("CDN download 403");
+    const download = downloadPlainCdnBuffer(
+      "unused-query",
+      "https://cdn.example.test",
+      "inbound image",
+      "https://cdn.example.test/download",
+    );
+    await expect(download).rejects.toThrow(/^inbound image: CDN download failed status=403$/);
+    expect(mocks.logger.debug.mock.calls.flat().join(" ")).not.toContain(bodyError);
   });
 });

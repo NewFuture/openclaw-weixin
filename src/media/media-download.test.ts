@@ -106,6 +106,31 @@ describe("downloadMediaFromItem", () => {
     );
     expect(saveMedia).toHaveBeenCalledWith(Buffer.from("image"), undefined, "inbound", 100 * 1024 * 1024);
     expect(result).toEqual({ decryptedPicPath: "C:\\synthetic\\image.bin" });
+    const logs = [...mocks.logger.debug.mock.calls, ...mocks.logger.error.mock.calls].flat().join(" ");
+    expect(logs).not.toContain("synthetic-encrypted-query");
+    expect(logs).not.toContain("C:\\synthetic\\image.bin");
+  });
+
+  it.each([
+    ["image", makeImageItem],
+    ["voice", makeVoiceItem],
+    ["file", makeFileItem],
+    ["video", makeVideoItem],
+  ])("redacts arbitrary errors from %s download diagnostics", async (_kind, makeItem) => {
+    const secret = "synthetic-private-error-detail";
+    const errLog = vi.fn();
+    mocks.downloadAndDecryptBuffer.mockRejectedValueOnce(new Error(secret));
+
+    await downloadMediaFromItem(makeItem(), {
+      ...COMMON_DEPS,
+      errLog,
+      saveMedia: vi.fn(),
+    });
+
+    const diagnostics = [...mocks.logger.error.mock.calls, ...errLog.mock.calls].flat().join(" ");
+    expect(diagnostics).not.toContain(secret);
+    expect(mocks.logger.error).toHaveBeenCalled();
+    expect(errLog).toHaveBeenCalled();
   });
 
   it("propagates a caller-supplied subdir through every media branch", async () => {

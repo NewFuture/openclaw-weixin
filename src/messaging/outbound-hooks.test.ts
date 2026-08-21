@@ -8,8 +8,10 @@ const mocks = vi.hoisted(() => ({
   fireAndForgetHook: vi.fn(),
   getGlobalHookRunner: vi.fn(),
   logger: {
+    debug: vi.fn(),
     warn: vi.fn(),
   },
+  sendMessageWeixin: vi.fn(),
   toPluginMessageContext: vi.fn((context: unknown) => ({
     pluginContext: context,
   })),
@@ -33,6 +35,11 @@ vi.mock("../util/logger.js", () => ({
   logger: mocks.logger,
 }));
 
+vi.mock("./send.js", () => ({
+  sendMessageWeixin: mocks.sendMessageWeixin,
+}));
+
+import { sendWeixinErrorNotice } from "./error-notice.js";
 import { applyWeixinMessageSendingHook, emitWeixinMessageSent } from "./outbound-hooks.js";
 
 beforeEach(() => {
@@ -115,7 +122,27 @@ describe("applyWeixinMessageSendingHook", () => {
       cancelled: false,
       text: "hello",
     });
-    expect(mocks.logger.warn).toHaveBeenCalledWith("message_sending hook error, proceeding with send: Error: boom");
+    expect(mocks.logger.warn).toHaveBeenCalledWith("message_sending hook error, proceeding with send: Error");
+    expect(mocks.logger.warn.mock.calls.flat().join(" ")).not.toContain("boom");
+  });
+});
+
+describe("outbound diagnostic privacy", () => {
+  it("does not log any recipient ID prefix after a successful error notice", async () => {
+    const recipientId = "oSYNTH0000000000000000000000@im.wechat";
+    mocks.sendMessageWeixin.mockResolvedValueOnce({ messageId: "m1" });
+
+    await sendWeixinErrorNotice({
+      to: recipientId,
+      contextToken: "ctx-tok",
+      message: "Something went wrong",
+      baseUrl: "https://api.com",
+      errLog: vi.fn(),
+    });
+
+    const logs = mocks.logger.debug.mock.calls.flat().join(" ");
+    expect(logs).not.toContain(recipientId);
+    expect(logs).not.toContain(recipientId.slice(0, 6));
   });
 });
 

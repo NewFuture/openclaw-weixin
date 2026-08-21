@@ -7,6 +7,7 @@
  */
 import type { WeixinApiOptions } from "../api/api.js";
 import { logger } from "../util/logger.js";
+import { redactError } from "../util/redact.js";
 
 import { toggleDebugMode } from "./debug-mode.js";
 import { sendMessageWeixin } from "./send.js";
@@ -77,8 +78,11 @@ export async function handleSlashCommand(
   const spaceIdx = trimmed.indexOf(" ");
   const command = spaceIdx === -1 ? trimmed.toLowerCase() : trimmed.slice(0, spaceIdx).toLowerCase();
   const args = spaceIdx === -1 ? "" : trimmed.slice(spaceIdx + 1);
+  const knownCommand = command === "/echo" || command === "/toggle-debug";
 
-  logger.info(`[weixin] Slash command: ${command}, args: ${args.slice(0, 50)}`);
+  logger.info(
+    knownCommand ? `[weixin] Slash command: ${command} hasArgs=${Boolean(args)}` : "[weixin] Slash command: (unknown)",
+  );
 
   try {
     switch (command) {
@@ -94,12 +98,12 @@ export async function handleSlashCommand(
         return { handled: false };
     }
   } catch (err) {
-    logger.error(`[weixin] Slash command error: ${String(err)}`);
+    logger.error(`[weixin] Slash command error: ${redactError(err)}`);
     if (!ctx.contextToken) {
       return { handled: true };
     }
     try {
-      await sendReply(ctx, `❌ 指令执行失败: ${String(err).slice(0, 200)}`);
+      await sendReply(ctx, "❌ 指令执行失败，请稍后重试。");
     } catch {
       // 发送错误消息也失败了，只能记日志
     }
