@@ -21,4 +21,11 @@ Do not include credentials, account identifiers, QR codes, or private message
 content. Repository administrators track confirmed reports in a draft security
 advisory.
 
+## Diagnostic privacy
+
+INFO, WARN, and ERROR logs fully mask identifiers and tokens. Opt-in DEBUG logs
+may show only a short redacted prefix. Logs never include message text, URL query
+strings, QR URLs, or raw filesystem paths. Reports should include event names,
+status codes, counts, and timings instead of sensitive values.
+
 [advisory]: https://github.com/NewFuture/openclaw-weixin/security/advisories/new

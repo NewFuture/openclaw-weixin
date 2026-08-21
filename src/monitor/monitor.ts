@@ -17,7 +17,7 @@ import { processOneMessage, type WeixinChannelRuntime } from "../messaging/proce
 import { getSyncBufFilePath, loadGetUpdatesBuf, saveGetUpdatesBuf } from "../storage/sync-buf.js";
 import type { Logger } from "../util/logger.js";
 import { logger } from "../util/logger.js";
-import { redactBody } from "../util/redact.js";
+import { redactError, redactToken, redactUrl } from "../util/redact.js";
 
 const DEFAULT_LONG_POLL_TIMEOUT_MS = 35_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -69,10 +69,12 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
     throw new Error(msg);
   }
 
-  log(`weixin monitor started (${baseUrl}, account=${accountId})`);
-  aLog.info(`Monitor started: baseUrl=${baseUrl} timeoutMs=${longPollTimeoutMs ?? DEFAULT_LONG_POLL_TIMEOUT_MS}`);
+  log(`weixin monitor started (baseUrl=${redactUrl(baseUrl)}, account=${redactToken(accountId)})`);
+  aLog.info(
+    `Monitor started: baseUrl=${redactUrl(baseUrl)} timeoutMs=${longPollTimeoutMs ?? DEFAULT_LONG_POLL_TIMEOUT_MS}`,
+  );
   const syncFilePath = getSyncBufFilePath(accountId);
-  aLog.debug(`syncFilePath: ${syncFilePath}`);
+  aLog.debug("sync state path resolved");
 
   const previousGetUpdatesBuf = loadGetUpdatesBuf(syncFilePath);
   let getUpdatesBuf = previousGetUpdatesBuf ?? "";
@@ -107,7 +109,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
           ?.map((item) => item?.type)
           .filter((type) => type !== undefined)
           .join(",") ?? "none";
-      aLog.info(`inbound message: from=${full.from_user_id} types=${itemTypes}`);
+      aLog.info(`inbound message: from=${redactToken(full.from_user_id)} types=${itemTypes}`);
 
       const now = Date.now();
       setStatus?.({ accountId, lastEventAt: now, lastInboundAt: now });
@@ -170,8 +172,8 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
       // Owner released — re-enter admission so the message is not lost.
       scheduleInboundMessage(full);
     })().catch((err) => {
-      errLog(`weixin inbound inflight observe failed: ${String(err)}`);
-      aLog.error(`Inbound inflight observe failed: ${String(err)}, stack=${(err as Error).stack ?? "none"}`);
+      errLog(`weixin inbound inflight observe failed: ${redactError(err)}`);
+      aLog.error(`Inbound inflight observe failed: ${redactError(err)}`);
     });
   };
 
@@ -208,8 +210,8 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
             await processInboundMessage(full, releaseOnce, dedupeKey);
           })()
             .catch((err) => {
-              errLog(`weixin inbound message failed: ${String(err)}`);
-              aLog.error(`Inbound message failed: ${String(err)}, stack=${(err as Error).stack ?? "none"}`);
+              errLog(`weixin inbound message failed: ${redactError(err)}`);
+              aLog.error(`Inbound message failed: ${redactError(err)}`);
             })
             .finally(releaseOnce);
         }),
@@ -226,7 +228,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
 
   while (!abortSignal?.aborted) {
     try {
-      aLog.debug(`getUpdates: get_updates_buf=${getUpdatesBuf.substring(0, 50)}..., timeoutMs=${nextTimeoutMs}`);
+      aLog.debug(`getUpdates: cursor=${redactToken(getUpdatesBuf, 6)} timeoutMs=${nextTimeoutMs}`);
       const resp = await getUpdates({
         baseUrl,
         token,
@@ -253,7 +255,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
           pauseSession(accountId);
           const pauseMs = getRemainingPauseMs(accountId);
           aLog.error(
-            `getUpdates: token for ${accountId} is stale, pausing all requests for ${Math.ceil(pauseMs / 60_000)} min`,
+            `getUpdates: account=${redactToken(accountId)} token stale, pausing all requests for ${Math.ceil(pauseMs / 60_000)} min`,
           );
           consecutiveFailures = 0;
           await sleep(pauseMs, abortSignal);
@@ -262,11 +264,9 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
 
         consecutiveFailures += 1;
         errLog(
-          `weixin getUpdates failed: ret=${resp.ret} errcode=${resp.errcode} errmsg=${resp.errmsg ?? ""} (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES})`,
+          `weixin getUpdates failed: ret=${resp.ret} errcode=${resp.errcode} (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES})`,
         );
-        aLog.error(
-          `getUpdates failed: ret=${resp.ret} errcode=${resp.errcode} errmsg=${resp.errmsg} response=${redactBody(JSON.stringify(resp))}`,
-        );
+        aLog.error(`getUpdates failed: ret=${resp.ret} errcode=${resp.errcode} messages=${resp.msgs?.length ?? 0}`);
         if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
           errLog(`weixin getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);
           aLog.error(`getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);
@@ -298,11 +298,9 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
       consecutiveFailures += 1;
       const classified = classifyFetchError(err);
       errLog(
-        `weixin getUpdates error (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}): ${String(err)} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""}`,
+        `weixin getUpdates error (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}): ${redactError(err)} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""}`,
       );
-      aLog.error(
-        `getUpdates error: ${String(err)}, type=${classified.type} code=${classified.code ?? "none"}, stack=${(err as Error).stack}`,
-      );
+      aLog.error(`getUpdates error: ${redactError(err)} type=${classified.type} code=${classified.code ?? "none"}`);
       if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
         errLog(`weixin getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);
         aLog.error(`getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);

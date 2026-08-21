@@ -35,6 +35,7 @@ import { applyWeixinMessageSendingHook, emitWeixinMessageSent } from "./messagin
 import { StreamingMarkdownFilter, sendMessageWeixin } from "./messaging/send.js";
 import { sendWeixinMediaFile } from "./messaging/send-media.js";
 import { logger } from "./util/logger.js";
+import { redactError, redactToken } from "./util/redact.js";
 
 /** Returns true when mediaUrl refers to a local filesystem path (absolute or relative). */
 function isLocalFilePath(mediaUrl: string): boolean {
@@ -73,7 +74,7 @@ function resolveOutboundAccountId(cfg: OpenClawConfig, to: string): string {
   }
 
   if (allIds.length === 1) {
-    logger.info(`resolveOutboundAccountId: single account, using ${allIds[0]}`);
+    logger.info(`resolveOutboundAccountId: single account, using ${redactToken(allIds[0])}`);
     return allIds[0];
   }
 
@@ -81,23 +82,21 @@ function resolveOutboundAccountId(cfg: OpenClawConfig, to: string): string {
   const matched = findAccountIdsByContextToken(allIds, to);
 
   if (matched.length === 1) {
-    logger.info(`resolveOutboundAccountId: matched accountId=${matched[0]} for to=${to}`);
+    logger.info(`resolveOutboundAccountId: matched account=${redactToken(matched[0])} for to=${redactToken(to)}`);
     return matched[0];
   }
 
   if (matched.length > 1) {
-    logger.warn(
-      `resolveOutboundAccountId: ambiguous — ${matched.length} accounts matched for to=${to}: ${matched.join(", ")}`,
-    );
+    logger.warn(`resolveOutboundAccountId: ambiguous — ${matched.length} accounts matched for to=${redactToken(to)}`);
     throw new Error(
-      `weixin: ambiguous account for to=${to} ` +
-        `(${matched.length} accounts have active sessions with this recipient: ${matched.join(", ")}). ` +
+      `weixin: ambiguous account for recipient ` +
+        `(${matched.length} accounts have active sessions with this recipient). ` +
         `Specify accountId in the delivery config to disambiguate.`,
     );
   }
 
   throw new Error(
-    `weixin: cannot determine which account to use for to=${to} ` +
+    `weixin: cannot determine which account to use for recipient ` +
       `(${allIds.length} accounts registered, none has an active session with this recipient). ` +
       `Specify accountId in the delivery config, or ensure the recipient has recently messaged the bot.`,
   );
@@ -128,7 +127,7 @@ async function sendWeixinOutbound(params: {
     accountId: account.accountId,
   });
   if (sendingResult.cancelled) {
-    aLog.info(`sendWeixinOutbound: cancelled by message_sending hook to=${params.to}`);
+    aLog.info(`sendWeixinOutbound: cancelled by message_sending hook to=${redactToken(params.to)}`);
     return { channel: "openclaw-weixin", messageId: "" };
   }
   filteredText = sendingResult.text;
@@ -150,7 +149,7 @@ async function sendWeixinOutbound(params: {
       to: params.to,
       content: filteredText,
       success: false,
-      error: String(err),
+      error: redactError(err),
       accountId: account.accountId,
     });
     throw err;
@@ -252,7 +251,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         mediaUrl,
       });
       if (sendingResult.cancelled) {
-        aLog.info(`sendMedia: cancelled by message_sending hook to=${ctx.to}`);
+        aLog.info(`sendMedia: cancelled by message_sending hook to=${redactToken(ctx.to)}`);
         return { channel: "openclaw-weixin", messageId: "" };
       }
       text = sendingResult.text;
@@ -261,11 +260,11 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         let filePath: string;
         if (isLocalFilePath(mediaUrl)) {
           filePath = resolveLocalPath(mediaUrl);
-          aLog.debug(`sendMedia: uploading local file ${filePath}`);
+          aLog.debug("sendMedia: uploading local file");
         } else {
-          aLog.debug(`sendMedia: downloading remote mediaUrl=${mediaUrl.slice(0, 80)}...`);
+          aLog.debug("sendMedia: downloading remote media");
           filePath = await downloadRemoteImageToTemp(mediaUrl, MEDIA_OUTBOUND_TEMP_DIR);
-          aLog.debug(`sendMedia: remote image downloaded to ${filePath}`);
+          aLog.debug("sendMedia: remote media downloaded");
         }
         const contextToken = getContextToken(storageAccountId, ctx.to);
         try {
@@ -283,7 +282,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
             to: ctx.to,
             content: text,
             success: false,
-            error: String(err),
+            error: redactError(err),
             accountId: account.accountId,
           });
           throw err;
@@ -308,7 +307,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           to: ctx.to,
           content: text,
           success: false,
-          error: String(err),
+          error: redactError(err),
           accountId: account.accountId,
         });
         throw err;
@@ -354,7 +353,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       });
 
       if (!startResult.qrcodeUrl) {
-        logger.warn(`auth.login: failed to get QR code accountId=${account.accountId} message=${startResult.message}`);
+        logger.warn(`auth.login: failed to get QR code account=${redactToken(account.accountId)}`);
         log(startResult.message);
         throw new Error(startResult.message);
       }
@@ -393,8 +392,8 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
               : `\n已将此 OpenClaw 连接到微信。`,
           );
         } catch (err) {
-          logger.error(`auth.login: failed to save account data err=${String(err)}`);
-          log(`⚠️  保存账号数据失败: ${String(err)}`);
+          logger.error(`auth.login: failed to save account data err=${redactError(err)}`);
+          log(`⚠️  保存账号数据失败，请稍后重试。`);
           throw err;
         }
       } else if (waitResult.alreadyConnected) {
@@ -414,12 +413,12 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
             logger.info("auth.login: bot already connected to this OpenClaw");
           }
         } catch (err) {
-          logger.error(`auth.login: already-connected alias binding failed err=${String(err)}`);
-          log(`⚠️  ${String(err)}`);
+          logger.error(`auth.login: already-connected alias binding failed err=${redactError(err)}`);
+          log(`⚠️  账号别名绑定失败，请稍后重试。`);
           throw err;
         }
       } else {
-        logger.warn(`auth.login: login did not complete message=${waitResult.message}`);
+        logger.warn("auth.login: login did not complete");
         // log(waitResult.message);
         throw new Error(waitResult.message);
       }
@@ -456,13 +455,13 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       if (!account.configured) {
         aLog.error(`account not configured`);
         ctx.log?.error?.(
-          `[${primaryId}] weixin not logged in — run: openclaw channels login --channel openclaw-weixin`,
+          `[${redactToken(primaryId)}] weixin not logged in — run: openclaw channels login --channel openclaw-weixin`,
         );
         ctx.setStatus?.({ accountId: primaryId, running: false });
         throw new Error("weixin not configured: missing token");
       }
 
-      ctx.log?.info?.(`[${primaryId}] starting weixin provider (${DEFAULT_BASE_URL})`);
+      ctx.log?.info?.(`[${redactToken(primaryId)}] starting weixin provider`);
 
       try {
         const resp = await notifyStart({
@@ -470,14 +469,13 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           token: account.token,
         });
         if (resp.ret !== undefined && resp.ret !== 0) {
-          aLog.warn(`notifyStart: ret=${resp.ret} errmsg=${resp.errmsg ?? ""}`);
+          aLog.warn(`notifyStart: ret=${resp.ret}`);
         }
       } catch (err) {
-        aLog.warn(`notifyStart failed during startup (ignored): ${String(err)}`);
+        aLog.warn(`notifyStart failed during startup (ignored): ${redactError(err)}`);
       }
 
-      const logPath = aLog.getLogFilePath();
-      ctx.log?.info?.(`[${primaryId}] weixin logs: ${logPath}`);
+      ctx.log?.info?.(`[${redactToken(primaryId)}] weixin logging initialized`);
 
       // The gateway injects the channel runtime surface per-call (task-scoped). We require it:
       // it carries reply/routing/session/media/commands helpers used by processOneMessage.
@@ -485,7 +483,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       if (!ctx.channelRuntime) {
         const msg = `ctx.channelRuntime missing — host too old or plugin SDK contract violated`;
         aLog.error(msg);
-        ctx.log?.error?.(`[${primaryId}] ${msg}`);
+        ctx.log?.error?.(`[${redactToken(primaryId)}] ${msg}`);
         ctx.setStatus?.({ accountId: primaryId, running: false });
         throw new Error(msg);
       }
@@ -522,10 +520,10 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           token: account.token,
         });
         if (resp.ret !== undefined && resp.ret !== 0) {
-          aLog.warn(`notifyStop: ret=${resp.ret} errmsg=${resp.errmsg ?? ""}`);
+          aLog.warn(`notifyStop: ret=${resp.ret}`);
         }
       } catch (err) {
-        aLog.warn(`notifyStop failed during shutdown (ignored): ${String(err)}`);
+        aLog.warn(`notifyStop failed during shutdown (ignored): ${redactError(err)}`);
       }
     },
     loginWithQrStart: async ({ accountId, force, verbose }) => {
@@ -574,7 +572,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
               : "loginWithQrWait: saved account data for primary bot id",
           );
         } catch (err) {
-          logger.error(`loginWithQrWait: failed to save account data err=${String(err)}`);
+          logger.error(`loginWithQrWait: failed to save account data err=${redactError(err)}`);
           throw err;
         }
       } else if (result.alreadyConnected) {
@@ -588,7 +586,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
             logger.info("loginWithQrWait: bound already-connected bot to requested alias mapping");
           }
         } catch (err) {
-          logger.error(`loginWithQrWait: already-connected alias binding failed err=${String(err)}`);
+          logger.error(`loginWithQrWait: already-connected alias binding failed err=${redactError(err)}`);
           throw err;
         }
       }

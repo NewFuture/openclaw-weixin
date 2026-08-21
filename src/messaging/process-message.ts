@@ -18,7 +18,7 @@ import { downloadRemoteImageToTemp } from "../cdn/upload.js";
 import { resolveReplyProgressMessagesEnabled } from "../config/reply-progress.js";
 import { downloadMediaFromItem } from "../media/media-download.js";
 import { logger } from "../util/logger.js";
-import { redactBody, redactToken } from "../util/redact.js";
+import { redactError, redactToken } from "../util/redact.js";
 
 import { isDebugMode } from "./debug-mode.js";
 import { sendWeixinErrorNotice } from "./error-notice.js";
@@ -100,7 +100,9 @@ function extractTextBody(itemList?: import("../api/types.js").MessageItem[]): st
  */
 export async function processOneMessage(full: WeixinMessage, deps: ProcessMessageDeps): Promise<void> {
   if (!deps?.channelRuntime) {
-    logger.error(`processOneMessage: channelRuntime is undefined, skipping message from=${full.from_user_id}`);
+    logger.error(
+      `processOneMessage: channelRuntime is undefined, skipping message from=${redactToken(full.from_user_id)}`,
+    );
     deps.errLog("processOneMessage: channelRuntime is undefined, skip");
     return;
   }
@@ -136,9 +138,9 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
     const itemTypes = full.item_list?.map((i) => i.type).join(",") ?? "none";
     debugTrace.push(
       "── 收消息 ──",
-      `│ seq=${full.seq ?? "?"} msgId=${full.message_id ?? "?"} from=${full.from_user_id ?? "?"}`,
-      `│ body="${textBody.slice(0, 40)}${textBody.length > 40 ? "…" : ""}" (len=${textBody.length}) itemTypes=[${itemTypes}]`,
-      `│ sessionId=${full.session_id ?? "?"} contextToken=${full.context_token ? "present" : "none"}`,
+      `│ hasSeq=${full.seq !== undefined} hasMsgId=${full.message_id !== undefined} from=${redactToken(full.from_user_id, 6)}`,
+      `│ bodyLen=${textBody.length} itemTypes=[${itemTypes}]`,
+      `│ hasSessionId=${Boolean(full.session_id)} contextToken=${full.context_token ? "present" : "none"}`,
     );
   }
 
@@ -154,11 +156,11 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
     peer: { kind: "direct", id: senderId },
   });
   logger.debug(
-    `resolveAgentRoute: agentId=${route.agentId ?? "(none)"} sessionKey=${route.sessionKey ?? "(none)"} mainSessionKey=${route.mainSessionKey ?? "(none)"}`,
+    `resolveAgentRoute: agentId=${redactToken(route.agentId, 6)} sessionKey=${redactToken(route.sessionKey, 6)} mainSessionKey=${redactToken(route.mainSessionKey, 6)}`,
   );
   if (!route.agentId) {
     logger.error(
-      `resolveAgentRoute: no agentId resolved for peer=${senderId} accountId=${deps.accountId} — message will not be dispatched`,
+      `resolveAgentRoute: no agentId resolved for peer=${redactToken(senderId)} account=${redactToken(deps.accountId)} — message will not be dispatched`,
     );
   }
   // Sanitize the agentId into a portable, filesystem-safe path component before
@@ -174,10 +176,13 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   // gate that case above and emit the legacy `inbound` subdir instead.
   const sanitizedAgentId = route.agentId ? normalizeAgentId(route.agentId) : "";
   const mediaSubdir = sanitizedAgentId ? `weixin/${sanitizedAgentId}/inbound` : "inbound";
-  logger.debug(`mediaSubdir: subdir=${mediaSubdir} (agentId=${route.agentId ?? "(none)"})`);
+  logger.debug(`mediaSubdir: agentScoped=${Boolean(sanitizedAgentId)}`);
 
   if (debug) {
-    debugTrace.push("── 路由 ──", `│ route: agent=${route.agentId ?? "none"} session=${route.sessionKey ?? "none"}`);
+    debugTrace.push(
+      "── 路由 ──",
+      `│ route: agent=${redactToken(route.agentId, 6)} session=${redactToken(route.sessionKey, 6)}`,
+    );
   }
 
   const mediaOpts: WeixinInboundMediaOpts = {};
@@ -254,13 +259,13 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   });
 
   if (directDmOutcome === "disabled" || directDmOutcome === "unauthorized") {
-    logger.info(`authorization: dropping message from=${senderId} outcome=${directDmOutcome}`);
+    logger.info(`authorization: dropping message from=${redactToken(senderId)} outcome=${directDmOutcome}`);
     return;
   }
 
   ctx.CommandAuthorized = commandAuthorized;
   logger.debug(
-    `authorization: senderId=${senderId} commandAuthorized=${String(commandAuthorized)} senderAllowed=${String(senderAllowedForCommands)}`,
+    `authorization: senderId=${redactToken(senderId, 6)} commandAuthorized=${String(commandAuthorized)} senderAllowed=${String(senderAllowedForCommands)}`,
   );
 
   if (debug) {
@@ -286,9 +291,8 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   } as Parameters<typeof deps.channelRuntime.reply.finalizeInboundContext>[0]);
 
   logger.info(
-    `inbound: from=${finalized.From} to=${finalized.To} bodyLen=${(finalized.Body ?? "").length} hasMedia=${Boolean(finalized.MediaPath ?? finalized.MediaUrl)}`,
+    `inbound: from=${redactToken(finalized.From)} to=${redactToken(finalized.To)} bodyLen=${(finalized.Body ?? "").length} hasMedia=${Boolean(finalized.MediaPath ?? finalized.MediaUrl)}`,
   );
-  logger.debug(`inbound context: ${redactBody(JSON.stringify(finalized))}`);
 
   await deps.channelRuntime.session.recordInboundSession({
     storePath,
@@ -300,9 +304,9 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
       to: ctx.To,
       accountId: deps.accountId,
     },
-    onRecordError: (err) => deps.errLog(`recordInboundSession: ${String(err)}`),
+    onRecordError: (err) => deps.errLog(`recordInboundSession: ${redactError(err)}`),
   });
-  logger.debug(`recordInboundSession: done storePath=${storePath} sessionKey=${route.sessionKey ?? "(none)"}`);
+  logger.debug(`recordInboundSession: done sessionKey=${redactToken(route.sessionKey, 6)}`);
 
   const contextToken = getContextTokenFromMsgContext(ctx);
   const runId = randomUUID();
@@ -346,13 +350,13 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
             },
           })
       : async () => {},
-    onStartError: (err) => deps.log(`[weixin] typing send error: ${String(err)}`),
-    onStopError: (err) => deps.log(`[weixin] typing cancel error: ${String(err)}`),
+    onStartError: (err) => deps.log(`[weixin] typing send error: ${redactError(err)}`),
+    onStopError: (err) => deps.log(`[weixin] typing cancel error: ${redactError(err)}`),
     keepaliveIntervalMs: 5000,
   });
 
   /** Delivery records populated synchronously at deliver() entry, safe to read in finally. */
-  const debugDeliveries: Array<{ textLen: number; media: string; preview: string; ts: number }> = [];
+  const debugDeliveries: Array<{ textLen: number; media: string; ts: number }> = [];
 
   const { dispatcher, replyOptions, markDispatchIdle } = deps.channelRuntime.reply.createReplyDispatcherWithTyping({
     humanDelay,
@@ -364,19 +368,9 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
         return f.feed(rawText) + f.flush();
       })();
       const mediaUrl = payload.mediaUrl ?? payload.mediaUrls?.[0];
-      logger.debug(`outbound payload: ${redactBody(JSON.stringify(payload))}`);
       logger.info(
-        `outbound: to=${ctx.To} contextToken=${redactToken(contextToken)} textLen=${text.length} mediaUrl=${mediaUrl ? "present" : "none"}`,
+        `outbound: to=${redactToken(ctx.To)} contextToken=${redactToken(contextToken)} textLen=${text.length} mediaUrl=${mediaUrl ? "present" : "none"}`,
       );
-
-      if (debug) {
-        debugDeliveries.push({
-          textLen: text.length,
-          media: mediaUrl ? "present" : "none",
-          preview: `${text.slice(0, 60)}${text.length > 60 ? "…" : ""}`,
-          ts: Date.now(),
-        });
-      }
 
       const sendingResult = await applyWeixinMessageSendingHook({
         to: ctx.To,
@@ -386,10 +380,18 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
         runId,
       });
       if (sendingResult.cancelled) {
-        logger.info(`outbound: cancelled by message_sending hook to=${ctx.To}`);
+        logger.info(`outbound: cancelled by message_sending hook to=${redactToken(ctx.To)}`);
         return;
       }
       text = sendingResult.text;
+
+      if (debug) {
+        debugDeliveries.push({
+          textLen: text.length,
+          media: mediaUrl ? "present" : "none",
+          ts: Date.now(),
+        });
+      }
 
       try {
         if (mediaUrl) {
@@ -399,17 +401,16 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
               filePath = new URL(mediaUrl).pathname;
             } else if (!path.isAbsolute(mediaUrl)) {
               filePath = path.resolve(mediaUrl);
-              logger.debug(`outbound: resolved relative path ${mediaUrl} -> ${filePath}`);
             } else {
               filePath = mediaUrl;
             }
-            logger.debug(`outbound: local file path resolved filePath=${filePath}`);
+            logger.debug("outbound: local media path resolved");
           } else if (mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://")) {
-            logger.debug(`outbound: downloading remote mediaUrl=${mediaUrl.slice(0, 80)}...`);
+            logger.debug("outbound: downloading remote media");
             filePath = await downloadRemoteImageToTemp(mediaUrl, MEDIA_OUTBOUND_TEMP_DIR);
-            logger.debug(`outbound: remote image downloaded to filePath=${filePath}`);
+            logger.debug("outbound: remote media downloaded");
           } else {
-            logger.warn(`outbound: unrecognized mediaUrl scheme, sending text only mediaUrl=${mediaUrl.slice(0, 80)}`);
+            logger.warn("outbound: unrecognized media URL scheme, sending text only");
             await sendMessageWeixin({
               to: ctx.To,
               text,
@@ -421,7 +422,7 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
               },
             });
             emitWeixinMessageSent({ to: ctx.To, content: text, success: true, accountId: deps.accountId, runId });
-            logger.info(`outbound: text sent to=${ctx.To}`);
+            logger.info(`outbound: text sent to=${redactToken(ctx.To)}`);
             return;
           }
           await sendWeixinMediaFile({
@@ -432,9 +433,9 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
             cdnBaseUrl: deps.cdnBaseUrl,
           });
           emitWeixinMessageSent({ to: ctx.To, content: text, success: true, accountId: deps.accountId, runId });
-          logger.info(`outbound: media sent OK to=${ctx.To}`);
+          logger.info(`outbound: media sent OK to=${redactToken(ctx.To)}`);
         } else {
-          logger.debug(`outbound: sending text message to=${ctx.To}`);
+          logger.debug(`outbound: sending text message to=${redactToken(ctx.To, 6)}`);
           await sendMessageWeixin({
             to: ctx.To,
             text,
@@ -446,25 +447,25 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
             },
           });
           emitWeixinMessageSent({ to: ctx.To, content: text, success: true, accountId: deps.accountId, runId });
-          logger.info(`outbound: text sent OK to=${ctx.To}`);
+          logger.info(`outbound: text sent OK to=${redactToken(ctx.To)}`);
         }
       } catch (err) {
         emitWeixinMessageSent({
           to: ctx.To,
           content: text,
           success: false,
-          error: String(err),
+          error: redactError(err),
           accountId: deps.accountId,
           runId,
         });
         logger.error(
-          `outbound: FAILED to=${ctx.To} mediaUrl=${mediaUrl ?? "none"} err=${String(err)} stack=${(err as Error).stack ?? ""}`,
+          `outbound: FAILED to=${redactToken(ctx.To)} hasMedia=${Boolean(mediaUrl)} err=${redactError(err)}`,
         );
         throw err;
       }
     },
     onError: (err, info) => {
-      deps.errLog(`weixin reply ${info.kind}: ${String(err)}`);
+      deps.errLog(`weixin reply ${info.kind}: ${redactError(err)}`);
       const errMsg = err instanceof Error ? err.message : String(err);
       let notice: string;
       if (errMsg.includes("remote media download failed") || errMsg.includes("fetch")) {
@@ -472,7 +473,7 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
       } else if (errMsg.includes("getUploadUrl") || errMsg.includes("CDN upload") || errMsg.includes("upload_param")) {
         notice = `⚠️ 媒体文件上传失败，请稍后重试。`;
       } else {
-        notice = `⚠️ 消息发送失败：${errMsg}`;
+        notice = `⚠️ 消息发送失败，请稍后重试。`;
       }
       void sendWeixinErrorNotice({
         to: ctx.To,
@@ -503,7 +504,7 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
     disableBlockStreaming: true,
   };
 
-  logger.debug(`dispatchReplyFromConfig: starting agentId=${route.agentId ?? "(none)"}`);
+  logger.debug(`dispatchReplyFromConfig: starting agentId=${redactToken(route.agentId, 6)}`);
   try {
     await deps.channelRuntime.reply.withReplyDispatcher({
       dispatcher,
@@ -515,16 +516,16 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
           replyOptions: dispatchReplyOptions,
         }),
     });
-    logger.debug(`dispatchReplyFromConfig: done agentId=${route.agentId ?? "(none)"}`);
+    logger.debug(`dispatchReplyFromConfig: done agentId=${redactToken(route.agentId, 6)}`);
   } catch (err) {
-    logger.error(`dispatchReplyFromConfig: error agentId=${route.agentId ?? "(none)"} err=${String(err)}`);
+    logger.error(`dispatchReplyFromConfig: error agentId=${redactToken(route.agentId)} err=${redactError(err)}`);
     throw err;
   } finally {
     markDispatchIdle();
     if (!queuedFollowup) await replyProgressSender?.finalize();
 
     logger.info(
-      `debug-check: accountId=${deps.accountId} debug=${String(debug)} hasContextToken=${Boolean(contextToken)}`,
+      `debug-check: account=${redactToken(deps.accountId)} debug=${String(debug)} hasContextToken=${Boolean(contextToken)}`,
     );
 
     if (debug && contextToken) {
@@ -538,7 +539,7 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
       if (debugDeliveries.length > 0) {
         debugTrace.push("── 回复 ──");
         for (const d of debugDeliveries) {
-          debugTrace.push(`│ textLen=${d.textLen} media=${d.media}`, `│ text="${d.preview}"`);
+          debugTrace.push(`│ textLen=${d.textLen} media=${d.media}`);
         }
         const firstTs = debugDeliveries[0].ts;
         debugTrace.push(`│ deliver耗时: ${dispatchDoneAt - firstTs}ms`);
@@ -557,16 +558,45 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
 
       const timingText = `⏱ Debug 全链路\n${debugTrace.join("\n")}`;
 
-      logger.info(`debug-timing: sending to=${ctx.To}`);
+      logger.info(`debug-timing: sending to=${redactToken(ctx.To)}`);
+      let debugSentContent: string | undefined;
       try {
-        await sendMessageWeixin({
+        const debugSendingResult = await applyWeixinMessageSendingHook({
           to: ctx.To,
           text: timingText,
-          opts: { baseUrl: deps.baseUrl, token: deps.token, contextToken, runId },
+          accountId: deps.accountId,
+          runId,
         });
-        logger.info(`debug-timing: sent OK`);
+        if (debugSendingResult.cancelled) {
+          logger.info(`debug-timing: cancelled by message_sending hook to=${redactToken(ctx.To)}`);
+        } else {
+          debugSentContent = debugSendingResult.text;
+          await sendMessageWeixin({
+            to: ctx.To,
+            text: debugSentContent,
+            opts: { baseUrl: deps.baseUrl, token: deps.token, contextToken, runId },
+          });
+          emitWeixinMessageSent({
+            to: ctx.To,
+            content: debugSentContent,
+            success: true,
+            accountId: deps.accountId,
+            runId,
+          });
+          logger.info(`debug-timing: sent OK`);
+        }
       } catch (debugErr) {
-        logger.error(`debug-timing: send FAILED err=${String(debugErr)}`);
+        if (debugSentContent !== undefined) {
+          emitWeixinMessageSent({
+            to: ctx.To,
+            content: debugSentContent,
+            success: false,
+            error: redactError(debugErr),
+            accountId: deps.accountId,
+            runId,
+          });
+        }
+        logger.error(`debug-timing: send FAILED err=${redactError(debugErr)}`);
       }
     }
   }

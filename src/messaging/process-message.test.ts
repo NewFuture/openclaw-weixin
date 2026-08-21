@@ -16,6 +16,13 @@ const mocks = vi.hoisted(() => ({
   downloadMedia: vi.fn(),
   emitMessageSent: vi.fn(),
   handleSlashCommand: vi.fn(),
+  isDebugMode: vi.fn(),
+  logger: {
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+  },
   resolveSenderAuthorization: vi.fn(),
   sendErrorNotice: vi.fn(),
   sendMedia: vi.fn(),
@@ -61,16 +68,11 @@ vi.mock("../media/media-download.js", () => ({
 }));
 
 vi.mock("../util/logger.js", () => ({
-  logger: {
-    debug: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-  },
+  logger: mocks.logger,
 }));
 
 vi.mock("./debug-mode.js", () => ({
-  isDebugMode: vi.fn(() => false),
+  isDebugMode: mocks.isDebugMode,
 }));
 
 vi.mock("./error-notice.js", () => ({
@@ -120,6 +122,7 @@ describe("processOneMessage", () => {
     mocks.directDmOutcome.mockReturnValue("allowed");
     mocks.downloadMedia.mockResolvedValue({});
     mocks.handleSlashCommand.mockResolvedValue({ handled: false });
+    mocks.isDebugMode.mockReturnValue(false);
     mocks.resolveSenderAuthorization.mockResolvedValue({
       shouldComputeAuth: true,
       effectiveAllowFrom: [SYNTHETIC_USER_ID],
@@ -210,6 +213,23 @@ describe("processOneMessage", () => {
     );
     expect(onReplyAdmitted).toHaveBeenCalledOnce();
     expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+    const logs = [
+      ...mocks.logger.info.mock.calls,
+      ...mocks.logger.debug.mock.calls,
+      ...mocks.logger.warn.mock.calls,
+      ...mocks.logger.error.mock.calls,
+    ]
+      .flat()
+      .join(" ");
+    for (const sensitive of [
+      "hello",
+      SYNTHETIC_ACCOUNT_ID,
+      SYNTHETIC_USER_ID,
+      "sessions-test.json",
+      "agent:agent-test:openclaw-weixin:account-test:user-test",
+    ]) {
+      expect(logs).not.toContain(sensitive);
+    }
   });
 
   it.each(["queued-followup", "adopted-turn"] as const)("reports %s admission", async (admission) => {
@@ -240,14 +260,118 @@ describe("processOneMessage", () => {
   it("marks dispatch idle and leaves admission unreleased when dispatch setup fails", async () => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();
-    harness.mocks.dispatchReplyFromConfig.mockRejectedValue(new Error("synthetic dispatch failure"));
+    const failure = new Error("synthetic dispatch failure with private payload");
+    harness.mocks.dispatchReplyFromConfig.mockRejectedValue(failure);
 
     await expect(
       processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted)),
-    ).rejects.toThrow("synthetic dispatch failure");
+    ).rejects.toBe(failure);
 
     expect(onReplyAdmitted).not.toHaveBeenCalled();
     expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      expect.stringMatching(/^dispatchReplyFromConfig: error agentId=\*{4}\(len=\d+\) err=Error$/),
+    );
+    expect(mocks.logger.error.mock.calls.flat().join(" ")).not.toContain("private payload");
+  });
+
+  it("routes safe debug timing through the outbound hook without leaking suppressed content", async () => {
+    const harness = createChannelRuntimeHarness();
+    mocks.isDebugMode.mockReturnValue(true);
+    mocks.applySendingHook.mockResolvedValue({ cancelled: true, text: "" });
+    harness.mocks.dispatchReplyFromConfig.mockImplementation(async () => {
+      const deliver = harness.mocks.createReplyDispatcherWithTyping.mock.calls[0]?.[0].deliver;
+      if (!deliver) throw new Error("deliver callback missing");
+      await deliver({ text: "private suppressed reply" }, { kind: "final" });
+      return {
+        queuedFinal: false,
+        counts: { tool: 0, block: 0, final: 1 },
+      };
+    });
+
+    await processOneMessage(
+      makeTextMessage("private inbound body", { session_id: "private-session-id" }),
+      makeDeps(harness.channelRuntime),
+    );
+
+    expect(mocks.applySendingHook).toHaveBeenCalledTimes(2);
+    const timingText = String(mocks.applySendingHook.mock.calls[1]?.[0].text ?? "");
+    expect(timingText).toContain("⏱ Debug 全链路");
+    for (const sensitive of [
+      "private suppressed reply",
+      "private inbound body",
+      "private-session-id",
+      SYNTHETIC_ACCOUNT_ID,
+      SYNTHETIC_USER_ID,
+      "agent:agent-test:openclaw-weixin:account-test:user-test",
+    ]) {
+      expect(timingText).not.toContain(sensitive);
+    }
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.emitMessageSent).not.toHaveBeenCalled();
+  });
+
+  it("emits message_sent after a successful debug timing send", async () => {
+    const harness = createChannelRuntimeHarness();
+    mocks.isDebugMode.mockReturnValue(true);
+    mocks.applySendingHook
+      .mockResolvedValueOnce({ cancelled: true, text: "" })
+      .mockResolvedValueOnce({ cancelled: false, text: "safe debug timing" });
+    harness.mocks.dispatchReplyFromConfig.mockImplementation(async () => {
+      const deliver = harness.mocks.createReplyDispatcherWithTyping.mock.calls[0]?.[0].deliver;
+      if (!deliver) throw new Error("deliver callback missing");
+      await deliver({ text: "suppressed reply" }, { kind: "final" });
+      return {
+        queuedFinal: false,
+        counts: { tool: 0, block: 0, final: 1 },
+      };
+    });
+
+    await processOneMessage(makeTextMessage("private inbound body"), makeDeps(harness.channelRuntime));
+
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ to: SYNTHETIC_USER_ID, text: "safe debug timing" }),
+    );
+    expect(mocks.emitMessageSent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: SYNTHETIC_USER_ID,
+        content: "safe debug timing",
+        success: true,
+        accountId: SYNTHETIC_ACCOUNT_ID,
+      }),
+    );
+  });
+
+  it("emits a sanitized message_sent failure for a failed debug timing send", async () => {
+    const harness = createChannelRuntimeHarness();
+    const failure = new Error("private debug timing failure");
+    mocks.isDebugMode.mockReturnValue(true);
+    mocks.applySendingHook
+      .mockResolvedValueOnce({ cancelled: true, text: "" })
+      .mockResolvedValueOnce({ cancelled: false, text: "safe debug timing" });
+    mocks.sendMessage.mockRejectedValueOnce(failure);
+    harness.mocks.dispatchReplyFromConfig.mockImplementation(async () => {
+      const deliver = harness.mocks.createReplyDispatcherWithTyping.mock.calls[0]?.[0].deliver;
+      if (!deliver) throw new Error("deliver callback missing");
+      await deliver({ text: "suppressed reply" }, { kind: "final" });
+      return {
+        queuedFinal: false,
+        counts: { tool: 0, block: 0, final: 1 },
+      };
+    });
+
+    await processOneMessage(makeTextMessage("private inbound body"), makeDeps(harness.channelRuntime));
+
+    expect(mocks.emitMessageSent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: SYNTHETIC_USER_ID,
+        content: "safe debug timing",
+        success: false,
+        error: "Error",
+        accountId: SYNTHETIC_ACCOUNT_ID,
+      }),
+    );
+    expect(mocks.emitMessageSent.mock.calls.flat().join(" ")).not.toContain("private debug timing failure");
   });
 
   it("downloads referenced media and records it in the inbound context", async () => {

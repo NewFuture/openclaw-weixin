@@ -5,6 +5,7 @@ import { MessageItemType } from "../api/types.js";
 import { resolveStateDir } from "../storage/state-dir.js";
 import { logger } from "../util/logger.js";
 import { generateId } from "../util/random.js";
+import { redactError } from "../util/redact.js";
 import { buildWeixinInboundDedupeKey } from "./inbound-dedupe.js";
 
 // ---------------------------------------------------------------------------
@@ -32,8 +33,8 @@ function resolveContextTokenFilePath(accountId: string): string {
   return path.join(resolveStateDir(), "openclaw-weixin", "accounts", `${accountId}.context-tokens.json`);
 }
 
-function formatContextTokenStoreError(err: unknown, filePath: string): string {
-  return String(err).replaceAll(filePath, "<state-file>");
+function formatContextTokenStoreError(err: unknown): string {
+  return `${redactError(err)} at <state-file>`;
 }
 
 /** Persist all context tokens for a given account to disk. */
@@ -51,9 +52,7 @@ function persistContextTokens(accountId: string): void {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(filePath, JSON.stringify(tokens, null, 0), "utf-8");
   } catch (err) {
-    logger.warn(
-      `persistContextTokens: failed to write account-scoped state: ${formatContextTokenStoreError(err, filePath)}`,
-    );
+    logger.warn(`persistContextTokens: failed to write account-scoped state: ${formatContextTokenStoreError(err)}`);
   }
 }
 
@@ -76,9 +75,7 @@ export function restoreContextTokens(accountId: string): void {
     }
     logger.info(`restoreContextTokens: restored ${count} account-scoped tokens`);
   } catch (err) {
-    logger.warn(
-      `restoreContextTokens: failed to read account-scoped state: ${formatContextTokenStoreError(err, filePath)}`,
-    );
+    logger.warn(`restoreContextTokens: failed to read account-scoped state: ${formatContextTokenStoreError(err)}`);
   }
 }
 
@@ -95,7 +92,7 @@ export function clearContextTokensForAccount(accountId: string): void {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   } catch (err) {
     logger.warn(
-      `clearContextTokensForAccount: failed to remove account-scoped state: ${formatContextTokenStoreError(err, filePath)}`,
+      `clearContextTokensForAccount: failed to remove account-scoped state: ${formatContextTokenStoreError(err)}`,
     );
   }
   logger.info("clearContextTokensForAccount: cleared account-scoped tokens");

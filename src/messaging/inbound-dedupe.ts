@@ -7,6 +7,7 @@ import type { MessageItem, WeixinMessage } from "../api/types.js";
 import { MessageItemType } from "../api/types.js";
 import { resolveStateDir } from "../storage/state-dir.js";
 import { logger } from "../util/logger.js";
+import { redactError } from "../util/redact.js";
 
 /**
  * Replay-dedupe tombstone TTL for getUpdates at-least-once delivery.
@@ -35,7 +36,7 @@ function resolveReplayDedupeFilePath(namespace: string): string {
 }
 
 function onReplayDedupeDiskError(error: unknown): void {
-  logger.warn(`[weixin] inbound replay-dedupe disk error: ${error instanceof Error ? error.message : String(error)}`);
+  logger.warn(`[weixin] inbound replay-dedupe disk error: ${redactError(error)}`);
 }
 
 function createWeixinInboundDedupe(options?: { persistent?: boolean }) {

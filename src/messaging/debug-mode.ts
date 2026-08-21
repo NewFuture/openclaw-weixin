@@ -12,6 +12,7 @@ import path from "node:path";
 
 import { resolveStateDir } from "../storage/state-dir.js";
 import { logger } from "../util/logger.js";
+import { redactError } from "../util/redact.js";
 
 interface DebugModeState {
   accounts: Record<string, boolean>;
@@ -46,7 +47,7 @@ export function toggleDebugMode(accountId: string): boolean {
   try {
     saveState(state);
   } catch (err) {
-    logger.error(`debug-mode: failed to persist state: ${String(err)}`);
+    logger.error(`debug-mode: failed to persist state: ${redactError(err)}`);
   }
   return next;
 }

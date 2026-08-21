@@ -6,6 +6,12 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Diagnostic privacy:** normal logs now fully mask identifiers and tokens,
+  opt-in DEBUG logs expose at most short redacted prefixes, and diagnostics no
+  longer persist message text, URL queries, QR URLs, or raw filesystem paths.
+
 ## [3.1.5] - 2026-08-16
 
 ### Changed
