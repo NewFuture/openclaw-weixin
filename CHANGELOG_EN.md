@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.6] - 2026-08-22
+
 ### Fixed
 
 - **Diagnostic privacy:** normal logs now fully mask identifiers and tokens,
