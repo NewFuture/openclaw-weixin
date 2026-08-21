@@ -58,15 +58,13 @@ body:
     validations:
       required: true
   - type: textarea
-    id: expected
+    id: behavior
     attributes:
-      label: 预期行为
-    validations:
-      required: true
-  - type: textarea
-    id: actual
-    attributes:
-      label: 实际行为
+      label: 预期与实际行为 / Expected and actual behavior
+      description: 请分别说明预期结果和实际观察到的结果。
+      placeholder: |
+        预期行为：
+        实际行为：
     validations:
       required: true
   - type: textarea

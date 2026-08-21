@@ -51,21 +51,19 @@ body:
     validations:
       required: true
   - type: textarea
-    id: compatibility-matrix
+    id: validation-plan
     attributes:
-      label: Compatibility test matrix
-      description: For compatibility work, list the previous/minimum and current versions whose test cases must be retained, plus beta when relevant. Write "N/A" otherwise.
+      label: Compatibility and whole-system validation plan
+      description: List the previous/minimum and current compatibility cases, plus beta when relevant, and the human-run whole-system environment and scenarios required before merge. Agents must not access the live Weixin backend. Write "N/A" with a reason for each inapplicable part.
       placeholder: |
+        Compatibility:
         - Previous/minimum: OpenClaw ...
         - Current: OpenClaw ...
         - Moving beta: required / not required because ...
-    validations:
-      required: true
-  - type: textarea
-    id: whole-system-validation
-    attributes:
-      label: Whole-system validation plan
-      description: Describe the human-run environment and scenarios needed before merge. Agents must not access the live Weixin backend. Write "N/A" with a reason for non-runtime work.
+
+        Whole-system:
+        - Environment: ...
+        - Scenarios: ...
     validations:
       required: true
   - type: textarea
