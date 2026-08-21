@@ -48,6 +48,22 @@ describe("WeixinConfigManager", () => {
     expect(config.typingTicket).toBe("");
   });
 
+  it("omits the user identifier and arbitrary error message from failure logs", async () => {
+    const userId = "private-user-1234";
+    const secret = "private-error-path";
+    const logFn = vi.fn();
+    mockGetConfig.mockRejectedValueOnce(Object.assign(new Error(secret), { code: "ETIMEDOUT" }));
+    const mgr = new WeixinConfigManager({ baseUrl: "https://api.com" }, logFn);
+
+    await mgr.getForUser(userId);
+
+    const logged = logFn.mock.calls.flat().join(" ");
+    expect(logged).toContain("Error(code=ETIMEDOUT)");
+    expect(logged).not.toContain(userId);
+    expect(logged).not.toContain(userId.slice(0, 6));
+    expect(logged).not.toContain(secret);
+  });
+
   it("returns default config when ret is not 0", async () => {
     mockGetConfig.mockResolvedValueOnce({ ret: -1, errmsg: "fail" });
     const mgr = new WeixinConfigManager({ baseUrl: "https://api.com" }, vi.fn());

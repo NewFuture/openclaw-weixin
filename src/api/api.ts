@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { loadConfigBotAgent, loadConfigRouteTag } from "../auth/accounts.js";
 import { logger } from "../util/logger.js";
-import { redactBody, redactUrl } from "../util/redact.js";
+import { getSafeErrorCode, redactError, redactUrl } from "../util/redact.js";
 
 import type {
   BaseInfo,
@@ -262,37 +262,41 @@ export function classifyFetchError(err: unknown): {
   description: string;
   code?: string;
 } {
-  if (err instanceof Error && err.name === "AbortError") {
-    return { type: "timeout", description: "request timeout" };
-  }
+  try {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { type: "timeout", description: "request timeout" };
+    }
 
-  const cause = (err as NodeJS.ErrnoException)?.cause;
-  const causeCode =
-    typeof cause === "object" && cause !== null && "code" in cause
-      ? String((cause as { code?: unknown }).code ?? "")
-      : "";
-  const causeStr = `${String(cause ?? err ?? "")} ${String(causeCode)}`;
-  const matchedCode = causeCode || (typeof cause === "string" ? cause : "");
+    const cause = (err as NodeJS.ErrnoException)?.cause;
+    const causeCode =
+      typeof cause === "object" && cause !== null && "code" in cause
+        ? String((cause as { code?: unknown }).code ?? "")
+        : "";
+    const causeStr = `${String(cause ?? err ?? "")} ${String(causeCode)}`;
+    const matchedCode = getSafeErrorCode(causeCode) ?? getSafeErrorCode(cause);
 
-  if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(causeStr)) {
-    return {
-      type: "dns",
-      description: "DNS resolution failed, check DNS configuration",
-      ...(matchedCode ? { code: matchedCode } : {}),
-    };
-  }
-  if (/ECONNREFUSED/i.test(causeStr)) {
-    return { type: "tcp", description: "TCP connection refused", ...(matchedCode ? { code: matchedCode } : {}) };
-  }
-  if (/UND_ERR_CONNECT_TIMEOUT|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH/i.test(causeStr)) {
-    return {
-      type: "tcp",
-      description: "TCP connection timeout or unreachable",
-      ...(matchedCode ? { code: matchedCode } : {}),
-    };
-  }
-  if (/UND_ERR_SOCKET|SSL|TLS|CERT|UNABLE_TO_VERIFY|DEPTH_ZERO/i.test(causeStr)) {
-    return { type: "tls", description: "TLS handshake error", ...(matchedCode ? { code: matchedCode } : {}) };
+    if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(causeStr)) {
+      return {
+        type: "dns",
+        description: "DNS resolution failed, check DNS configuration",
+        ...(matchedCode ? { code: matchedCode } : {}),
+      };
+    }
+    if (/ECONNREFUSED/i.test(causeStr)) {
+      return { type: "tcp", description: "TCP connection refused", ...(matchedCode ? { code: matchedCode } : {}) };
+    }
+    if (/UND_ERR_CONNECT_TIMEOUT|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH/i.test(causeStr)) {
+      return {
+        type: "tcp",
+        description: "TCP connection timeout or unreachable",
+        ...(matchedCode ? { code: matchedCode } : {}),
+      };
+    }
+    if (/UND_ERR_SOCKET|SSL|TLS|CERT|UNABLE_TO_VERIFY|DEPTH_ZERO/i.test(causeStr)) {
+      return { type: "tls", description: "TLS handshake error", ...(matchedCode ? { code: matchedCode } : {}) };
+    }
+  } catch {
+    return { type: "unknown", description: "network request failed" };
   }
 
   return { type: "unknown", description: "network request failed" };
@@ -326,16 +330,16 @@ export async function apiGetFetch(params: {
     });
     if (t !== undefined) clearTimeout(t);
     const rawText = await res.text();
-    logger.debug(`${params.label} status=${res.status} raw=${redactBody(rawText)}`);
+    logger.debug(`${params.label} status=${res.status} bodyBytes=${Buffer.byteLength(rawText)}`);
     if (!res.ok) {
-      throw new Error(`${params.label} ${res.status}: ${rawText}`);
+      throw new Error(`${params.label} ${res.status}`);
     }
     return rawText;
   } catch (err) {
     if (t !== undefined) clearTimeout(t);
     const classified = classifyFetchError(err);
     logger.error(
-      `${params.label}: GET fetch failed url=${redactUrl(url.toString())} timeoutMs=${timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${String(err)}`,
+      `${params.label}: GET fetch failed url=${redactUrl(url.toString())} timeoutMs=${timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${redactError(err)}`,
     );
     throw err;
   }
@@ -390,7 +394,7 @@ export async function apiPostFetch(params: {
   const base = ensureTrailingSlash(params.baseUrl);
   const url = new URL(params.endpoint, base);
   const hdrs = buildHeaders({ token: params.token });
-  logger.debug(`POST ${redactUrl(url.toString())} body=${redactBody(params.body)}`);
+  logger.debug(`POST ${redactUrl(url.toString())} bodyBytes=${Buffer.byteLength(params.body)}`);
 
   const controller = params.timeoutMs !== undefined ? new AbortController() : undefined;
   const t =
@@ -410,16 +414,16 @@ export async function apiPostFetch(params: {
     });
     if (t !== undefined) clearTimeout(t);
     const rawText = await res.text();
-    logger.debug(`${params.label} status=${res.status} raw=${redactBody(rawText)}`);
+    logger.debug(`${params.label} status=${res.status} bodyBytes=${Buffer.byteLength(rawText)}`);
     if (!res.ok) {
-      throw new Error(`${params.label} ${res.status}: ${rawText}`);
+      throw new Error(`${params.label} ${res.status}`);
     }
     return rawText;
   } catch (err) {
     if (t !== undefined) clearTimeout(t);
     const classified = classifyFetchError(err);
     logger.error(
-      `${params.label}: POST fetch failed url=${redactUrl(url.toString())} timeoutMs=${params.timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${String(err)}`,
+      `${params.label}: POST fetch failed url=${redactUrl(url.toString())} timeoutMs=${params.timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${redactError(err)}`,
     );
     throw err;
   } finally {

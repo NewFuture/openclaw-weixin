@@ -29,6 +29,8 @@ vi.mock("node:crypto", () => ({
 }));
 
 import {
+  apiGetFetch,
+  apiPostFetch,
   classifyFetchError,
   describeSendMessageFailure,
   getConfig,
@@ -52,6 +54,39 @@ function mockResponse(body: object | string, status = 200, ok = true): Response 
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("HTTP error privacy", () => {
+  it("does not propagate a GET response body in the thrown error", async () => {
+    const secretBody = "private-response-body";
+    mockFetch.mockResolvedValueOnce(mockResponse(secretBody, 500, false));
+
+    const error = await apiGetFetch({
+      baseUrl: "https://api.example.com",
+      endpoint: "private",
+      label: "privateGet",
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe("privateGet 500");
+    expect((error as Error).message).not.toContain(secretBody);
+  });
+
+  it("does not propagate a POST response body in the thrown error", async () => {
+    const secretBody = "private-response-body";
+    mockFetch.mockResolvedValueOnce(mockResponse(secretBody, 403, false));
+
+    const error = await apiPostFetch({
+      baseUrl: "https://api.example.com",
+      endpoint: "private",
+      body: "{}",
+      label: "privatePost",
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe("privatePost 403");
+    expect((error as Error).message).not.toContain(secretBody);
+  });
 });
 
 describe("getUpdates", () => {
@@ -513,6 +548,44 @@ describe("classifyFetchError", () => {
       type: "unknown",
       description: "network request failed",
     });
+  });
+
+  it("returns unknown when error metadata inspection throws", () => {
+    const expected = {
+      type: "unknown",
+      description: "network request failed",
+    };
+    const throwingName = new Error("sensitive");
+    Object.defineProperty(throwingName, "name", {
+      get() {
+        throw new Error("sensitive name getter");
+      },
+    });
+    const throwingCause = new Error("sensitive");
+    Object.defineProperty(throwingCause, "cause", {
+      get() {
+        throw new Error("sensitive cause getter");
+      },
+    });
+    const throwingProxy = new Proxy(new Error("sensitive"), {
+      get(_target, property) {
+        if (property === "cause") {
+          return new Proxy(
+            {},
+            {
+              has() {
+                throw new Error("sensitive proxy trap");
+              },
+            },
+          );
+        }
+        return Reflect.get(_target, property);
+      },
+    });
+
+    expect(classifyFetchError(throwingName)).toEqual(expected);
+    expect(classifyFetchError(throwingCause)).toEqual(expected);
+    expect(classifyFetchError(throwingProxy)).toEqual(expected);
   });
 
   it("reads cause from err.cause when available", () => {
