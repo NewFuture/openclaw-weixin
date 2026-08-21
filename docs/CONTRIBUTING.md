@@ -221,13 +221,14 @@ with whichever locale sources exist.
 
 ## Agent-assisted work
 
-Use the **AI-ready Implementation Task** issue form for bounded work with an
-observable test oracle. `agent:ready` means the task may be delegated;
-`risk:privileged` marks authentication, persistent state, workflows, release,
-security, or package/plugin metadata; `maintainer-only` forbids delegation.
-Agent-assisted PRs must link the task and state the observable result, focused
-oracle, highest risk, and remaining uncertainty. Agents must not receive Weixin
-secrets or access the live backend.
+For work that repository maintainers may delegate, use the **AI-ready
+Implementation Task** issue form with a bounded scope and observable test oracle.
+`agent:ready` means the task may be delegated; `risk:privileged` marks
+authentication, persistent state, workflows, release, security, or
+package/plugin metadata; `maintainer-only` forbids delegation. Pull requests
+produced from repository-delegated tasks must link the task and state the
+observable result, focused oracle, highest risk, and remaining uncertainty.
+Agents must not receive Weixin secrets or access the live backend.
 
 `.github/workflows/copilot-setup-steps.yml` prepares the standard Node.js 24.15.0
 environment with `npm ci`. It does not replace focused tests or `npm run check`.

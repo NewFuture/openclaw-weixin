@@ -173,11 +173,11 @@ Git 忽略；在 `docs/site/` 内只提交源文件。
 
 ## Agent 辅助工作
 
-对于范围明确且有可观察测试判据的工作，请使用 **AI-ready Implementation Task** issue
-表单。`agent:ready` 表示任务可以委派；`risk:privileged` 标记鉴权、持久状态、工作流、
-发布、安全或包/插件元数据；`maintainer-only` 表示不得委派实现。Agent 辅助创建的 PR
-必须关联任务，并说明可观察结果、定向判据、最高风险和剩余不确定性。不得向 Agent 提供
-微信凭据，也不得让其访问真实后端。
+对于仓库维护者可能委派的工作，请使用 **AI-ready Implementation Task** issue 表单明确
+范围和可观察测试判据。`agent:ready` 表示任务可以委派；`risk:privileged` 标记鉴权、
+持久状态、工作流、发布、安全或包/插件元数据；`maintainer-only` 表示不得委派实现。
+仓库委派任务产生的 PR 必须关联该任务，并说明可观察结果、定向判据、最高风险和剩余
+不确定性。不得向 Agent 提供微信凭据，也不得让其访问真实后端。
 
 `.github/workflows/copilot-setup-steps.yml` 使用 `npm ci` 准备标准 Node.js 24.15.0
 环境，但不能替代定向测试或 `npm run check`。
