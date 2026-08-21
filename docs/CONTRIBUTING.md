@@ -45,9 +45,9 @@ not through a public issue.
 
 ### Fix a bug
 
-Prefer a triaged issue with an observable test oracle. An agent may implement
-only work labeled `agent:ready`; `maintainer-only` work must not be delegated.
-Follow [AGENTS.md](../AGENTS.md) and
+Prefer a triaged issue with an observable test oracle. Repository-delegated bug
+fixes require `agent:ready`; `maintainer-only` work must not be delegated. Follow
+[AGENTS.md](../AGENTS.md) and
 [the architecture guide](./en/architecture.md), reproduce the original failure,
 and add both a focused regression test and a counterexample.
 
@@ -249,8 +249,8 @@ account identifiers, or private message content in the pull request. The result
 supports only the listed environment and scenarios and does not replace
 automated regression tests. An agent may open a draft pull request with this
 result marked `Pending human validation`, but the pull request is not ready to
-merge until a human records the result. For documentation or test-only changes,
-write `Not applicable` and explain why no runtime validation is needed.
+merge until a human records the result. For changes that do not affect runtime
+behavior, write `Not applicable` and explain why no runtime validation is needed.
 
 ## Pull requests
 
