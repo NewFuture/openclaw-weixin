@@ -1,7 +1,13 @@
 name: 功能建议 / Feature Request
 description: 提议插件的新功能或改进方向
 title: "[建议]: "
+labels:
+  - enhancement
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature Request 是推荐的前置讨论入口，但不是范围明确的小型功能 PR 的强制条件。
   - type: textarea
     id: problem
     attributes:
@@ -27,10 +33,19 @@ body:
     validations:
       required: true
   - type: textarea
+    id: non-goals
+    attributes:
+      label: 非目标 / Non-goals
+      description: 说明本提议明确不解决或不改变的内容；没有额外排除项时请写“无”。
+    validations:
+      required: true
+  - type: textarea
     id: alternatives
     attributes:
       label: 已考虑的替代方案
-      description: 请描述尝试过的临时方案或其他设计。
+      description: 请描述尝试过的临时方案或其他设计；没有时请写“无”。
+    validations:
+      required: true
   - type: textarea
     id: context
     attributes:

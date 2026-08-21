@@ -125,8 +125,8 @@ export const DOCUMENTS = [
     sources: { zh: "docs/zh-CN/contributing.md", en: "docs/CONTRIBUTING.md" },
     title: { en: "Contributing", zh: "参与贡献" },
     description: {
-      en: "Prerequisites, local development commands, and pull request expectations.",
-      zh: "环境要求、本地开发命令与提交 Pull Request 的要求。",
+      en: "Bug-report, bug-fix, and feature workflows, setup, validation, and pull request expectations.",
+      zh: "Bug 报告、修复与新功能流程，以及环境、验证和 Pull Request 要求。",
     },
   },
   {

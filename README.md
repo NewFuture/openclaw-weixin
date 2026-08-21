@@ -184,6 +184,8 @@ context token 属于敏感数据，不要跨账号复制或写入任务配置。
 - [社区版与腾讯版](https://openclaw-weixin.newfuture.cc/distributions.html)
 - [后端 API 协议](https://openclaw-weixin.newfuture.cc/backend-api.html)
 - [架构说明](https://openclaw-weixin.newfuture.cc/architecture.html)
+- [参与贡献与 Agent 工作流](https://openclaw-weixin.newfuture.cc/contributing.html)：开 Issue、修复 Bug 和开发新功能
+- [Coding Agent 指引](https://github.com/NewFuture/openclaw-weixin/blob/main/AGENTS.md)
 - [变更日志](https://openclaw-weixin.newfuture.cc/changelog.html)
 - [安全策略](https://openclaw-weixin.newfuture.cc/security.html)
 - [问题反馈](https://github.com/NewFuture/openclaw-weixin/issues)

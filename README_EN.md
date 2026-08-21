@@ -203,6 +203,8 @@ accounts or put them in job configuration.
 - [Community and Tencent distributions](https://openclaw-weixin.newfuture.cc/en/distributions.html)
 - [Backend API protocol](https://openclaw-weixin.newfuture.cc/en/backend-api.html)
 - [Architecture](https://openclaw-weixin.newfuture.cc/en/architecture.html)
+- [Contributing and agent workflows](https://openclaw-weixin.newfuture.cc/en/contributing.html): open issues, fix bugs, and develop features
+- [Coding agent guide](https://github.com/NewFuture/openclaw-weixin/blob/main/AGENTS.md)
 - [Changelog](https://openclaw-weixin.newfuture.cc/en/changelog.html)
 - [Security policy](https://openclaw-weixin.newfuture.cc/en/security.html)
 - [Issue tracker](https://github.com/NewFuture/openclaw-weixin/issues)

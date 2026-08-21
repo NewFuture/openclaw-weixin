@@ -51,6 +51,22 @@ body:
     validations:
       required: true
   - type: textarea
+    id: validation-plan
+    attributes:
+      label: Compatibility and whole-system validation plan
+      description: List the previous/minimum and current compatibility cases, plus beta when relevant, and the human-run whole-system environment and scenarios required before merge. Agents must not access the live Weixin backend. Write "N/A" with a reason for each inapplicable part.
+      placeholder: |
+        Compatibility:
+        - Previous/minimum: OpenClaw ...
+        - Current: OpenClaw ...
+        - Moving beta: required / not required because ...
+
+        Whole-system:
+        - Environment: ...
+        - Scenarios: ...
+    validations:
+      required: true
+  - type: textarea
     id: dependencies
     attributes:
       label: Dependencies and blockers
