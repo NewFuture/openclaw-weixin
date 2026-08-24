@@ -66,8 +66,8 @@ contract.
 
 - The npm package, plugin, and channel ID is `openclaw-weixin`. Do not change the
   ID or `~/.openclaw/openclaw-weixin/` state paths without an approved migration.
-- Keep the published package compatible with Node.js 22. CI also validates the
-  recommended Node.js 24 development environment.
+- Keep the published package compatible with Node.js `>=22.22.3`. Use the
+  `.nvmrc` Node.js 24.15.0 development environment; CI also validates Node.js 26.
 - This is a NodeNext ESM project. TypeScript imports use `.js` specifiers.
 
 ### Privacy, state, and lifecycle
