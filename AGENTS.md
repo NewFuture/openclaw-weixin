@@ -66,9 +66,14 @@ contract.
 
 - The npm package, plugin, and channel ID is `openclaw-weixin`. Do not change the
   ID or `~/.openclaw/openclaw-weixin/` state paths without an approved migration.
-- Keep the published package compatible with Node.js 22. CI also validates the
-  recommended Node.js 24 development environment.
-- This is a NodeNext ESM project. TypeScript imports use `.js` specifiers.
+- The published package supports Node.js `>=22.22.3`; `.nvmrc` pins the recommended
+  Node.js 24.15.0 development environment, and CI also validates Node.js 26.
+- Support OpenClaw `>=2026.6.1`. The lockfile and full validation use 2026.7.1;
+  compatibility CI also tests the minimum host and the moving beta.
+- This is a TypeScript 7 NodeNext ESM project. Imports use `.js` specifiers.
+- Biome owns formatting and linting: use 2-space indentation, LF endings, a
+  120-column width, double quotes, semicolons, trailing commas, and organized
+  imports.
 
 ### Privacy, state, and lifecycle
 
@@ -138,7 +143,9 @@ contract.
 
 ## Validation ladder
 
-1. Install exactly what the lockfile records: `npm ci`.
+1. Install exactly what the lockfile records: `npm ci`. On Node.js 22, use the
+   CI-pinned npm 11.12.1 (`npx --yes npm@11.12.1 ci`); npm 10 rejects the current
+   lockfile.
 2. Iterate with one affected suite:
    `npm run test:unit -- src/path/to/file.test.ts`.
 3. Run the fast local gate when useful: `npm run check:fast`.
