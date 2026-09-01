@@ -13,7 +13,8 @@
 `>=22.22.3`，包括 Node.js 24 和 26。CI 会验证 Node.js 22.22.3 的精确下限、推荐的
 Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。推荐的 Node.js 24 与 OpenClaw
 2026.7.1 组合会运行完整验证流程。Node.js 22 下限作业使用 OpenClaw 2026.7.1；最低支持
-宿主 OpenClaw 2026.6.1 和浮动 beta 作业使用 Node.js 24.15.0。
+宿主 OpenClaw 2026.6.1、额外的稳定版 OpenClaw 2026.8.1 作业和浮动 beta 作业使用
+Node.js 24.15.0。
 
 ## 选择贡献路径
 

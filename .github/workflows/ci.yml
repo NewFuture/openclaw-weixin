@@ -97,6 +97,12 @@ jobs:
             compatibility_profile: supported
           - os: ubuntu-latest
             node-version: "24.15.0"
+            openclaw_version: "2026.8.1"
+            validation: compatibility
+            expected_openclaw_version: "2026.8.1"
+            compatibility_profile: supported
+          - os: ubuntu-latest
+            node-version: "24.15.0"
             openclaw_version: beta
             validation: compatibility
             compatibility_profile: supported
