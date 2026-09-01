@@ -19,7 +19,7 @@ Node.js 24 and 26. CI validates the exact Node.js 22.22.3 floor, the recommended
 Node.js 24.15.0 environment, and a current Node.js 26 runtime. The recommended
 Node.js 24 and OpenClaw 2026.7.1 combinations run the full validation suite.
 The Node.js 22 floor job uses OpenClaw 2026.7.1; the minimum supported host,
-OpenClaw 2026.6.1, the additional stable OpenClaw 2026.8.1 job, and the moving
+OpenClaw 2026.6.1, the additional stable OpenClaw 2026.8.2 job, and the moving
 beta job use Node.js 24.15.0.
 
 ## Choose a contribution path
