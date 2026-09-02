@@ -12,8 +12,8 @@
 请使用 `.nvmrc` 中指定的 Node.js 版本作为推荐开发环境。发布的包支持 Node.js
 `>=22.22.3`，包括 Node.js 24 和 26。CI 会验证 Node.js 22.22.3 的精确下限、推荐的
 Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。推荐的 Node.js 24 与 OpenClaw
-2026.7.1 组合会运行完整验证流程。Node.js 22 下限作业使用 OpenClaw 2026.7.1；最低支持
-宿主 OpenClaw 2026.6.1 和浮动 beta 作业使用 Node.js 24.15.0。
+2026.8.2 组合会运行完整验证流程。Node.js 22 下限作业保留 OpenClaw 2026.7.1 的精确
+兼容性覆盖；最低支持宿主 OpenClaw 2026.6.1 和浮动 beta 作业使用 Node.js 24.15.0。
 
 ## 选择贡献路径
 
@@ -129,7 +129,7 @@ npm，失败后回退到 ClawHub；英文 prompt 则相反，从而使每个已�
 
 ```shell
 npx --yes clawhub@0.23.3 package validate <clawpack-root>/package \
-  --out <report-output> --openclaw-version 2026.7.1 --json
+  --out <report-output> --openclaw-version 2026.8.2 --json
 npx --yes clawhub@0.23.3 package publish \
   <clawhub-output>/openclaw-wechat-<version>.tgz \
   --family code-plugin --owner newfuture --display-name WeChat \
