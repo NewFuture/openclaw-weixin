@@ -274,7 +274,8 @@ compatibility, and scan status. Inspect both rendered
 README languages as well: the primary README must be English, the title must be
 `openclaw-wechat`, and its prompt must try ClawHub before npm. The Chinese prompt
 must try npm before ClawHub. Each prompt must name both source specs once and
-describe `--force` once. ClawHub must be the first marked source, npm must
-remain available, and every language or documentation link must be absolute. The
-canonical npm tarball and repository READMEs must remain titled
-`openclaw-weixin` and npm-first.
+describe `--force` once as noninteractive npm source confirmation. Direct npm
+and ClawHub commands must rely on interactive confirmation and omit the flag.
+ClawHub must be the first marked source, npm must remain available, and every
+language or documentation link must be absolute. The canonical npm tarball and
+repository READMEs must remain titled `openclaw-weixin` and npm-first.

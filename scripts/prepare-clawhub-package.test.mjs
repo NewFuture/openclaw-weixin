@@ -136,13 +136,13 @@ function canonicalReadme(language) {
     registrySourceMarker("npm", "start"),
     isEnglish ? "## npm (recommended here)" : "## npm（当前推荐）",
     "",
-    "`openclaw plugins install npm:openclaw-weixin --force`",
+    "`openclaw plugins install npm:openclaw-weixin`",
     registrySourceMarker("npm", "end"),
     "",
     registrySourceMarker("clawhub", "start"),
     isEnglish ? "## ClawHub" : "## ClawHub",
     "",
-    "`openclaw plugins install clawhub:openclaw-wechat --force`",
+    "`openclaw plugins install clawhub:openclaw-wechat`",
     registrySourceMarker("clawhub", "end"),
     "",
     `[${isEnglish ? "Guide" : "指南"}](https://openclaw-weixin.newfuture.cc/${isEnglish ? "en/" : ""}guide.html)`,
@@ -376,8 +376,8 @@ describe("ClawHub package preparation", () => {
       expected: "prompt markers must appear exactly once",
     },
     {
-      label: "missing force authorization",
-      mutate: (readme) => readme.replace("`--force`", "overwrite authorization"),
+      label: "missing noninteractive npm confirmation",
+      mutate: (readme) => readme.replace("`--force`", "noninteractive npm confirmation"),
       expected: "shared prompt must describe `--force` exactly once (found 0)",
     },
     {
@@ -442,36 +442,33 @@ describe("ClawHub package preparation", () => {
             .replaceAll("registry-command-placeholder", "clawhub:openclaw-wechat")
         );
       },
-      expected:
-        "npm source block must include `openclaw plugins install npm:openclaw-weixin --force` exactly once (found 0)",
+      expected: "npm source block must include `openclaw plugins install npm:openclaw-weixin` exactly once (found 0)",
     },
     {
       label: "duplicate direct command",
       mutate: (readme) => {
         const promptEnd = registryPromptMarker("end");
         const promptEndIndex = readme.indexOf(promptEnd) + promptEnd.length;
-        const command = "openclaw plugins install npm:openclaw-weixin --force";
+        const command = "openclaw plugins install npm:openclaw-weixin";
         return (
           readme.slice(0, promptEndIndex) +
           readme.slice(promptEndIndex).replace(`\`${command}\``, `\`${command}\`\n\`${command}\``)
         );
       },
-      expected:
-        "npm source block must include `openclaw plugins install npm:openclaw-weixin --force` exactly once (found 2)",
+      expected: "npm source block must include `openclaw plugins install npm:openclaw-weixin` exactly once (found 2)",
     },
     {
       label: "direct command with appended shell command",
       mutate: (readme) => {
         const promptEnd = registryPromptMarker("end");
         const promptEndIndex = readme.indexOf(promptEnd) + promptEnd.length;
-        const command = "openclaw plugins install npm:openclaw-weixin --force";
+        const command = "openclaw plugins install npm:openclaw-weixin";
         return (
           readme.slice(0, promptEndIndex) +
           readme.slice(promptEndIndex).replace(command, `${command} && echo unexpected`)
         );
       },
-      expected:
-        "npm source block must include `openclaw plugins install npm:openclaw-weixin --force` exactly once (found 0)",
+      expected: "npm source block must include `openclaw plugins install npm:openclaw-weixin` exactly once (found 0)",
     },
     {
       label: "relative Markdown link",

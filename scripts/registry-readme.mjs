@@ -9,8 +9,8 @@ export const REGISTRY_INSTALL_SPECS = {
   clawhub: "clawhub:openclaw-wechat",
 };
 export const REGISTRY_INSTALL_COMMANDS = {
-  npm: `openclaw plugins install ${REGISTRY_INSTALL_SPECS.npm} --force`,
-  clawhub: `openclaw plugins install ${REGISTRY_INSTALL_SPECS.clawhub} --force`,
+  npm: `openclaw plugins install ${REGISTRY_INSTALL_SPECS.npm}`,
+  clawhub: `openclaw plugins install ${REGISTRY_INSTALL_SPECS.clawhub}`,
 };
 
 export function registrySourceMarker(source, boundary) {

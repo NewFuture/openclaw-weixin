@@ -24,7 +24,7 @@
 
 ```text
 请为当前 OpenClaw 安装或原位替换微信插件，并检查微信连接。优先安装 npm 的 `npm:openclaw-weixin`；仅当 npm 来源明确不可用时，改用 ClawHub 的 `clawhub:openclaw-wechat`，全程只安装一个。
-请遵循 OpenClaw 的安装策略，对所用来源执行同一 `openclaw-weixin` 插件 ID 的原位替换（对应 `--force`），并保留现有配置和登录数据；请使用 OpenClaw 插件安装流程，而不是普通的 `npm install`。安装后确认插件已加载并探测微信 Channel；未登录时提示扫码。最后简要报告来源和结果；失败时说明原因。
+请使用 OpenClaw 插件安装流程，不要先卸载已有的 `openclaw-weixin` 插件，也不要使用普通的 `npm install`。审阅安装来源和插件能力；对这里的两个来源，只有在非交互环境中使用 npm 时才用 `--force` 确认来源，ClawHub 不需要。保留现有配置和登录数据。安装后确认插件已加载并探测微信 Channel；未登录时提示扫码。最后简要报告来源和结果；失败时说明原因。
 ```
 <!-- registry-prompt:end -->
 
@@ -33,10 +33,10 @@
 ### 直接运行命令
 
 **替换腾讯版时不要先卸载。** 两个社区发布源都保留插件 ID、Channel ID、配置和
-登录状态。`--force` 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表；OpenClaw
-会自动轮换配置备份。
-
-`--force` 允许覆盖相同插件 ID 的现有安装。
+登录状态；OpenClaw 会按相同插件 ID 原位替换。直接运行以下命令并按提示审阅安装
+来源和插件能力。仅当 npm 命令在非交互环境中运行时，审阅来源后添加 `--force`；
+ClawHub 不需要该参数。`--force` 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表。
+OpenClaw 会自动轮换配置备份。
 
 | 安装来源 | 包名 |
 | --- | --- |
@@ -51,7 +51,7 @@
 <a id="npm-cli-install"></a>
 
 ```bash
-openclaw plugins install npm:openclaw-weixin --force
+openclaw plugins install npm:openclaw-weixin
 ```
 <!-- registry-source:npm:end -->
 
@@ -65,7 +65,7 @@ openclaw plugins install npm:openclaw-weixin --force
 <a id="clawhub-cli-install"></a>
 
 ```bash
-openclaw plugins install clawhub:openclaw-wechat --force
+openclaw plugins install clawhub:openclaw-wechat
 ```
 <!-- registry-source:clawhub:end -->
 

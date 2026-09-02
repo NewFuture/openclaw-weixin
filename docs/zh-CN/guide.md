@@ -19,9 +19,11 @@
 `channels.openclaw-weixin`、`plugins.entries.openclaw-weixin` 和
 `~/.openclaw/openclaw-weixin/` 状态路径。
 
-`--force` 表示操作者已审阅并明确选择安装来源，同时允许 OpenClaw 覆盖内部 ID 相同的
-现有插件安装。它不会绕过 `security.installPolicy` 或内置依赖拒绝列表。OpenClaw 会
-自动轮换配置备份；此次替换无需复制整个状态目录。
+OpenClaw 会按相同插件 ID 原位替换已有安装，无需先卸载，也不要求使用 `--force`。
+交互运行 npm 安装命令时，按提示审阅并确认来源；仅在非交互环境中使用 npm 时，才在
+审阅来源后添加 `--force`。ClawHub 不需要该参数。它不会绕过
+`security.installPolicy` 或内置依赖拒绝列表。OpenClaw 会自动轮换配置备份；此次
+替换无需复制整个状态目录。
 
 ### 安装限制
 

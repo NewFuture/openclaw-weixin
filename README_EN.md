@@ -25,7 +25,7 @@ Paste this prompt into an OpenClaw chat and send it:
 
 ```text
 Install or replace the WeChat plugin in place for this OpenClaw instance and check its connection. Install from ClawHub `clawhub:openclaw-wechat` first; only if the ClawHub source is explicitly unavailable, fall back to npm `npm:openclaw-weixin`, and install only one.
-Follow OpenClaw's install policy and use in-place replacement for an existing installation with the same `openclaw-weixin` plugin ID (the `--force` behavior), preserving configuration and login data. Use the OpenClaw plugin installation flow rather than plain `npm install`. After installation, verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the source and result, or explain the failure.
+Use the OpenClaw plugin installation flow: do not uninstall an existing `openclaw-weixin` plugin first, and do not use plain `npm install`. Review the install source and plugin capabilities. For these two sources, use `--force` only to confirm npm in a noninteractive run; ClawHub does not need it. Preserve existing configuration and login data. After installation, verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the source and result, or explain the failure.
 ```
 <!-- registry-prompt:end -->
 
@@ -34,12 +34,12 @@ Follow OpenClaw's install policy and use in-place replacement for an existing in
 ### Run a command directly
 
 **Do not uninstall Tencent's package first when replacing it.** Both community
-sources preserve the plugin id, channel id, configuration, and login state.
-`--force` does not bypass OpenClaw's install policy or built-in dependency
-denylist. OpenClaw rotates configuration backups automatically.
-
-`--force` allows replacement of an existing installation with the same plugin
-id.
+sources preserve the plugin id, channel id, configuration, and login state;
+OpenClaw replaces an installation with the same plugin id in place. Run one of
+the commands below and review the source and plugin capabilities when prompted.
+For a noninteractive npm run, add `--force` after reviewing the source. ClawHub
+does not need it. `--force` does not bypass OpenClaw's install policy or built-in
+dependency denylist. OpenClaw rotates configuration backups automatically.
 
 | Source | Package name |
 | --- | --- |
@@ -54,7 +54,7 @@ id.
 <a id="npm-cli-install"></a>
 
 ```bash
-openclaw plugins install npm:openclaw-weixin --force
+openclaw plugins install npm:openclaw-weixin
 ```
 <!-- registry-source:npm:end -->
 
@@ -69,7 +69,7 @@ The command can also replace a Tencent or npm installation that owns the
 <a id="clawhub-cli-install"></a>
 
 ```bash
-openclaw plugins install clawhub:openclaw-wechat --force
+openclaw plugins install clawhub:openclaw-wechat
 ```
 <!-- registry-source:clawhub:end -->
 

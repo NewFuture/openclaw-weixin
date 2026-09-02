@@ -21,11 +21,13 @@ preserve the existing `channels.openclaw-weixin`,
 `plugins.entries.openclaw-weixin`, and `~/.openclaw/openclaw-weixin/` state
 paths.
 
-`--force` confirms that the operator reviewed and selected the install source
-and allows OpenClaw to overwrite an existing plugin installation with the same
-internal id. It does not bypass `security.installPolicy` or the built-in
-dependency denylist. OpenClaw rotates backups of its config automatically; do
-not copy the entire state directory for this replacement.
+OpenClaw replaces an existing installation with the same plugin id in place;
+you do not need to uninstall it first or use `--force`. An interactive npm
+install prompts you to review and confirm the source. Add `--force` only after
+reviewing the source when npm runs noninteractively. ClawHub does not need it.
+The flag does not bypass `security.installPolicy` or the built-in dependency
+denylist. OpenClaw rotates backups of its config automatically; do not copy the
+entire state directory for this replacement.
 
 ### Limitations
 

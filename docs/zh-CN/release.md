@@ -218,6 +218,7 @@ artifact。
 扫描状态。也要检查两种已渲染的 README 语言：主 README 必须是英文，标题必须为
 `openclaw-wechat`，其 prompt 必须先尝试 ClawHub 后尝试 npm。中文 prompt 必须先尝试 npm
 后尝试 ClawHub。每条 prompt 都必须让两种 source spec 各出现一次，并只说明一次
-`--force`。ClawHub 必须排在来源标记首位，npm 必须仍然可用；所有语言切换和文档链接
-都必须使用绝对地址。规范 npm tarball 和仓库 README 必须仍以 `openclaw-weixin` 为标题
-并且 npm-first。
+`--force`，将其限定为非交互 npm 来源确认。npm 和 ClawHub 的直接命令必须依赖交互确认
+并省略该参数。ClawHub 必须排在来源标记首位，npm 必须仍然可用；所有语言切换和文档
+链接都必须使用绝对地址。规范 npm tarball 和仓库 README 必须仍以 `openclaw-weixin`
+为标题并且 npm-first。
