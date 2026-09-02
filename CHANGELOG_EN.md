@@ -6,6 +6,12 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- **OpenClaw development baseline:** Updated the lockfile, build metadata, and
+  normal CI baseline to `2026.8.2` while retaining exact `2026.7.1`
+  compatibility coverage and the `2026.6.1` minimum host.
+
 ## [3.1.6] - 2026-08-22
 
 ### Fixed

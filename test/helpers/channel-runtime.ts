@@ -24,10 +24,16 @@ export function createChannelRuntimeHarness() {
     size: 1,
     contentType: "application/octet-stream",
   }));
-  const finalizeInboundContext: ChannelRuntime["reply"]["finalizeInboundContext"] = (ctx) => ({
-    ...ctx,
-    CommandAuthorized: ctx.CommandAuthorized === true,
-  });
+  const finalizeInboundContext: ChannelRuntime["reply"]["finalizeInboundContext"] = (ctx) => {
+    const body = typeof ctx.Body === "string" ? ctx.Body : "";
+    const rawText = typeof ctx.rawText === "string" ? ctx.rawText : body;
+    return Object.assign(ctx, {
+      commandText: typeof ctx.commandText === "string" ? ctx.commandText : rawText,
+      agentText: typeof ctx.agentText === "string" ? ctx.agentText : rawText,
+      rawText,
+      CommandAuthorized: ctx.CommandAuthorized === true,
+    });
+  };
   const resolveHumanDelayConfig = vi.fn<ChannelRuntime["reply"]["resolveHumanDelayConfig"]>(() => undefined);
   const markDispatchIdle = vi.fn();
   const markRunComplete = vi.fn();
