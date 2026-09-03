@@ -24,7 +24,7 @@
 
 ```text
 请安装或更新当前 OpenClaw 的微信插件。优先使用 npm `npm:openclaw-weixin`；仅在 npm 明确不可用时使用 ClawHub `clawhub:openclaw-wechat`，只选一个来源。
-先检查 `openclaw-weixin` 来源：与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包，不要先卸载。选择 npm 安装时加 `--force`。保留配置和登录数据，使用 OpenClaw 插件流程而非普通 `npm install`。完成后确认插件已加载并探测微信 Channel；未登录时提示扫码。简要报告结果或失败原因。
+先检查 `openclaw-weixin` 来源：与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包，不要先卸载。选择 npm 安装时加 `--force`。若提示需要插件能力确认，审阅后按提示重试。保留配置和登录数据，使用 OpenClaw 插件流程而非普通 `npm install`。完成后确认插件已加载并探测微信 Channel；未登录时提示扫码。简要报告结果或失败原因。
 ```
 <!-- registry-prompt:end -->
 
