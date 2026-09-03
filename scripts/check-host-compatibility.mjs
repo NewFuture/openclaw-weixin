@@ -68,12 +68,30 @@ function assertConfigSchema(configSchema, label) {
     !parsed?.success ||
     parsed.data?.botAgent !== "CompatibilityBot/1.0" ||
     parsed.data?.routeTag !== "route-test" ||
+    parsed.data?.blockStreaming !== true ||
+    parsed.data?.accounts?.["account-1"]?.blockStreaming !== undefined ||
     parsed.data?.replyProgressMessages !== true
   ) {
     throw new Error(`${label} config schema did not preserve values and defaults`);
   }
+  const disabled = configSchema?.runtime?.safeParse({
+    blockStreaming: false,
+    accounts: {
+      "account-1": { blockStreaming: true },
+    },
+  });
+  if (
+    !disabled?.success ||
+    disabled.data?.blockStreaming !== false ||
+    disabled.data?.accounts?.["account-1"]?.blockStreaming !== true
+  ) {
+    throw new Error(`${label} config schema did not preserve block streaming overrides`);
+  }
   if (configSchema?.runtime?.safeParse({ botAgent: 42 })?.success !== false) {
     throw new Error(`${label} config schema accepted an invalid botAgent`);
+  }
+  if (configSchema?.runtime?.safeParse({ blockStreaming: "yes" })?.success !== false) {
+    throw new Error(`${label} config schema accepted an invalid blockStreaming value`);
   }
 }
 

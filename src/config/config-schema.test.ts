@@ -28,8 +28,10 @@ function parseConfig(value: unknown) {
 
 describe("plugin config schema", () => {
   it("applies root and account defaults", () => {
-    expect(parseConfig({ accounts: { account1: {} } })).toMatchObject({
+    const parsed = parseConfig({ accounts: { account1: {} } });
+    expect(parsed).toMatchObject({
       baseUrl: "https://ilinkai.weixin.qq.com",
+      blockStreaming: true,
       cdnBaseUrl: "https://novac2c.cdn.weixin.qq.com/c2c",
       replyProgressMessages: true,
       accounts: {
@@ -38,6 +40,9 @@ describe("plugin config schema", () => {
           cdnBaseUrl: "https://novac2c.cdn.weixin.qq.com/c2c",
         },
       },
+    });
+    expect(parsed).not.toMatchObject({
+      accounts: { account1: { blockStreaming: expect.any(Boolean) } },
     });
   });
 
@@ -49,6 +54,7 @@ describe("plugin config schema", () => {
       cdnBaseUrl: "https://custom.cdn.test",
       routeTag: "route-primary",
       botAgent: "MyBot/1.2.0",
+      blockStreaming: false,
       replyProgressMessages: false,
       channelConfigUpdatedAt: "2026-08-16T00:00:00.000Z",
       accounts: {
@@ -58,6 +64,7 @@ describe("plugin config schema", () => {
           baseUrl: "https://account.api.test",
           cdnBaseUrl: "https://account.cdn.test",
           routeTag: 42,
+          blockStreaming: true,
         },
       },
     };
@@ -86,12 +93,14 @@ describe("plugin config schema", () => {
     ["cdnBaseUrl", { cdnBaseUrl: 1 }],
     ["routeTag", { routeTag: false }],
     ["botAgent", { botAgent: 1 }],
+    ["blockStreaming", { blockStreaming: "yes" }],
     ["replyProgressMessages", { replyProgressMessages: "yes" }],
     ["channelConfigUpdatedAt", { channelConfigUpdatedAt: 1 }],
     ["accounts container", { accounts: [] }],
     ["account value", { accounts: { account1: "invalid" } }],
     ["account field", { accounts: { account1: { enabled: "yes" } } }],
     ["account routeTag", { accounts: { account1: { routeTag: false } } }],
+    ["account blockStreaming", { accounts: { account1: { blockStreaming: "yes" } } }],
   ])("rejects invalid %s types", (_label, value) => {
     expect(plugin.configSchema.runtime?.safeParse(value)).toMatchObject({
       success: false,
@@ -106,6 +115,7 @@ describe("plugin config schema", () => {
     expect(pluginManifest.channelConfigs["openclaw-weixin"]?.schema).toMatchObject({
       additionalProperties: true,
       properties: {
+        blockStreaming: { type: "boolean", default: true },
         botAgent: { type: "string" },
         replyProgressMessages: { type: "boolean", default: true },
       },

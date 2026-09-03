@@ -232,6 +232,68 @@ describe("processOneMessage", () => {
     }
   });
 
+  it.each([
+    {
+      label: "the default",
+      config: {},
+      expected: ["First intermediate block", "Second intermediate block", "Final content"],
+    },
+    {
+      label: "a channel opt-out",
+      config: { channels: { "openclaw-weixin": { blockStreaming: false } } },
+      expected: ["Final content"],
+    },
+    {
+      label: "an account override",
+      config: {
+        channels: {
+          "openclaw-weixin": {
+            blockStreaming: false,
+            accounts: { [SYNTHETIC_ACCOUNT_ID]: { blockStreaming: true } },
+          },
+        },
+      },
+      expected: ["First intermediate block", "Second intermediate block", "Final content"],
+    },
+    {
+      label: "an alias-scoped account opt-out",
+      config: {
+        channels: {
+          "openclaw-weixin": {
+            blockStreaming: true,
+            accounts: { leader: { blockStreaming: false } },
+          },
+        },
+      },
+      routeAccountId: "leader",
+      expected: ["Final content"],
+    },
+  ])("delivers reply blocks in order with $label", async ({ config, expected, routeAccountId }) => {
+    const harness = createChannelRuntimeHarness();
+    harness.mocks.dispatchReplyFromConfig.mockImplementation(async ({ replyOptions }) => {
+      const deliver = harness.mocks.createReplyDispatcherWithTyping.mock.calls[0]?.[0].deliver;
+      if (!deliver) throw new Error("deliver callback missing");
+      if (replyOptions?.disableBlockStreaming !== true) {
+        await deliver({ text: "First intermediate block" }, { kind: "block" });
+        await deliver({ text: "Second intermediate block" }, { kind: "block" });
+      }
+      await deliver({ text: "Final content" }, { kind: "final" });
+      return {
+        queuedFinal: false,
+        counts: { tool: 0, block: 2, final: 1 },
+      };
+    });
+    const deps = makeDeps(harness.channelRuntime);
+    deps.config = config;
+    deps.routeAccountId = routeAccountId;
+
+    await processOneMessage(makeTextMessage("hello"), deps);
+
+    expect(mocks.sendMessage.mock.calls.map(([request]) => request.text)).toEqual(expected);
+    expect(mocks.applySendingHook).toHaveBeenCalledTimes(expected.length);
+    expect(mocks.emitMessageSent).toHaveBeenCalledTimes(expected.length);
+  });
+
   it.each(["queued-followup", "adopted-turn"] as const)("reports %s admission", async (admission) => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();

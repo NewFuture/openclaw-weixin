@@ -12,6 +12,10 @@ const weixinAccountProperties = {
   baseUrl: { type: "string", default: DEFAULT_BASE_URL },
   cdnBaseUrl: { type: "string", default: CDN_BASE_URL },
   routeTag: { type: "number" },
+  blockStreaming: {
+    type: "boolean",
+    description: "Send completed text blocks before the final reply.",
+  },
 } as const;
 
 const weixinAccountSchema = {
@@ -31,6 +35,12 @@ const replyProgressMessagesSchema = {
   description: "Send structured tool-call progress messages.",
 } as const;
 
+const blockStreamingSchema = {
+  type: "boolean",
+  default: true,
+  description: "Send completed text blocks before the final reply.",
+} as const;
+
 /** Top-level weixin config schema (token is stored in credentials file, not config). */
 const weixinChannelConfigJsonSchema = {
   type: "object",
@@ -44,6 +54,7 @@ const weixinChannelConfigJsonSchema = {
       additionalProperties: weixinAccountSchema,
     },
     botAgent: botAgentSchema,
+    blockStreaming: blockStreamingSchema,
     replyProgressMessages: replyProgressMessagesSchema,
     /** ISO 8601; bumped on each successful login to refresh gateway config from disk. */
     channelConfigUpdatedAt: { type: "string" },
