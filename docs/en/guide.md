@@ -23,7 +23,7 @@ paths.
 
 Check the current source first. If it matches the target, run
 `openclaw plugins update openclaw-weixin`; otherwise install the target package
-without uninstalling first. Add `--force` for a noninteractive npm install.
+without uninstalling first. Agent-run npm installs add `--force`.
 Configuration and login state are preserved.
 
 ### Limitations

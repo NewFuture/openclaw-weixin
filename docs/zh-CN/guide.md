@@ -20,7 +20,7 @@
 `~/.openclaw/openclaw-weixin/` 状态路径。
 
 先检查当前来源：与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接
-安装目标包，不要先卸载。npm 非交互安装加 `--force`。配置和登录状态会保留。
+安装目标包，不要先卸载。Agent 执行 npm 安装时加 `--force`。配置和登录状态会保留。
 
 ### 安装限制
 
