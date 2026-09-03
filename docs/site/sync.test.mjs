@@ -101,7 +101,7 @@ describe("syncContent", () => {
     assert.doesNotMatch(overview, /id="(?:npm|clawhub)-agent-install"/);
     assert.match(chinesePrompt.value, /与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包/);
     assert.match(chinesePrompt.value, /选择 npm 安装时加 `--force`/);
-    assert.match(chinesePrompt.value, /若提示需要插件能力确认，审阅后按提示重试/);
+    assert.match(chinesePrompt.value, /按提示审阅并确认插件能力/);
     assert.match(overview, /openclaw plugins install npm:openclaw-weixin\n/);
     assert.match(overview, /openclaw plugins install clawhub:openclaw-wechat\n/);
     assert.doesNotMatch(overview, /openclaw plugins install (?:npm:openclaw-weixin|clawhub:openclaw-wechat) --force/);
@@ -159,10 +159,7 @@ describe("syncContent", () => {
       /if it matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package/,
     );
     assert.match(englishPrompt.value, /Add `--force` when installing from npm/);
-    assert.match(
-      englishPrompt.value,
-      /If OpenClaw requires capability consent, review the capabilities and retry as instructed/,
-    );
+    assert.match(englishPrompt.value, /Review and confirm plugin capabilities when prompted/);
     assert.match(english, /openclaw plugins install npm:openclaw-weixin\n/);
     assert.match(english, /openclaw plugins install clawhub:openclaw-wechat\n/);
     assert.doesNotMatch(english, /openclaw plugins install (?:npm:openclaw-weixin|clawhub:openclaw-wechat) --force/);

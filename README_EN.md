@@ -25,7 +25,7 @@ Paste this prompt into an OpenClaw chat and send it:
 
 ```text
 Install or update the WeChat plugin for this OpenClaw instance. Prefer ClawHub `clawhub:openclaw-wechat`; use npm `npm:openclaw-weixin` only when ClawHub is explicitly unavailable, and choose one source.
-Inspect the `openclaw-weixin` source first: if it matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package without uninstalling first. Add `--force` when installing from npm. If OpenClaw requires capability consent, review the capabilities and retry as instructed. Preserve configuration and login data, and use the OpenClaw plugin flow rather than plain `npm install`. Then verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the result or failure.
+Inspect the `openclaw-weixin` source first: if it matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package without uninstalling first. Add `--force` when installing from npm. Review and confirm plugin capabilities when prompted. Preserve configuration and login data, and use the OpenClaw plugin flow rather than plain `npm install`. Then verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the result or failure.
 ```
 <!-- registry-prompt:end -->
 
