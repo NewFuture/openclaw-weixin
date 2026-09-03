@@ -24,8 +24,8 @@ This plugin requires OpenClaw `>=2026.6.1`.
 Paste this prompt into an OpenClaw chat and send it:
 
 ```text
-Install or replace the WeChat plugin in place for this OpenClaw instance and check its connection. Install from ClawHub `clawhub:openclaw-wechat` first; only if the ClawHub source is explicitly unavailable, fall back to npm `npm:openclaw-weixin`, and install only one.
-Use the OpenClaw plugin installation flow: do not uninstall an existing `openclaw-weixin` plugin first, and do not use plain `npm install`. Check the current source first: install the selected package when the plugin is missing or switching sources; if it already uses the selected source, run `openclaw plugins update openclaw-weixin`. Use `--force` when npm installation runs noninteractively. Preserve existing configuration and login data. After installation, verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the source and result, or explain the failure.
+Install or update the WeChat plugin for this OpenClaw instance and check its connection. Prefer ClawHub `clawhub:openclaw-wechat`; use npm `npm:openclaw-weixin` only when ClawHub is explicitly unavailable, and choose one source.
+Inspect `openclaw-weixin` first: if its current source matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package without uninstalling first. Add `--force` for a noninteractive npm install. Preserve configuration and login data, and use the OpenClaw plugin flow rather than plain `npm install`. Then verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the result or failure.
 ```
 <!-- registry-prompt:end -->
 
@@ -33,11 +33,10 @@ Use the OpenClaw plugin installation flow: do not uninstall an existing `opencla
 
 ### Run a command directly
 
-**Do not uninstall Tencent's package first when replacing it.** The commands
-below handle installation or a source switch while preserving the plugin
-id, channel id, configuration, and login state. If the same source is already
-installed, run `openclaw plugins update openclaw-weixin`. Add `--force` when npm
-installation runs noninteractively.
+**Do not uninstall Tencent's package first when replacing it.** If the current
+source matches the target, run `openclaw plugins update openclaw-weixin`;
+otherwise run the target source command below. Add `--force` for a
+noninteractive npm install. Configuration and login state are preserved.
 
 | Source | Package name |
 | --- | --- |

@@ -73,7 +73,7 @@ describe("syncContent", () => {
     assert.match(overview, /<a id="connect-wechat"><\/a>\n\n## 选择一种安装方式/);
     assert.deepEqual(assertRegistryReadmeOrder(overview, "npm", { fileName: "index.md" }).order, ["npm", "clawhub"]);
     const chinesePrompt = assertRegistryPrompt(overview, { fileName: "index.md" });
-    assert.match(chinesePrompt.value, /全程只安装一个。\r?\n请使用 OpenClaw 插件安装流程/);
+    assert.match(chinesePrompt.value, /只选一个来源。\r?\n先检查 `openclaw-weixin`/);
     assert.doesNotMatch(overview, /腾讯官方 npm 包|当前能力包括微信私聊|## 社区版与腾讯版/);
     assert.match(overview, /\[社区版与腾讯版\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/distributions\.html\)/);
     assert.doesNotMatch(overview, /npm 优先，ClawHub 兜底|自己选择 npm 或 ClawHub/);
@@ -97,8 +97,11 @@ describe("syncContent", () => {
     assert.match(overview, /把下面这段话粘贴到 OpenClaw 聊天框并发送/);
     assert.doesNotMatch(overview, /id="(?:npm|clawhub)-agent-install"/);
     assert.match(overview, /下面的命令也可原位替换占用 `openclaw-weixin` 插件 ID/);
-    assert.match(chinesePrompt.value, /已经来自目标来源时，使用 `openclaw plugins update openclaw-weixin`/);
-    assert.match(chinesePrompt.value, /npm 安装在非交互环境中执行时使用 `--force`/);
+    assert.match(
+      chinesePrompt.value,
+      /当前来源与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包/,
+    );
+    assert.match(chinesePrompt.value, /npm 非交互安装加 `--force`/);
     assert.match(overview, /openclaw plugins install npm:openclaw-weixin\n/);
     assert.match(overview, /openclaw plugins install clawhub:openclaw-wechat\n/);
     assert.doesNotMatch(overview, /openclaw plugins install (?:npm:openclaw-weixin|clawhub:openclaw-wechat) --force/);
@@ -120,7 +123,7 @@ describe("syncContent", () => {
     const english = (await readFile(path.join(contentDir, "en", "index.md"), "utf8")).replaceAll("\r\n", "\n");
     assert.deepEqual(assertRegistryReadmeOrder(english, "npm", { fileName: "en/index.md" }).order, ["npm", "clawhub"]);
     const englishPrompt = assertRegistryPrompt(english, { fileName: "en/index.md" });
-    assert.match(englishPrompt.value, /and install only one\.\r?\nUse the OpenClaw plugin installation flow/);
+    assert.match(englishPrompt.value, /and choose one source\.\r?\nInspect `openclaw-weixin` first/);
     assert.ok(
       englishPrompt.value.indexOf("clawhub:openclaw-wechat") < englishPrompt.value.indexOf("npm:openclaw-weixin"),
     );
@@ -151,9 +154,9 @@ describe("syncContent", () => {
     assert.match(english, /The command can also replace a Tencent or npm installation/);
     assert.match(
       englishPrompt.value,
-      /if it already uses the selected source, run `openclaw plugins update openclaw-weixin`/,
+      /if its current source matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package/,
     );
-    assert.match(englishPrompt.value, /Use `--force` when npm installation runs noninteractively/);
+    assert.match(englishPrompt.value, /Add `--force` for a noninteractive npm install/);
     assert.match(english, /openclaw plugins install npm:openclaw-weixin\n/);
     assert.match(english, /openclaw plugins install clawhub:openclaw-wechat\n/);
     assert.doesNotMatch(english, /openclaw plugins install (?:npm:openclaw-weixin|clawhub:openclaw-wechat) --force/);

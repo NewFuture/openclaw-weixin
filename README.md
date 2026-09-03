@@ -23,8 +23,8 @@
 把下面这段话粘贴到 OpenClaw 聊天框并发送：
 
 ```text
-请为当前 OpenClaw 安装或原位替换微信插件，并检查微信连接。优先安装 npm 的 `npm:openclaw-weixin`；仅当 npm 来源明确不可用时，改用 ClawHub 的 `clawhub:openclaw-wechat`，全程只安装一个。
-请使用 OpenClaw 插件安装流程，不要先卸载已有的 `openclaw-weixin` 插件，也不要使用普通的 `npm install`。先检查当前来源：未安装或需要切换来源时安装目标包；已经来自目标来源时，使用 `openclaw plugins update openclaw-weixin`。npm 安装在非交互环境中执行时使用 `--force`。保留现有配置和登录数据。安装后确认插件已加载并探测微信 Channel；未登录时提示扫码。最后简要报告来源和结果；失败时说明原因。
+请安装或更新当前 OpenClaw 的微信插件并检查连接。优先使用 npm `npm:openclaw-weixin`；仅在 npm 明确不可用时使用 ClawHub `clawhub:openclaw-wechat`，只选一个来源。
+先检查 `openclaw-weixin`：当前来源与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包，不要先卸载。npm 非交互安装加 `--force`。保留配置和登录数据，使用 OpenClaw 插件流程而非普通 `npm install`。完成后确认插件已加载并探测微信 Channel；未登录时提示扫码。简要报告结果或失败原因。
 ```
 <!-- registry-prompt:end -->
 
@@ -32,10 +32,9 @@
 
 ### 直接运行命令
 
-**替换腾讯版时不要先卸载。** 以下命令用于安装或切换来源，并保留插件 ID、
-Channel ID、配置和登录状态。已安装同一来源时，运行
-`openclaw plugins update openclaw-weixin`。npm 安装在非交互环境中执行时添加
-`--force`。
+**替换腾讯版时不要先卸载。** 当前来源与目标相同则运行
+`openclaw plugins update openclaw-weixin`；否则运行下面的目标来源命令。npm
+非交互安装加 `--force`。配置和登录状态会保留。
 
 | 安装来源 | 包名 |
 | --- | --- |

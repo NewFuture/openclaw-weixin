@@ -19,9 +19,8 @@
 `channels.openclaw-weixin`、`plugins.entries.openclaw-weixin` 和
 `~/.openclaw/openclaw-weixin/` 状态路径。
 
-安装或切换来源时，直接运行目标来源的安装命令，无需先卸载。已安装同一来源时，
-运行 `openclaw plugins update openclaw-weixin`。npm 安装在非交互环境中执行时添加
-`--force`。这些操作会保留相同插件 ID 下的配置和登录状态。
+先检查当前来源：与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接
+安装目标包，不要先卸载。npm 非交互安装加 `--force`。配置和登录状态会保留。
 
 ### 安装限制
 
