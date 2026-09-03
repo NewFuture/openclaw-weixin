@@ -8,6 +8,7 @@ import path from "node:path";
 
 import { createDocumentBySource, createPages, createPathResolver, LOCALES, localeById, SITE } from "./docs.mjs";
 import { rewriteLinks } from "./links.mjs";
+import { preferClawHubForWebsiteHome } from "./source-preference.mjs";
 
 /** Machine-readable marker for a locale page that carries another locale's text. */
 function untranslatedNote(page) {
@@ -89,7 +90,7 @@ export async function emitMachineReadable({ repoRoot, outDir, baseUrl, now = new
       resolverByLocale.set(page.locale, createPathResolver(page.locale, documentBySource));
     }
     const resolvePath = resolverByLocale.get(page.locale);
-    const markdown = await readFile(path.join(repoRoot, page.source), "utf8");
+    const markdown = preferClawHubForWebsiteHome(page, await readFile(path.join(repoRoot, page.source), "utf8"));
     page.markdown = rewriteLinks(markdown, {
       source: page.source,
       resolve: (target) => {

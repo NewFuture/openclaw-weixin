@@ -222,3 +222,4 @@ artifact。
 npm 和 ClawHub 的切源命令必须省略该参数。ClawHub 必须排在来源标记首位，npm 必须仍然
 可用；所有语言切换和文档链接都必须使用绝对地址。规范 npm tarball 和仓库 README 必须
 仍以 `openclaw-weixin` 为标题并且 npm-first。
+文档官网会将两个语言的首页渲染为 ClawHub-first，不修改这些源 README。

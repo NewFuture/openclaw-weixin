@@ -280,3 +280,5 @@ Direct npm and ClawHub source-switch commands must omit the flag. ClawHub must
 be the first marked source, npm must remain available, and every language or
 documentation link must be absolute. The canonical npm tarball and repository
 READMEs must remain titled `openclaw-weixin` and npm-first.
+The documentation website renders both homepages ClawHub-first without changing
+those source READMEs.

@@ -36,6 +36,8 @@ describe("emitMachineReadable", () => {
     const overview = await readFile(path.join(outDir, "index.md"), "utf8");
     assert.match(overview, /\[详细指南\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/guide\.html\)/);
     assert.match(overview, /\[架构说明\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/architecture\.html\)/);
+    assert.ok(overview.indexOf("clawhub:openclaw-wechat") < overview.indexOf("npm:openclaw-weixin"));
+    assert.ok(overview.indexOf("registry-source:clawhub:start") < overview.indexOf("registry-source:npm:start"));
   });
 
   it("indexes every page in llms.txt, Chinese first", async () => {
