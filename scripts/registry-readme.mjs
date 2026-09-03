@@ -153,6 +153,10 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
   if (forceCount !== 1) {
     throw readmeError(fileName, `shared prompt must describe \`--force\` exactly once (found ${forceCount})`);
   }
+  const forceSentence = prompt.value.split(/[.!?。！？\r\n]+/u).find((sentence) => sentence.includes("`--force`"));
+  if (!forceSentence || !/\bnpm\b/iu.test(forceSentence)) {
+    throw readmeError(fileName, "shared prompt must scope `--force` to npm");
+  }
   return prompt;
 }
 
@@ -205,6 +209,10 @@ export function assertRegistryReadmeInstallCommands(markdown, options) {
         fileName,
         `${source} source block must include \`${expectedCommand}\` exactly once (found ${commandCount})`,
       );
+    }
+    const forcedCommand = `${expectedCommand} --force`;
+    if (block.includes(forcedCommand)) {
+      throw readmeError(fileName, `${source} source block must not include \`${forcedCommand}\``);
     }
     for (const otherSource of REGISTRY_SOURCES.filter((entry) => entry !== source)) {
       const unexpectedSpec = REGISTRY_INSTALL_SPECS[otherSource];

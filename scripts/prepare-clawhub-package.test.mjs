@@ -130,7 +130,7 @@ function canonicalReadme(language) {
     "",
     "`npm:openclaw-weixin`",
     "`clawhub:openclaw-wechat`",
-    "`--force`",
+    isEnglish ? "Use `--force` when the target source is npm." : "目标来源为 npm 时使用 `--force`。",
     registryPromptMarker("end"),
     "",
     registrySourceMarker("npm", "start"),
@@ -381,6 +381,11 @@ describe("ClawHub package preparation", () => {
       expected: "shared prompt must describe `--force` exactly once (found 0)",
     },
     {
+      label: "force scoped to ClawHub",
+      mutate: (readme) => readme.replace("target source is npm", "target source is ClawHub"),
+      expected: "shared prompt must scope `--force` to npm",
+    },
+    {
       label: "full CLI inside the natural-language prompt",
       mutate: (readme) =>
         readme.replace(
@@ -456,6 +461,19 @@ describe("ClawHub package preparation", () => {
         );
       },
       expected: "npm source block must include `openclaw plugins install npm:openclaw-weixin` exactly once (found 2)",
+    },
+    {
+      label: "forced direct command",
+      mutate: (readme) => {
+        const promptEnd = registryPromptMarker("end");
+        const promptEndIndex = readme.indexOf(promptEnd) + promptEnd.length;
+        const command = "openclaw plugins install npm:openclaw-weixin";
+        return (
+          readme.slice(0, promptEndIndex) +
+          readme.slice(promptEndIndex).replace(`\`${command}\``, `\`${command}\`\n\`${command} --force\``)
+        );
+      },
+      expected: "npm source block must not include `openclaw plugins install npm:openclaw-weixin --force`",
     },
     {
       label: "direct command with appended shell command",

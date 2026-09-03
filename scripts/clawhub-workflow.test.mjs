@@ -34,7 +34,7 @@ describe("ClawHub publish workflow contract", () => {
       /Chinese prompt tries npm before ClawHub[\s\S]*English prompt\s+tries ClawHub before npm/,
     );
     expect(releaseGuide).toMatch(/direct-source blocks\s+from npm-first to\s+ClawHub-first/);
-    expect(releaseGuide).toMatch(/repository\s+READMEs must remain titled\s+`openclaw-weixin` and npm-first/);
+    expect(releaseGuide).toMatch(/Repository and npm package \| Title `openclaw-weixin`; npm-first/);
     expect(releaseGuide).not.toContain("## First ClawHub publication");
     expect(workflow).not.toContain("clawhub_token:");
   });
