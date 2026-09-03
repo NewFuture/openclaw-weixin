@@ -96,11 +96,7 @@ describe("syncContent", () => {
     assert.match(overview, /#### ClawHub：`openclaw-wechat`/);
     assert.match(overview, /把下面这段话粘贴到 OpenClaw 聊天框并发送/);
     assert.doesNotMatch(overview, /id="(?:npm|clawhub)-agent-install"/);
-    assert.match(overview, /下面的命令也可原位替换占用 `openclaw-weixin` 插件 ID/);
-    assert.match(
-      chinesePrompt.value,
-      /当前来源与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包/,
-    );
+    assert.match(chinesePrompt.value, /与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包/);
     assert.match(chinesePrompt.value, /选择 npm 安装时加 `--force`/);
     assert.match(overview, /openclaw plugins install npm:openclaw-weixin\n/);
     assert.match(overview, /openclaw plugins install clawhub:openclaw-wechat\n/);
@@ -123,7 +119,7 @@ describe("syncContent", () => {
     const english = (await readFile(path.join(contentDir, "en", "index.md"), "utf8")).replaceAll("\r\n", "\n");
     assert.deepEqual(assertRegistryReadmeOrder(english, "npm", { fileName: "en/index.md" }).order, ["npm", "clawhub"]);
     const englishPrompt = assertRegistryPrompt(english, { fileName: "en/index.md" });
-    assert.match(englishPrompt.value, /and choose one source\.\r?\nInspect `openclaw-weixin` first/);
+    assert.match(englishPrompt.value, /and choose one source\.\r?\nInspect the `openclaw-weixin` source first/);
     assert.ok(
       englishPrompt.value.indexOf("clawhub:openclaw-wechat") < englishPrompt.value.indexOf("npm:openclaw-weixin"),
     );
@@ -151,10 +147,9 @@ describe("syncContent", () => {
     assert.match(english, /<a id="direct-install"><\/a>\n\n### Run a command directly/);
     assert.match(english, /#### npm: `openclaw-weixin`/);
     assert.match(english, /#### ClawHub: `openclaw-wechat`/);
-    assert.match(english, /The command can also replace a Tencent or npm installation/);
     assert.match(
       englishPrompt.value,
-      /if its current source matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package/,
+      /if it matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package/,
     );
     assert.match(englishPrompt.value, /Add `--force` when installing from npm/);
     assert.match(english, /openclaw plugins install npm:openclaw-weixin\n/);
