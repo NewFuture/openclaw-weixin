@@ -97,11 +97,11 @@ describe("syncContent", () => {
     assert.match(overview, /把下面这段话粘贴到 OpenClaw 聊天框并发送/);
     assert.doesNotMatch(overview, /id="(?:npm|clawhub)-agent-install"/);
     assert.match(overview, /下面的命令也可原位替换占用 `openclaw-weixin` 插件 ID/);
-    assert.match(chinesePrompt.value, /只有在非交互环境中使用 npm 时才用 `--force`/);
+    assert.match(chinesePrompt.value, /已经来自目标来源时，使用 `openclaw plugins update openclaw-weixin`/);
+    assert.match(chinesePrompt.value, /npm 安装在非交互环境中执行时使用 `--force`/);
     assert.match(overview, /openclaw plugins install npm:openclaw-weixin\n/);
     assert.match(overview, /openclaw plugins install clawhub:openclaw-wechat\n/);
     assert.doesNotMatch(overview, /openclaw plugins install (?:npm:openclaw-weixin|clawhub:openclaw-wechat) --force/);
-    assert.match(overview, /不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表/);
     assert.ok(chinesePrompt.start < overview.indexOf("### 直接运行命令"));
     assert.ok(overview.indexOf("| 安装来源 | 包名 |") < overview.indexOf("#### npm："));
     assert.match(overview, /<details id="verify-connection" class="full-check">/);
@@ -149,7 +149,11 @@ describe("syncContent", () => {
     assert.match(english, /#### npm: `openclaw-weixin`/);
     assert.match(english, /#### ClawHub: `openclaw-wechat`/);
     assert.match(english, /The command can also replace a Tencent or npm installation/);
-    assert.match(englishPrompt.value, /use `--force` only to confirm npm in a noninteractive run/);
+    assert.match(
+      englishPrompt.value,
+      /if it already uses the selected source, run `openclaw plugins update openclaw-weixin`/,
+    );
+    assert.match(englishPrompt.value, /Use `--force` when npm installation runs noninteractively/);
     assert.match(english, /openclaw plugins install npm:openclaw-weixin\n/);
     assert.match(english, /openclaw plugins install clawhub:openclaw-wechat\n/);
     assert.doesNotMatch(english, /openclaw plugins install (?:npm:openclaw-weixin|clawhub:openclaw-wechat) --force/);
@@ -163,7 +167,6 @@ describe("syncContent", () => {
         english.indexOf("openclaw channels login --channel openclaw-weixin --account alice"),
     );
     assert.match(english, /global OpenClaw session setting/);
-    assert.match(english, /`--force` does not bypass OpenClaw's install policy or built-in[\s>]+dependency denylist/);
     assert.ok(englishPrompt.start < english.indexOf("### Run a command directly"));
     assert.ok(english.indexOf("| Source | Package name |") < english.indexOf("#### npm:"));
     assert.match(

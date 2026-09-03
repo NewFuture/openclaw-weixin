@@ -21,13 +21,11 @@ preserve the existing `channels.openclaw-weixin`,
 `plugins.entries.openclaw-weixin`, and `~/.openclaw/openclaw-weixin/` state
 paths.
 
-OpenClaw replaces an existing installation with the same plugin id in place;
-you do not need to uninstall it first or use `--force`. An interactive npm
-install prompts you to review and confirm the source. Add `--force` only after
-reviewing the source when npm runs noninteractively. ClawHub does not need it.
-The flag does not bypass `security.installPolicy` or the built-in dependency
-denylist. OpenClaw rotates backups of its config automatically; do not copy the
-entire state directory for this replacement.
+For a first installation or source switch, run the target source's install
+command without uninstalling the existing plugin. If the same source is already
+installed, run `openclaw plugins update openclaw-weixin`. Add `--force` when npm
+installation runs noninteractively. These operations preserve configuration and
+login state under the shared plugin id.
 
 ### Limitations
 
