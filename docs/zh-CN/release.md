@@ -215,11 +215,14 @@ artifact。
 
 公开包准备就绪后，在隔离的 OpenClaw 状态目录中安装它，确认 `openclaw plugins list` 仍
 报告 `openclaw-weixin` 插件/channel ID，并检查条目的源 commit、图标、摘要、兼容性和
-扫描状态。也要检查两种已渲染的 README 语言：主 README 必须是英文，标题必须为
-`openclaw-wechat`，其 prompt 必须先尝试 ClawHub 后尝试 npm。中文 prompt 必须先尝试 npm
-后尝试 ClawHub。每条 prompt 都必须让两种 source spec 各出现一次，并只说明一次
-`--force`，仅在目标来源为 npm 时使用。prompt 必须区分安装或切换来源与同来源更新；
-npm 和 ClawHub 的切源命令必须省略该参数。ClawHub 必须排在来源标记首位，npm 必须仍然
-可用；所有语言切换和文档链接都必须使用绝对地址。规范 npm tarball 和仓库 README 必须
-仍以 `openclaw-weixin` 为标题并且 npm-first。
-文档官网会将两个语言的首页渲染为 ClawHub-first，不修改这些源 README。
+扫描状态，并验证 README 变体：
+
+| 表面 | 约束 |
+| --- | --- |
+| 仓库与 npm 包 | 标题为 `openclaw-weixin`；npm-first |
+| ClawHub 包 | 英文主 README；标题为 `openclaw-wechat`；ClawHub-first |
+| 文档官网 | 两种语言首页均为 ClawHub-first；源 README 不变 |
+
+源 README 的英文 prompt 先尝试 ClawHub，中文 prompt 先尝试 npm。每条 prompt 中两个
+来源 spec 各出现一次，同来源则更新，否则安装目标来源；仅当 Agent 选择 npm 时使用
+`--force`。直接命令省略该参数，所有链接使用绝对地址。

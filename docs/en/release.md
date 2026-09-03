@@ -270,15 +270,15 @@ a rejected artifact in a new release.
 Once the public package is ready, install it in an isolated OpenClaw state,
 confirm `openclaw plugins list` still reports the `openclaw-weixin`
 plugin/channel id, and inspect the listing's source commit, icon, summary,
-compatibility, and scan status. Inspect both rendered
-README languages as well: the primary README must be English, the title must be
-`openclaw-wechat`, and its prompt must try ClawHub before npm. The Chinese prompt
-must try npm before ClawHub. Each prompt must name both source specs once and
-distinguish installation or source switching from same-source updates.
-Each prompt must require `--force` once when its target source is npm.
-Direct npm and ClawHub source-switch commands must omit the flag. ClawHub must
-be the first marked source, npm must remain available, and every language or
-documentation link must be absolute. The canonical npm tarball and repository
-READMEs must remain titled `openclaw-weixin` and npm-first.
-The documentation website renders both homepages ClawHub-first without changing
-those source READMEs.
+compatibility, and scan status. Validate the README variants:
+
+| Surface | Contract |
+| --- | --- |
+| Repository and npm package | Title `openclaw-weixin`; npm-first |
+| ClawHub package | English primary README; title `openclaw-wechat`; ClawHub-first |
+| Documentation website | Both homepages ClawHub-first; source READMEs unchanged |
+
+Source README prompts try ClawHub first in English and npm first in Chinese.
+Each names both specs once, updates the same source or installs the target
+source, and uses `--force` only when the Agent selects npm. Direct commands omit
+the flag, and all links are absolute.
