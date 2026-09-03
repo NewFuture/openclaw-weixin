@@ -21,7 +21,7 @@ preserve the existing `channels.openclaw-weixin`,
 `plugins.entries.openclaw-weixin`, and `~/.openclaw/openclaw-weixin/` state
 paths.
 
-For a first installation or source switch, run the target source's install
+For installation or a source switch, run the target source's install
 command without uninstalling the existing plugin. If the same source is already
 installed, run `openclaw plugins update openclaw-weixin`. Add `--force` when npm
 installation runs noninteractively. These operations preserve configuration and

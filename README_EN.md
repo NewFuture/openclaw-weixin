@@ -34,7 +34,7 @@ Use the OpenClaw plugin installation flow: do not uninstall an existing `opencla
 ### Run a command directly
 
 **Do not uninstall Tencent's package first when replacing it.** The commands
-below handle first installation or a source switch while preserving the plugin
+below handle installation or a source switch while preserving the plugin
 id, channel id, configuration, and login state. If the same source is already
 installed, run `openclaw plugins update openclaw-weixin`. Add `--force` when npm
 installation runs noninteractively.

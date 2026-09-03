@@ -274,7 +274,7 @@ compatibility, and scan status. Inspect both rendered
 README languages as well: the primary README must be English, the title must be
 `openclaw-wechat`, and its prompt must try ClawHub before npm. The Chinese prompt
 must try npm before ClawHub. Each prompt must name both source specs once and
-distinguish first installation or source switching from same-source updates.
+distinguish installation or source switching from same-source updates.
 Each prompt must describe `--force` once for noninteractive npm installation.
 Direct npm and ClawHub source-switch commands must omit the flag. ClawHub must
 be the first marked source, npm must remain available, and every language or
