@@ -15,11 +15,6 @@ const ISOLATED_ENVIRONMENT_VARIABLES = new Set([
   "CLAWDHUB_AUTH_TOKEN",
   "CLAWDHUB_CONFIG_PATH",
   "CLAWDHUB_TOKEN",
-  "OPENCLAW_CONFIG_PATH",
-  "OPENCLAW_CLAWHUB_URL",
-  "OPENCLAW_HOME",
-  "OPENCLAW_OAUTH_DIR",
-  "OPENCLAW_STATE_DIR",
   "NODE_AUTH_TOKEN",
   "NPM_AUTH_TOKEN",
   "NPM_TOKEN",
@@ -128,7 +123,11 @@ export function isolatedEnvironment(stateDirectory, parentEnvironment = process.
   const env = { ...parentEnvironment };
   for (const name of Object.keys(env)) {
     const normalizedName = name.toUpperCase();
-    if (ISOLATED_ENVIRONMENT_VARIABLES.has(normalizedName) || normalizedName.startsWith("NPM_CONFIG_")) {
+    if (
+      ISOLATED_ENVIRONMENT_VARIABLES.has(normalizedName) ||
+      normalizedName.startsWith("NPM_CONFIG_") ||
+      normalizedName.startsWith("OPENCLAW_")
+    ) {
       delete env[name];
     }
   }

@@ -9,13 +9,15 @@ import {
 } from "./check-plugin-install-update.mjs";
 
 describe("plugin install and update check isolation", () => {
-  it("removes inherited package credentials and configuration", () => {
+  it("removes inherited host, package, and credential configuration", () => {
     const parentEnvironment = {
       CLAWHUB_GITHUB_CODELOAD_BASE_URL: "https://codeload.example.test/",
       CLAWHUB_TOKEN: "synthetic-clawhub-token",
       CLAWHUB_URL: "https://clawhub.example.test/",
       NODE_AUTH_TOKEN: "synthetic-node-token",
       OPENCLAW_CLAWHUB_URL: "https://openclaw-clawhub.example.test/",
+      OPENCLAW_NIX_MODE: "1",
+      openclaw_workspace_dir: "synthetic-workspace",
       npm_config_registry: "https://private.example.test/",
       NPM_CONFIG_USERCONFIG: "synthetic-user-config",
       NPM_TOKEN: "synthetic-npm-token",
@@ -40,6 +42,8 @@ describe("plugin install and update check isolation", () => {
     expect(environment.npm_config_registry).toBeUndefined();
     expect(environment.NPM_TOKEN).toBeUndefined();
     expect(environment.OPENCLAW_CLAWHUB_URL).toBeUndefined();
+    expect(environment.OPENCLAW_NIX_MODE).toBeUndefined();
+    expect(environment.openclaw_workspace_dir).toBeUndefined();
   });
 
   it("does not expose untrusted error details", () => {
