@@ -24,7 +24,7 @@ This plugin requires OpenClaw `>=2026.6.1`.
 Paste this prompt into an OpenClaw chat and send it:
 
 ```text
-Install or update the WeChat plugin for this OpenClaw instance. Prefer `clawhub:openclaw-wechat`; if it is unavailable, use `npm:openclaw-weixin` with `--force` for npm. Choose one source.
+Install or update the WeChat plugin for this OpenClaw instance. Prefer `clawhub:openclaw-wechat`; if it is unavailable, use `npm:openclaw-weixin`. Choose one source. Add `--force` when using npm.
 Do not uninstall first; preserve existing configuration and login state. Confirm plugin capabilities when prompted, and use the OpenClaw plugin flow rather than plain `npm install`.
 ```
 <!-- registry-prompt:end -->
@@ -33,12 +33,12 @@ Do not uninstall first; preserve existing configuration and login state. Confirm
 
 ### Run a command directly
 
-**Community plugin already installed:** run
+**Community plugin previously installed with `openclaw plugins install`:** run
 `openclaw plugins update openclaw-weixin`.
 
-**First installation or replacing Tencent's official package:** choose one
-installation command below; do not uninstall first. Configuration and login state
-are preserved.
+**First installation, replacing Tencent's official package, or an existing
+plugin not installed with that command:** choose one installation command below;
+do not uninstall first. Configuration and login state are preserved.
 
 <!-- registry-source:clawhub:start -->
 <a id="clawhub-source"></a>

@@ -6,6 +6,18 @@ import { pathToFileURL } from "node:url";
 
 const PLUGIN_ID = "openclaw-weixin";
 const COMMAND_TIMEOUT_MS = 600_000;
+const ISOLATED_ENVIRONMENT_VARIABLES = new Set([
+  "CLAWHUB_AUTH_TOKEN",
+  "CLAWHUB_CONFIG_PATH",
+  "CLAWHUB_TOKEN",
+  "CLAWDHUB_AUTH_TOKEN",
+  "CLAWDHUB_CONFIG_PATH",
+  "CLAWDHUB_TOKEN",
+  "OPENCLAW_CONFIG_PATH",
+  "OPENCLAW_HOME",
+  "OPENCLAW_OAUTH_DIR",
+  "OPENCLAW_STATE_DIR",
+]);
 const INSTALL_TARGETS = [
   {
     name: "ClawHub",
@@ -30,11 +42,14 @@ function runOpenClaw(rootDirectory, args, env, label) {
     },
   );
 
+  if (result.error?.code === "ETIMEDOUT") {
+    throw new Error(`${label} did not finish before the ${COMMAND_TIMEOUT_MS / 1_000}s timeout`);
+  }
   if (result.error) {
     throw new Error(`${label} could not start (${result.error.code ?? "unknown"})`);
   }
   if (result.signal) {
-    throw new Error(`${label} did not finish before the ${COMMAND_TIMEOUT_MS / 1_000}s timeout`);
+    throw new Error(`${label} exited with signal ${result.signal}`);
   }
   if (result.status !== 0) {
     throw new Error(`${label} exited with status ${result.status} (${sanitizedCommandDiagnostic(result)})`);
@@ -97,17 +112,27 @@ function assertPluginInstalled(rootDirectory, env, label) {
   if (plugin.status !== "loaded") throw new Error(`${label} plugin id ${PLUGIN_ID} is not loaded`);
 }
 
-async function checkInstallUpdateForTarget(rootDirectory, hostVersion, target) {
-  const stateDirectory = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-install-update-"));
-  const env = {
-    ...process.env,
+function isolatedEnvironment(stateDirectory) {
+  const env = { ...process.env };
+  for (const name of Object.keys(env)) {
+    if (ISOLATED_ENVIRONMENT_VARIABLES.has(name.toUpperCase())) delete env[name];
+  }
+  return {
+    ...env,
     CI: "1",
     NO_COLOR: "1",
+    CLAWHUB_CONFIG_PATH: path.join(stateDirectory, "clawhub.json"),
+    CLAWDHUB_CONFIG_PATH: path.join(stateDirectory, "clawhub.json"),
     OPENCLAW_CONFIG_PATH: path.join(stateDirectory, "openclaw.json"),
     OPENCLAW_HOME: stateDirectory,
     OPENCLAW_OAUTH_DIR: path.join(stateDirectory, "oauth"),
     OPENCLAW_STATE_DIR: stateDirectory,
   };
+}
+
+async function checkInstallUpdateForTarget(rootDirectory, hostVersion, target) {
+  const stateDirectory = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-install-update-"));
+  const env = isolatedEnvironment(stateDirectory);
 
   try {
     const installCapabilityArgs = capabilityAcceptanceArgs(rootDirectory, "install", env);
