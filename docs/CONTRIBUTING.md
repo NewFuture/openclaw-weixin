@@ -127,34 +127,24 @@ The repository's stricter package contract check is:
 npm run pack:check
 ```
 
-## ClawHub package checks
+## Registry package checks
 
-ClawHub uses the package name `openclaw-wechat`; the canonical npm package and
-the plugin/channel id remain `openclaw-weixin`. After `npm run check` and
-`npm run pack:check`, build the ClawPack only from that canonical npm tarball and
-keep all intermediate files outside the repository:
+After `npm run check` and `npm run pack:check`, create one source tarball and
+derive both registry packages outside the repository:
 
 ```shell
-npm pack --ignore-scripts --pack-destination <canonical-output>
-node scripts/prepare-clawhub-package.mjs <canonical-output> <clawhub-output>
+npm pack --ignore-scripts --pack-destination <source-output>
+node scripts/prepare-npm-package.mjs <source-output> <npm-output>
+node scripts/prepare-clawhub-package.mjs <source-output> <clawhub-output>
 mkdir <clawpack-root>
 tar -xzf <clawhub-output>/openclaw-wechat-<version>.tgz -C <clawpack-root>
 ```
 
-The source directory must contain exactly one `.tgz`. The converter rejects a
-non-canonical package name or npm install spec, malformed registry-source
-markers, commands placed in the wrong source block, and relative registry links.
-It changes the temporary package name and ClawHub install choice, uses the
-English source as the primary `README.md` and `README_EN.md`, writes the full
-Chinese source to `README.zh_CN.md`, changes all staged titles from
-`openclaw-weixin` to `openclaw-wechat`, and preserves each localized prompt.
-The Chinese prompt tries npm first and falls back to ClawHub; the English prompt
-does the reverse, aligning the primary README of each published package with its
-default source. The converter then reorders the direct-source blocks from
-npm-first to ClawHub-first.
-The canonical source files and npm tarball remain titled `openclaw-weixin`,
-npm-first, and unchanged; both languages must retain both exact direct commands,
-absolute documentation links, and the `openclaw-weixin` runtime id.
+The source README files are ClawHub-first. The npm converter changes only their
+source priority to npm-first. The ClawHub converter keeps that priority, changes
+the staged title and package metadata to `openclaw-wechat`, and uses English as
+its primary README. Neither converter changes the `openclaw-weixin` plugin and
+channel id.
 
 Run the pinned ClawHub validator with its report directory outside the checkout,
 then preview the publish without credentials:

@@ -24,8 +24,8 @@ This plugin requires OpenClaw `>=2026.6.1`.
 Paste this prompt into an OpenClaw chat and send it:
 
 ```text
-Install or replace the WeChat plugin in place for this OpenClaw instance and check its connection. Install from ClawHub `clawhub:openclaw-wechat` first; only if the ClawHub source is explicitly unavailable, fall back to npm `npm:openclaw-weixin`, and install only one.
-Follow OpenClaw's install policy and use in-place replacement for an existing installation with the same `openclaw-weixin` plugin ID (the `--force` behavior), preserving configuration and login data. Use the OpenClaw plugin installation flow rather than plain `npm install`. After installation, verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the source and result, or explain the failure.
+Install or update the WeChat plugin for this OpenClaw instance. Source priority: `clawhub:openclaw-wechat`; use `npm:openclaw-weixin` only if unavailable, and choose one source.
+Inspect the `openclaw-weixin` install record first: if its package spec matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package without uninstalling first. Add `--force` when installing from npm. Review and confirm plugin capabilities when prompted. Preserve configuration and login data, and use the OpenClaw plugin flow rather than plain `npm install`. Then verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the result or failure.
 ```
 <!-- registry-prompt:end -->
 
@@ -33,45 +33,34 @@ Follow OpenClaw's install policy and use in-place replacement for an existing in
 
 ### Run a command directly
 
-**Do not uninstall Tencent's package first when replacing it.** Both community
-sources preserve the plugin id, channel id, configuration, and login state.
-`--force` does not bypass OpenClaw's install policy or built-in dependency
-denylist. OpenClaw rotates configuration backups automatically.
-
-`--force` allows replacement of an existing installation with the same plugin
-id.
-
-| Source | Package name |
-| --- | --- |
-| npm | [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin) |
-| ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
-
-<!-- registry-source:npm:start -->
-<a id="npm-source"></a>
-
-#### npm: `openclaw-weixin`
-
-<a id="npm-cli-install"></a>
-
-```bash
-openclaw plugins install npm:openclaw-weixin --force
-```
-<!-- registry-source:npm:end -->
+**Do not uninstall Tencent's package first when replacing it.** If the recorded
+package spec matches the target, run `openclaw plugins update openclaw-weixin`;
+otherwise run the target source command. Configuration and login state are
+preserved.
 
 <!-- registry-source:clawhub:start -->
 <a id="clawhub-source"></a>
 
-#### ClawHub: `openclaw-wechat`
-
-The command can also replace a Tencent or npm installation that owns the
-`openclaw-weixin` plugin id.
+#### ClawHub: [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat)
 
 <a id="clawhub-cli-install"></a>
 
 ```bash
-openclaw plugins install clawhub:openclaw-wechat --force
+openclaw plugins install clawhub:openclaw-wechat
 ```
 <!-- registry-source:clawhub:end -->
+
+<!-- registry-source:npm:start -->
+<a id="npm-source"></a>
+
+#### npm: [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin)
+
+<a id="npm-cli-install"></a>
+
+```bash
+openclaw plugins install npm:openclaw-weixin
+```
+<!-- registry-source:npm:end -->
 
 **If this OpenClaw instance already has a WeChat login, you usually only need
 to confirm the connection after installation.** For a new installation, open

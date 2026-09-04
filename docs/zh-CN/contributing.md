@@ -104,26 +104,22 @@ npm pack --dry-run --ignore-scripts
 npm run pack:check
 ```
 
-## ClawHub 包检查
+## Registry 包检查
 
-ClawHub 使用包名 `openclaw-wechat`；规范的 npm 包和插件/channel ID 仍为 `openclaw-weixin`。在执行 `npm run check` 和 `npm run pack:check` 后，只能从该规范 npm tarball 构建 ClawPack，且所有中间文件都必须放在仓库外：
+执行 `npm run check` 和 `npm run pack:check` 后，创建一个源 tarball，并在仓库外派生两个
+registry 包：
 
 ```shell
-npm pack --ignore-scripts --pack-destination <canonical-output>
-node scripts/prepare-clawhub-package.mjs <canonical-output> <clawhub-output>
+npm pack --ignore-scripts --pack-destination <source-output>
+node scripts/prepare-npm-package.mjs <source-output> <npm-output>
+node scripts/prepare-clawhub-package.mjs <source-output> <clawhub-output>
 mkdir <clawpack-root>
 tar -xzf <clawhub-output>/openclaw-wechat-<version>.tgz -C <clawpack-root>
 ```
 
-源目录必须恰好包含一个 `.tgz` 文件。转换器会拒绝非规范的包名或 npm 安装 spec、
-格式错误的 registry-source 标记、放在错误的直接来源块中的命令，以及相对 registry
-链接。它会更改临时包名和 ClawHub 安装选项，以英文源作为主 `README.md` 和
-`README_EN.md`，将完整中文源写入 `README.zh_CN.md`，把所有暂存标题从
-`openclaw-weixin` 改为 `openclaw-wechat`，并保留各语言 prompt。中文 prompt 先尝试
-npm，失败后回退到 ClawHub；英文 prompt 则相反，从而使每个已发布包的主 README 与其
-默认来源一致。转换器随后会将直接来源块的顺序从 npm 优先改为 ClawHub 优先。
-
-规范源文件和 npm tarball 仍应以 `openclaw-weixin` 为标题、保持 npm 优先且不作修改；两种语言都必须保留两条精确的直接命令、绝对文档链接和 `openclaw-weixin` 运行时 ID。
+源 README 为 ClawHub-first。npm 转换器只将来源优先级改为 npm-first。ClawHub 转换器
+保留该优先级，将暂存标题和包元数据改为 `openclaw-wechat`，并使用英文主 README。两个
+转换器都不改变 `openclaw-weixin` 插件和 channel ID。
 
 使用固定版本的 ClawHub 验证器，并将其报告目录置于检出目录外；随后在不提供凭据的情况下预览发布：
 

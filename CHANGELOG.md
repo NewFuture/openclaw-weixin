@@ -10,6 +10,9 @@
 
 - **OpenClaw 开发基线：** 将锁文件、构建元数据和常规 CI 基线更新到 `2026.8.2`，
   同时保留 `2026.7.1` 的精确兼容性验证和最低宿主 `2026.6.1`。
+- **发布包来源优先级：** 仓库、官网和 ClawHub 包改为 ClawHub-first；npm 与
+  GitHub Packages 从同一源包生成 npm-first README，不再转换官网内容；各发布 job
+  复用验证阶段生成的相同 tarball。
 
 ### 修复
 

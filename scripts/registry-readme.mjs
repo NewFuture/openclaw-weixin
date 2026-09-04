@@ -9,8 +9,8 @@ export const REGISTRY_INSTALL_SPECS = {
   clawhub: "clawhub:openclaw-wechat",
 };
 export const REGISTRY_INSTALL_COMMANDS = {
-  npm: `openclaw plugins install ${REGISTRY_INSTALL_SPECS.npm} --force`,
-  clawhub: `openclaw plugins install ${REGISTRY_INSTALL_SPECS.clawhub} --force`,
+  npm: `openclaw plugins install ${REGISTRY_INSTALL_SPECS.npm}`,
+  clawhub: `openclaw plugins install ${REGISTRY_INSTALL_SPECS.clawhub}`,
 };
 
 export function registrySourceMarker(source, boundary) {
@@ -149,15 +149,63 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
       throw readmeError(fileName, `shared prompt must include \`${expectedSpec}\` exactly once (found ${specCount})`);
     }
   }
+  const updateCommand = "openclaw plugins update openclaw-weixin";
+  const updateCount = codeSpans.filter((value) => value === updateCommand).length;
+  if (updateCount !== 1) {
+    throw readmeError(fileName, `shared prompt must include \`${updateCommand}\` exactly once (found ${updateCount})`);
+  }
   const forceCount = codeSpans.filter((value) => value === "--force").length;
   if (forceCount !== 1) {
     throw readmeError(fileName, `shared prompt must describe \`--force\` exactly once (found ${forceCount})`);
   }
+  const forceSentence = prompt.value.split(/[.!?。！？]+/u).find((sentence) => sentence.includes("`--force`"));
+  const forceProse = forceSentence?.replace(/`[^`]+`/gu, (code) => (code === "`--force`" ? code : ""));
+  if (!forceProse || !/\bnpm\b/iu.test(forceProse) || /\bClawHub\b/iu.test(forceProse)) {
+    throw readmeError(fileName, "shared prompt must scope `--force` to npm");
+  }
   return prompt;
 }
 
-export function assertRegistryPrompt(markdown, options) {
-  return inspectRegistryPrompt(markdown, options);
+function registryPromptOrder(prompt) {
+  return [...REGISTRY_SOURCES].sort(
+    (left, right) =>
+      prompt.value.indexOf(`\`${REGISTRY_INSTALL_SPECS[left]}\``) -
+      prompt.value.indexOf(`\`${REGISTRY_INSTALL_SPECS[right]}\``),
+  );
+}
+
+export function assertRegistryPromptOrder(markdown, expectedFirst, options) {
+  if (!REGISTRY_SOURCES.includes(expectedFirst)) {
+    throw new Error(`unknown preferred registry prompt source: ${expectedFirst}`);
+  }
+  const prompt = inspectRegistryPrompt(markdown, options);
+  const order = registryPromptOrder(prompt);
+  if (order[0] !== expectedFirst) {
+    const fileName = options?.fileName ?? "README";
+    throw readmeError(fileName, `expected ${expectedFirst} prompt source first, found ${order[0]}`);
+  }
+  return { ...prompt, order };
+}
+
+export function preferRegistryPromptSource(markdown, preferredSource, options) {
+  if (!REGISTRY_SOURCES.includes(preferredSource)) {
+    throw new Error(`unknown preferred registry prompt source: ${preferredSource}`);
+  }
+  const prompt = inspectRegistryPrompt(markdown, options);
+  if (registryPromptOrder(prompt)[0] === preferredSource) return markdown;
+
+  const fallbackSource = REGISTRY_SOURCES.find((source) => source !== preferredSource);
+  const preferredSpec = `\`${REGISTRY_INSTALL_SPECS[preferredSource]}\``;
+  const fallbackSpec = `\`${REGISTRY_INSTALL_SPECS[fallbackSource]}\``;
+  const fallbackIndex = prompt.value.indexOf(fallbackSpec);
+  const preferredIndex = prompt.value.indexOf(preferredSpec);
+  const value =
+    prompt.value.slice(0, fallbackIndex) +
+    preferredSpec +
+    prompt.value.slice(fallbackIndex + fallbackSpec.length, preferredIndex) +
+    fallbackSpec +
+    prompt.value.slice(preferredIndex + preferredSpec.length);
+  return markdown.slice(0, prompt.start) + value + markdown.slice(prompt.end);
 }
 
 export function assertRegistryReadmeTitle(markdown, expectedSource, options) {
@@ -206,6 +254,10 @@ export function assertRegistryReadmeInstallCommands(markdown, options) {
         `${source} source block must include \`${expectedCommand}\` exactly once (found ${commandCount})`,
       );
     }
+    const forcedCommand = `${expectedCommand} --force`;
+    if (block.includes(forcedCommand)) {
+      throw readmeError(fileName, `${source} source block must not include \`${forcedCommand}\``);
+    }
     for (const otherSource of REGISTRY_SOURCES.filter((entry) => entry !== source)) {
       const unexpectedSpec = REGISTRY_INSTALL_SPECS[otherSource];
       if (block.includes(unexpectedSpec)) {
@@ -214,6 +266,14 @@ export function assertRegistryReadmeInstallCommands(markdown, options) {
     }
   }
   return inspected;
+}
+
+export function assertSourceRegistryReadme(markdown, options) {
+  assertRegistryReadmeTitle(markdown, "npm", options);
+  assertRegistryReadmeOrder(markdown, "clawhub", options);
+  assertRegistryPromptOrder(markdown, "clawhub", options);
+  assertRegistryReadmeInstallCommands(markdown, options);
+  assertRegistryReadmeLinksAbsolute(markdown, options);
 }
 
 function isMarkdownEscaped(value, index) {

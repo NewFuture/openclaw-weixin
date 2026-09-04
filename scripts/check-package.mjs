@@ -2,14 +2,8 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 import { checkVersionFiles } from "./check-versions.mjs";
-import {
-  assertRegistryPrompt,
-  assertRegistryReadmeInstallCommands,
-  assertRegistryReadmeLinksAbsolute,
-  assertRegistryReadmeOrder,
-  assertRegistryReadmeTitle,
-  REGISTRY_README_FILES,
-} from "./registry-readme.mjs";
+import { assertCanonicalPackageMetadata } from "./package-variant.mjs";
+import { assertSourceRegistryReadme, REGISTRY_README_FILES } from "./registry-readme.mjs";
 
 function fail(message) {
   console.error(`Package check failed: ${message}`);
@@ -25,12 +19,10 @@ try {
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const pluginManifest = JSON.parse(readFileSync("openclaw.plugin.json", "utf8"));
 const canonicalPackageName = "openclaw-weixin";
-const compatibilityAlias = "openclaw-wechat";
 const displayName = "WeChat";
 const description = "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.";
 const icon = "https://openclaw-weixin.newfuture.cc/logo.svg";
 const docsUrl = "https://openclaw-weixin.newfuture.cc/";
-const repositoryUrl = "git+https://github.com/NewFuture/openclaw-weixin.git";
 const HOST_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 function parseHostVersion(version, label) {
@@ -48,29 +40,13 @@ function compareHostVersions(left, right) {
   return 0;
 }
 
-function hasExactItems(value, expected) {
-  return (
-    Array.isArray(value) && value.length === expected.length && value.every((item, index) => item === expected[index])
-  );
-}
-
-if (packageJson.name !== canonicalPackageName) {
-  fail(`expected package name ${canonicalPackageName}, found ${packageJson.name}`);
+try {
+  assertCanonicalPackageMetadata({ packageJson, pluginManifest });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 if (packageJson.description !== description) {
   fail(`package description must be ${JSON.stringify(description)}`);
-}
-if (packageJson.repository?.url !== repositoryUrl) {
-  fail(`package repository must remain ${repositoryUrl}`);
-}
-if (packageJson.openclaw?.install?.npmSpec !== packageJson.name) {
-  fail("openclaw.install.npmSpec must match the npm package name");
-}
-if (packageJson.openclaw?.install?.defaultChoice !== "npm") {
-  fail("the canonical package openclaw.install.defaultChoice must remain npm");
-}
-if (packageJson.openclaw?.install?.clawhubSpec !== undefined) {
-  fail("the canonical npm package must not declare openclaw.install.clawhubSpec");
 }
 if (packageJson.openclaw?.channel?.docsPath !== docsUrl) {
   fail(`openclaw.channel.docsPath must remain ${docsUrl}`);
@@ -78,11 +54,7 @@ if (packageJson.openclaw?.channel?.docsPath !== docsUrl) {
 for (const fileName of REGISTRY_README_FILES) {
   const markdown = readFileSync(fileName, "utf8");
   try {
-    assertRegistryReadmeTitle(markdown, "npm", { fileName });
-    assertRegistryReadmeOrder(markdown, "npm", { fileName });
-    assertRegistryPrompt(markdown, { fileName });
-    assertRegistryReadmeInstallCommands(markdown, { fileName });
-    assertRegistryReadmeLinksAbsolute(markdown, { fileName });
+    assertSourceRegistryReadme(markdown, { fileName });
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   }
@@ -93,27 +65,9 @@ if (!hostRangeMatch) {
   fail("peerDependencies.openclaw must declare a minimum host version");
 }
 const minimumHostVersion = parseHostVersion(hostRangeMatch[1], "peerDependencies.openclaw");
-if (packageJson.openclaw?.install?.minHostVersion !== hostRange) {
-  fail("openclaw.install.minHostVersion must match peerDependencies.openclaw");
-}
-if (packageJson.openclaw?.compat?.pluginApi !== hostRange) {
-  fail("openclaw.compat.pluginApi must match peerDependencies.openclaw");
-}
 const developmentHostVersion = parseHostVersion(packageJson.devDependencies?.openclaw, "devDependencies.openclaw");
 if (compareHostVersions(developmentHostVersion, minimumHostVersion) < 0) {
   fail("devDependencies.openclaw must not be older than the minimum supported host");
-}
-if (packageJson.openclaw?.build?.openclawVersion !== packageJson.devDependencies.openclaw) {
-  fail("openclaw.build.openclawVersion must match devDependencies.openclaw");
-}
-if (packageJson.openclaw?.channel?.id !== canonicalPackageName) {
-  fail(`openclaw.channel.id must remain ${canonicalPackageName}`);
-}
-if (!hasExactItems(packageJson.openclaw?.channel?.aliases, [compatibilityAlias])) {
-  fail(`openclaw.channel.aliases must contain only ${compatibilityAlias}`);
-}
-if (pluginManifest.id !== canonicalPackageName) {
-  fail(`the compatibility plugin id must remain ${canonicalPackageName}`);
 }
 if (pluginManifest.name !== displayName) {
   fail(`openclaw.plugin.json name must remain ${displayName}`);
@@ -124,14 +78,6 @@ if (pluginManifest.description !== description) {
 if (pluginManifest.icon !== icon) {
   fail(`openclaw.plugin.json icon must remain ${icon}`);
 }
-if (
-  !Array.isArray(pluginManifest.channels) ||
-  pluginManifest.channels.length !== 1 ||
-  pluginManifest.channels[0] !== canonicalPackageName
-) {
-  fail(`the compatibility channel id must remain ${canonicalPackageName}`);
-}
-
 const runtimePlugin = (await import(new URL("../dist/index.js", import.meta.url))).default;
 if (runtimePlugin.id !== canonicalPackageName) {
   fail(`the runtime plugin id must remain ${canonicalPackageName}`);

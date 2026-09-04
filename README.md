@@ -23,8 +23,8 @@
 把下面这段话粘贴到 OpenClaw 聊天框并发送：
 
 ```text
-请为当前 OpenClaw 安装或原位替换微信插件，并检查微信连接。优先安装 npm 的 `npm:openclaw-weixin`；仅当 npm 来源明确不可用时，改用 ClawHub 的 `clawhub:openclaw-wechat`，全程只安装一个。
-请遵循 OpenClaw 的安装策略，对所用来源执行同一 `openclaw-weixin` 插件 ID 的原位替换（对应 `--force`），并保留现有配置和登录数据；请使用 OpenClaw 插件安装流程，而不是普通的 `npm install`。安装后确认插件已加载并探测微信 Channel；未登录时提示扫码。最后简要报告来源和结果；失败时说明原因。
+请安装或更新当前 OpenClaw 的微信插件。来源优先级：`clawhub:openclaw-wechat`；不可用时再用 `npm:openclaw-weixin`，只选一个来源。
+先检查 `openclaw-weixin` 安装记录：已记录的包 spec 与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包，不要先卸载。选择 npm 安装时加 `--force`。按提示审阅并确认插件能力。保留配置和登录数据，使用 OpenClaw 插件流程而非普通 `npm install`。完成后确认插件已加载并探测微信 Channel；未登录时提示扫码。简要报告结果或失败原因。
 ```
 <!-- registry-prompt:end -->
 
@@ -32,42 +32,32 @@
 
 ### 直接运行命令
 
-**替换腾讯版时不要先卸载。** 两个社区发布源都保留插件 ID、Channel ID、配置和
-登录状态。`--force` 不会绕过 OpenClaw 的安装策略或内置依赖拒绝列表；OpenClaw
-会自动轮换配置备份。
-
-`--force` 允许覆盖相同插件 ID 的现有安装。
-
-| 安装来源 | 包名 |
-| --- | --- |
-| npm | [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin) |
-| ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
-
-<!-- registry-source:npm:start -->
-<a id="npm-source"></a>
-
-#### npm：`openclaw-weixin`
-
-<a id="npm-cli-install"></a>
-
-```bash
-openclaw plugins install npm:openclaw-weixin --force
-```
-<!-- registry-source:npm:end -->
+**替换腾讯版时不要先卸载。** 已记录的包 spec 与目标相同则运行
+`openclaw plugins update openclaw-weixin`；否则运行目标来源命令。配置和登录状态会保留。
 
 <!-- registry-source:clawhub:start -->
 <a id="clawhub-source"></a>
 
-#### ClawHub：`openclaw-wechat`
-
-下面的命令也可原位替换占用 `openclaw-weixin` 插件 ID 的腾讯版或 npm 版。
+#### ClawHub：[`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat)
 
 <a id="clawhub-cli-install"></a>
 
 ```bash
-openclaw plugins install clawhub:openclaw-wechat --force
+openclaw plugins install clawhub:openclaw-wechat
 ```
 <!-- registry-source:clawhub:end -->
+
+<!-- registry-source:npm:start -->
+<a id="npm-source"></a>
+
+#### npm：[`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin)
+
+<a id="npm-cli-install"></a>
+
+```bash
+openclaw plugins install npm:openclaw-weixin
+```
+<!-- registry-source:npm:end -->
 
 **如果当前 OpenClaw 已有微信登录状态，安装后通常只需确认连接。** 全新安装需要
 展开完整检查并扫码绑定；安装报错、未自动恢复连接或需要确认目标账号时，也在此检查。

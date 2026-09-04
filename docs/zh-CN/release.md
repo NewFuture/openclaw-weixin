@@ -60,10 +60,10 @@ ClawHub 的发布分别使用独立的受保护 GitHub OIDC job 和环境；GitH
 一次 **Approve and deploy**。GitHub 会将这一次 UI 操作应用到两个 job，但每个 job
 仅获得其自身环境和 OIDC 信任边界。如果仅缺失一个目标，只批准对应环境。如果两个精确
 目标都存在，两个环境都不会请求批准。GitHub Packages job 使用仓库的 `GITHUB_TOKEN`，
-并执行自己的精确版本预检查。会报告缺失的中间镜像版本，但不会阻止精确当前目标。
+并执行一次最终精确版本与 `latest` 检查。缺失的中间镜像版本不会阻止精确当前目标。
 
 在不可逆命令之前，每个包 job 都会验证远端标签的当前指向，并重新检查自己的目标。GitHub Packages
-还会在该边界重新读取 `latest`，以免构建期间的另一项发布导致本次发布将 dist-tag
+还会在该边界重新读取 `latest`，以免工作流期间的另一项发布导致本次发布将 dist-tag
 回退。npmjs 和 GitHub Packages job 将成功的 `npm publish` 响应视为完成，而不会立即
 查询可能仍在传播新版本的 registry。ClawHub job 等待其发布响应，并要求
 `publicationStatus` 为 `published`。ClawHub 会存储上传的 ClawPack，且该包的默认
@@ -122,17 +122,11 @@ ClawHub 分发刻意与 npm 身份分离：
 | 插件和 channel ID | `openclaw-weixin` |
 | ClawHub 发布者 | `newfuture` |
 
-`scripts/prepare-clawhub-package.mjs` 接受一个恰好包含一个规范 npm tarball 的目录（或
-tarball 路径本身）。它会验证规范名称、npm fallback、入口点、宿主元数据、manifest
-版本及插件/channel 身份。它还要求每份本地化 README 都恰好包含一组相邻的 npm 与
-ClawHub 安装块，使用匹配的精确命令且不包含相对 registry link。在临时解压副本中，它会更改
-`package.json.name`，添加 `clawhub:openclaw-wechat`，选择 ClawHub 作为该副本的默认
-installer，以英文源作为其主 `README.md` 和 `README_EN.md`，将完整的中文源写入
-`README.zh_CN.md`，将所有暂存 README 标题改为 `openclaw-wechat`，并保留每种本地化
-prompt。中文 prompt 先尝试 npm 后尝试 ClawHub，英文 prompt 先尝试 ClawHub 后尝试 npm，
-使每个包的主 README 与其默认来源一致。转换器随后将直接来源块从 npm-first 重新排序为
-ClawHub-first。
-它绝不会修改源 tarball，也不会创建 `openclaw-wechat` npm 包。
+仓库源包为 ClawHub-first。`scripts/prepare-npm-package.mjs` 生成 npm-first 的规范包。
+`scripts/prepare-clawhub-package.mjs` 保留源优先级，将包名和 README 标题改为
+`openclaw-wechat`，并使用英文主 README。两者都会验证包身份、精确安装命令和绝对链接，
+且不修改源 tarball 或 `openclaw-weixin` 运行时 ID。
+发布验证只上传一次两个 tarball；发布 job 下载相同产物，并保留实时标签和 registry 复查。
 
 在任何 ClawHub 发布前，运行 `npm ci`、`npm run check` 和 `npm run pack:check`，然后按
 [贡献指南](./contributing.md)中的命令构建并验证 ClawPack。绝不可复用或覆盖
@@ -178,7 +172,7 @@ dry-run；它没有生产分派或 OIDC 权限。
 npmjs 成功，但 ClawHub 在创建发布边界前失败，请重新运行原始工作流：仅
 `clawhub-publish` 请求批准；若故障期间出现精确目标版本，复查会跳过该版本。ClawHub
 成功而 npmjs 失败的反向部分成功状态由 `npm-publish` 独立处理，GitHub Packages 保留
-自己的幂等预检查。如果两个
+自己的幂等最终检查。如果两个
 精确受保护 registry 目标都已匹配，两个受保护 job 都会被跳过，同时会在完成 GitHub
 Release 前协调 GitHub Packages。
 
@@ -215,9 +209,14 @@ artifact。
 
 公开包准备就绪后，在隔离的 OpenClaw 状态目录中安装它，确认 `openclaw plugins list` 仍
 报告 `openclaw-weixin` 插件/channel ID，并检查条目的源 commit、图标、摘要、兼容性和
-扫描状态。也要检查两种已渲染的 README 语言：主 README 必须是英文，标题必须为
-`openclaw-wechat`，其 prompt 必须先尝试 ClawHub 后尝试 npm。中文 prompt 必须先尝试 npm
-后尝试 ClawHub。每条 prompt 都必须让两种 source spec 各出现一次，并只说明一次
-`--force`。ClawHub 必须排在来源标记首位，npm 必须仍然可用；所有语言切换和文档链接
-都必须使用绝对地址。规范 npm tarball 和仓库 README 必须仍以 `openclaw-weixin` 为标题
-并且 npm-first。
+扫描状态，并验证 README 变体：
+
+| 表面 | 约束 |
+| --- | --- |
+| 仓库与官网 | 标题为 `openclaw-weixin`；ClawHub-first |
+| npm 与 GitHub Packages | 标题为 `openclaw-weixin`；npm-first |
+| ClawHub 包 | 英文主 README；标题为 `openclaw-wechat`；ClawHub-first |
+
+源 README prompt 为 ClawHub-first，npm 变体为 npm-first。每条 prompt 中两个来源 spec
+各出现一次，已记录的包 spec 与目标相同则更新，否则安装目标；仅当 Agent 选择 npm 时
+使用 `--force`。直接命令省略该参数，所有链接使用绝对地址。

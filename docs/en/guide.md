@@ -21,11 +21,10 @@ preserve the existing `channels.openclaw-weixin`,
 `plugins.entries.openclaw-weixin`, and `~/.openclaw/openclaw-weixin/` state
 paths.
 
-`--force` confirms that the operator reviewed and selected the install source
-and allows OpenClaw to overwrite an existing plugin installation with the same
-internal id. It does not bypass `security.installPolicy` or the built-in
-dependency denylist. OpenClaw rotates backups of its config automatically; do
-not copy the entire state directory for this replacement.
+Check the install record first. If its package spec matches the target, run
+`openclaw plugins update openclaw-weixin`; otherwise install the target package
+without uninstalling first. Agent-run npm installs add `--force`. Configuration
+and login state are preserved.
 
 ### Limitations
 

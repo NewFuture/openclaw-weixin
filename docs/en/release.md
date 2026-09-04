@@ -75,12 +75,12 @@ deploy** once. GitHub applies that one UI action to both jobs, while each job
 receives only its own environment and OIDC trust boundary. If only one target is
 missing, approve only that environment. If both exact targets exist, neither
 environment requests approval. The GitHub Packages job uses the repository's
-`GITHUB_TOKEN` and performs its own exact-version precheck. A missing intermediate
-mirror version is reported but does not block the exact current target.
+`GITHUB_TOKEN` and performs one final exact-version and `latest` check. A missing
+intermediate mirror version does not block the exact current target.
 
 Before an irreversible command, each package job verifies the live tag and
 rechecks its own target. GitHub Packages also rereads `latest` at that boundary
-so another publication during the build cannot make this release move the
+so another publication during the workflow cannot make this release move the
 dist-tag backward. The npmjs and GitHub Packages jobs treat a successful `npm
 publish` response as completion instead of immediately querying a registry that
 may still be propagating the new version. The ClawHub job waits for its publish
@@ -154,21 +154,15 @@ ClawHub distribution is intentionally separate from npm identity:
 | Plugin and channel id | `openclaw-weixin` |
 | ClawHub publisher | `newfuture` |
 
-`scripts/prepare-clawhub-package.mjs` accepts a directory containing exactly one
-canonical npm tarball (or the tarball path itself). It validates the canonical
-name, npm fallback, entry points, host metadata, manifest version, and
-plugin/channel identity. It also requires one adjacent npm and ClawHub install
-block in each localized README, with the matching exact command and no relative
-registry link. In a temporary extracted copy it changes
-`package.json.name`, adds `clawhub:openclaw-wechat`, selects ClawHub as that
-copy's default installer, uses the English source for its primary `README.md`
-and `README_EN.md`, writes the full Chinese source to `README.zh_CN.md`, changes
-all staged README titles to `openclaw-wechat`, and preserves each localized
-prompt. The Chinese prompt tries npm before ClawHub, while the English prompt
-tries ClawHub before npm, aligning each package's primary README with its default
-source. The converter then reorders the direct-source blocks from npm-first to
-ClawHub-first.
-It never modifies the source tarball or creates an `openclaw-wechat` npm package.
+The repository source package is ClawHub-first.
+`scripts/prepare-npm-package.mjs` creates the npm-first canonical package.
+`scripts/prepare-clawhub-package.mjs` keeps the source priority, changes the
+package name and README titles to `openclaw-wechat`, and uses English as the
+primary README. Both validate package identity, exact install commands, and
+absolute links without modifying the source tarball or runtime
+`openclaw-weixin` id.
+Release validation uploads both tarballs once; publishing jobs download those
+exact artifacts and retain their live tag and registry rechecks.
 
 Before any ClawHub release, run `npm ci`, `npm run check`, and
 `npm run pack:check`, then build and validate the ClawPack with the commands in
@@ -223,7 +217,7 @@ fails before the publication boundary is created, re-run the original workflow:
 only `clawhub-publish` requests approval, while its target recheck skips any
 exact version that appeared during the failure. The reverse partial state is
 handled independently by `npm-publish`, and GitHub Packages retains its own
-idempotent precheck. If both exact protected-registry targets already match,
+idempotent final check. If both exact protected-registry targets already match,
 both protected jobs are skipped while GitHub Packages is reconciled before the
 GitHub Release is finalized.
 
@@ -270,11 +264,15 @@ a rejected artifact in a new release.
 Once the public package is ready, install it in an isolated OpenClaw state,
 confirm `openclaw plugins list` still reports the `openclaw-weixin`
 plugin/channel id, and inspect the listing's source commit, icon, summary,
-compatibility, and scan status. Inspect both rendered
-README languages as well: the primary README must be English, the title must be
-`openclaw-wechat`, and its prompt must try ClawHub before npm. The Chinese prompt
-must try npm before ClawHub. Each prompt must name both source specs once and
-describe `--force` once. ClawHub must be the first marked source, npm must
-remain available, and every language or documentation link must be absolute. The
-canonical npm tarball and repository READMEs must remain titled
-`openclaw-weixin` and npm-first.
+compatibility, and scan status. Validate the README variants:
+
+| Surface | Contract |
+| --- | --- |
+| Repository and website | Title `openclaw-weixin`; ClawHub-first |
+| npm and GitHub Packages | Title `openclaw-weixin`; npm-first |
+| ClawHub package | English primary README; title `openclaw-wechat`; ClawHub-first |
+
+Source README prompts are ClawHub-first; npm variants are npm-first. Each names
+both specs once, updates an exact package-spec match or installs the target, and
+uses `--force` only when the Agent selects npm. Direct commands omit the flag,
+and all links are absolute.
