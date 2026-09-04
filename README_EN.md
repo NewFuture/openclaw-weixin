@@ -179,6 +179,23 @@ files from `~/.openclaw/openclaw-weixin/`.
 
 </details>
 
+## Block replies
+
+By default, the plugin sends completed text blocks produced between multi-step
+tool calls in order, followed by the final reply. Block replies are not token
+streaming; OpenClaw may combine short blocks according to the channel coalescing
+policy. Tool-call progress messages remain controlled separately by
+`replyProgressMessages`.
+
+To send only the final reply, disable block replies:
+
+```bash
+openclaw config set channels.openclaw-weixin.blockStreaming false
+```
+
+The channel setting can be overridden per account at
+`channels.openclaw-weixin.accounts.<accountId>.blockStreaming`.
+
 ## Proactive and scheduled sends
 
 The WeChat backend requires every outbound message to carry an account-scoped

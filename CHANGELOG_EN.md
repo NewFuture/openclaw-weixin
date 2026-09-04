@@ -12,6 +12,12 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
   normal CI baseline to `2026.8.2` while retaining exact `2026.7.1`
   compatibility coverage and the `2026.6.1` minimum host.
 
+### Fixed
+
+- **Block replies:** Restored ordered delivery of completed text blocks between
+  tool calls by default, with channel-level and per-account
+  `blockStreaming: false` opt-outs for final-only replies.
+
 ## [3.1.6] - 2026-08-22
 
 ### Fixed

@@ -15,6 +15,11 @@
             "type": "string",
             "description": "Self-declared bot_agent identifier for backend observability."
           },
+          "blockStreaming": {
+            "type": "boolean",
+            "default": true,
+            "description": "Send completed text blocks before the final reply."
+          },
           "replyProgressMessages": {
             "type": "boolean",
             "default": true,
