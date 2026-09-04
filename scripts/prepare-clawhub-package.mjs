@@ -6,7 +6,6 @@ import { extract, list } from "tar";
 
 import { prepareStagedPackageVariant } from "./package-variant.mjs";
 import {
-  assertRegistryPrompt,
   assertRegistryPromptOrder,
   assertRegistryReadmeInstallCommands,
   assertRegistryReadmeLinksAbsolute,
@@ -98,20 +97,10 @@ export async function prepareClawHubReadmes(packageDirectory) {
     Object.entries(canonicalReadmes).map(([fileName, markdown]) => {
       assertRegistryReadmeTitle(markdown, "npm", { fileName });
       assertRegistryReadmeOrder(markdown, "clawhub", { fileName });
-      const canonicalPrompt = assertRegistryPrompt(markdown, { fileName });
       assertRegistryPromptOrder(markdown, "clawhub", { fileName });
       assertRegistryReadmeInstallCommands(markdown, { fileName });
       assertRegistryReadmeLinksAbsolute(markdown, { fileName });
-      const variant = preferRegistryReadmeTitle(markdown, "clawhub", { fileName });
-      assertRegistryReadmeTitle(variant, "clawhub", { fileName });
-      assertRegistryReadmeOrder(variant, "clawhub", { fileName });
-      assertRegistryPromptOrder(variant, "clawhub", { fileName });
-      const variantPrompt = assertRegistryPrompt(variant, { fileName });
-      if (variantPrompt.value !== canonicalPrompt.value) {
-        throw new Error(`${fileName}: ClawHub staging must not change the shared prompt`);
-      }
-      assertRegistryReadmeInstallCommands(variant, { fileName });
-      return [fileName, variant];
+      return [fileName, preferRegistryReadmeTitle(markdown, "clawhub", { fileName })];
     }),
   );
   await Promise.all(

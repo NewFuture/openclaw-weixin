@@ -1,10 +1,8 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { prepareNpmReadmes } from "./prepare-npm-package.mjs";
+import { createNpmReadmeVariant } from "./prepare-npm-package.mjs";
 import {
   assertRegistryPromptOrder,
   assertRegistryReadmeOrder,
@@ -13,33 +11,14 @@ import {
   REGISTRY_README_FILES,
 } from "./registry-readme.mjs";
 
-const temporaryDirectories = [];
-
-async function createReadmeDirectory() {
-  const directory = await mkdtemp(path.join(tmpdir(), "openclaw-npm-readmes-"));
-  temporaryDirectories.push(directory);
-  await Promise.all(
-    REGISTRY_README_FILES.map(async (fileName) => {
-      const markdown = await readFile(new URL(`../${fileName}`, import.meta.url), "utf8");
-      await writeFile(path.join(directory, fileName), markdown, "utf8");
-    }),
-  );
-  return directory;
-}
-
-afterEach(async () => {
-  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
-});
+const readReadme = (fileName) => readFile(new URL(`../${fileName}`, import.meta.url), "utf8");
 
 describe("npm package README preparation", () => {
   it("creates npm-first README variants from ClawHub-first sources", async () => {
-    const directory = await createReadmeDirectory();
-    await prepareNpmReadmes(directory);
-
     for (const fileName of REGISTRY_README_FILES) {
-      const markdown = await readFile(path.join(directory, fileName), "utf8");
-      expect(assertRegistryReadmeOrder(markdown, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
-      expect(assertRegistryPromptOrder(markdown, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
+      const variant = createNpmReadmeVariant(await readReadme(fileName), fileName);
+      expect(assertRegistryReadmeOrder(variant, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
+      expect(assertRegistryPromptOrder(variant, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
     }
   });
 
@@ -55,11 +34,8 @@ describe("npm package README preparation", () => {
       expected: "expected clawhub prompt source first, found npm",
     },
   ])("rejects npm-first source $label", async ({ transform, expected }) => {
-    const directory = await createReadmeDirectory();
     const fileName = REGISTRY_README_FILES[0];
-    const filePath = path.join(directory, fileName);
-    await writeFile(filePath, transform(await readFile(filePath, "utf8"), fileName), "utf8");
-
-    await expect(prepareNpmReadmes(directory)).rejects.toThrow(`${fileName}: ${expected}`);
+    const markdown = transform(await readReadme(fileName), fileName);
+    expect(() => createNpmReadmeVariant(markdown, fileName)).toThrow(`${fileName}: ${expected}`);
   });
 });

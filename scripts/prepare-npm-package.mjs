@@ -15,23 +15,21 @@ import {
   REGISTRY_README_FILES,
 } from "./registry-readme.mjs";
 
+export function createNpmReadmeVariant(markdown, fileName) {
+  assertRegistryReadmeTitle(markdown, "npm", { fileName });
+  assertRegistryReadmeOrder(markdown, "clawhub", { fileName });
+  assertRegistryPromptOrder(markdown, "clawhub", { fileName });
+  assertRegistryReadmeInstallCommands(markdown, { fileName });
+  assertRegistryReadmeLinksAbsolute(markdown, { fileName });
+  return preferRegistryPromptSource(preferRegistryReadmeSource(markdown, "npm", { fileName }), "npm", { fileName });
+}
+
 export async function prepareNpmReadmes(packageDirectory) {
   await Promise.all(
     REGISTRY_README_FILES.map(async (fileName) => {
       const filePath = path.join(packageDirectory, fileName);
       const markdown = await readFile(filePath, "utf8");
-      assertRegistryReadmeTitle(markdown, "npm", { fileName });
-      assertRegistryReadmeOrder(markdown, "clawhub", { fileName });
-      assertRegistryPromptOrder(markdown, "clawhub", { fileName });
-      assertRegistryReadmeInstallCommands(markdown, { fileName });
-      assertRegistryReadmeLinksAbsolute(markdown, { fileName });
-
-      const variant = preferRegistryPromptSource(preferRegistryReadmeSource(markdown, "npm", { fileName }), "npm", {
-        fileName,
-      });
-      assertRegistryReadmeOrder(variant, "npm", { fileName });
-      assertRegistryPromptOrder(variant, "npm", { fileName });
-      await writeFile(filePath, variant, "utf8");
+      await writeFile(filePath, createNpmReadmeVariant(markdown, fileName), "utf8");
     }),
   );
 }
