@@ -9,11 +9,11 @@ const COMMAND_TIMEOUT_MS = 600_000;
 const INSTALL_TARGETS = [
   {
     name: "ClawHub",
-    args: ["plugins", "install", "clawhub:openclaw-wechat", "--accept-capabilities"],
+    args: ["plugins", "install", "clawhub:openclaw-wechat"],
   },
   {
     name: "npm",
-    args: ["plugins", "install", "npm:openclaw-weixin", "--force", "--accept-capabilities"],
+    args: ["plugins", "install", "npm:openclaw-weixin", "--force"],
   },
 ];
 
@@ -40,6 +40,11 @@ function runOpenClaw(rootDirectory, args, env, label) {
     throw new Error(`${label} exited with status ${result.status}`);
   }
   return result.stdout;
+}
+
+function capabilityAcceptanceArgs(rootDirectory, command, env) {
+  const help = runOpenClaw(rootDirectory, ["plugins", command, "--help"], env, `${command} command help`);
+  return help.includes("--accept-capabilities") ? ["--accept-capabilities"] : [];
 }
 
 function includesPluginId(value) {
@@ -79,16 +84,20 @@ export async function checkPluginInstallUpdate(rootDirectory = process.cwd()) {
     NO_COLOR: "1",
     OPENCLAW_CONFIG_PATH: path.join(stateDirectory, "openclaw.json"),
     OPENCLAW_HOME: stateDirectory,
+    OPENCLAW_OAUTH_DIR: path.join(stateDirectory, "oauth"),
     OPENCLAW_STATE_DIR: stateDirectory,
   };
 
   try {
+    const installCapabilityArgs = capabilityAcceptanceArgs(rootDirectory, "install", env);
+    const updateCapabilityArgs = capabilityAcceptanceArgs(rootDirectory, "update", env);
+
     for (const target of INSTALL_TARGETS) {
-      runOpenClaw(rootDirectory, target.args, env, `${target.name} install`);
+      runOpenClaw(rootDirectory, [...target.args, ...installCapabilityArgs], env, `${target.name} install`);
       assertPluginInstalled(rootDirectory, env, `${target.name} install`);
       runOpenClaw(
         rootDirectory,
-        ["plugins", "update", PLUGIN_ID, "--accept-capabilities"],
+        ["plugins", "update", PLUGIN_ID, ...updateCapabilityArgs],
         env,
         `${target.name} update`,
       );
