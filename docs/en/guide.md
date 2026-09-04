@@ -21,10 +21,10 @@ preserve the existing `channels.openclaw-weixin`,
 `plugins.entries.openclaw-weixin`, and `~/.openclaw/openclaw-weixin/` state
 paths.
 
-Check the source first. If it matches the target, run
+Check the install record first. If its package spec matches the target, run
 `openclaw plugins update openclaw-weixin`; otherwise install the target package
-without uninstalling first. Agent-run npm installs add `--force`.
-Configuration and login state are preserved.
+without uninstalling first. Agent-run npm installs add `--force`. Configuration
+and login state are preserved.
 
 ### Limitations
 

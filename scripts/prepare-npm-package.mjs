@@ -36,6 +36,9 @@ export async function prepareNpmReadmes(packageDirectory) {
 
 export async function prepareNpmPackage(source, outputDirectory = process.cwd()) {
   const sourceArchive = await resolveSourceArchive(source);
+  if (path.dirname(sourceArchive) === path.resolve(outputDirectory)) {
+    throw new Error("npm output directory must differ from the source archive directory");
+  }
   const stagingRoot = await mkdtemp(path.join(tmpdir(), "openclaw-npm-"));
   try {
     const packageDirectory = await extractPackageArchive(sourceArchive, stagingRoot);

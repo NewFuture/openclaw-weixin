@@ -13,9 +13,12 @@ import {
   extractPackageArchive,
   prepareClawHubPackage,
 } from "./prepare-clawhub-package.mjs";
+import { prepareNpmPackage } from "./prepare-npm-package.mjs";
 import {
   assertRegistryPrompt,
+  assertRegistryPromptOrder,
   assertRegistryReadmeLinksAbsolute,
+  assertRegistryReadmeOrder,
   preferRegistryReadmeSource,
   preferRegistryReadmeTitle,
   REGISTRY_README_FILES,
@@ -127,6 +130,7 @@ function canonicalReadme(language) {
     "",
     "`clawhub:openclaw-wechat`",
     "`npm:openclaw-weixin`",
+    "`openclaw plugins update openclaw-weixin`",
     isEnglish ? "Use `--force` when the target source is npm." : "目标来源为 npm 时使用 `--force`。",
     registryPromptMarker("end"),
     "",
@@ -279,6 +283,8 @@ describe("ClawHub package preparation", () => {
     const source = await createCanonicalArchive();
     const outputDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-output-");
     const extractionDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-extract-");
+    const npmOutputDirectory = createTemporaryDirectory("openclaw-weixin-npm-output-");
+    const npmExtractionDirectory = createTemporaryDirectory("openclaw-weixin-npm-extract-");
     const canonicalExtractionDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-canonical-extract-");
     const originalReadmes = Object.fromEntries(
       PACKAGED_README_FILES.map((fileName) => [
@@ -299,7 +305,9 @@ describe("ClawHub package preparation", () => {
         process.env.npm_execpath = npmExecPath;
       }
     }
+    const npmArchive = await prepareNpmPackage(source.archiveDirectory, npmOutputDirectory);
     const extractedPackage = await extractPackageArchive(archive, extractionDirectory);
+    const extractedNpmPackage = await extractPackageArchive(npmArchive, npmExtractionDirectory);
     const extractedCanonicalPackage = await extractPackageArchive(source.archive, canonicalExtractionDirectory);
     const variantManifest = JSON.parse(readFileSync(join(extractedPackage, "package.json"), "utf8"));
     const expectedManifest = canonicalManifest();
@@ -333,6 +341,13 @@ describe("ClawHub package preparation", () => {
     expect(readFileSync(join(extractedPackage, "README.md"), "utf8")).not.toBe(
       readFileSync(join(extractedPackage, "README.zh_CN.md"), "utf8"),
     );
+    expect(basename(npmArchive)).toBe("openclaw-weixin-3.1.0.tgz");
+    expect(JSON.parse(readFileSync(join(extractedNpmPackage, "package.json"), "utf8"))).toEqual(canonicalManifest());
+    for (const fileName of REGISTRY_README_FILES) {
+      const npmReadme = readFileSync(join(extractedNpmPackage, fileName), "utf8");
+      expect(assertRegistryReadmeOrder(npmReadme, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
+      expect(assertRegistryPromptOrder(npmReadme, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
+    }
     for (const fileName of REGISTRY_README_FILES) {
       const canonicalArchiveReadme = readFileSync(join(extractedCanonicalPackage, fileName), "utf8");
       expect(readFileSync(join(source.packageDirectory, fileName), "utf8")).toBe(originalReadmes[fileName]);
@@ -340,7 +355,7 @@ describe("ClawHub package preparation", () => {
     }
     expect(readFileSync(join(source.packageDirectory, "README.zh_CN.md"), "utf8")).toBe(CHINESE_REDIRECT_README);
     expect(readFileSync(join(extractedCanonicalPackage, "README.zh_CN.md"), "utf8")).toBe(CHINESE_REDIRECT_README);
-  }, 60_000);
+  }, 90_000);
 
   it.each([
     {
@@ -376,6 +391,11 @@ describe("ClawHub package preparation", () => {
       label: "suffixed prompt spec",
       mutate: (readme) => readme.replace("`npm:openclaw-weixin`", "`npm:openclaw-weixin-typo`"),
       expected: "shared prompt must include `npm:openclaw-weixin` exactly once (found 0)",
+    },
+    {
+      label: "missing update command",
+      mutate: (readme) => readme.replace("`openclaw plugins update openclaw-weixin`", "update the existing plugin"),
+      expected: "shared prompt must include `openclaw plugins update openclaw-weixin` exactly once (found 0)",
     },
     {
       label: "duplicate marker",

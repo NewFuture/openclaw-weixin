@@ -54,6 +54,7 @@ describe("ClawHub publish workflow contract", () => {
     expect(validateJob).toContain("node scripts/prepare-npm-package.mjs");
     expect(validateJob).toContain("node scripts/prepare-clawhub-package.mjs");
     expect(validateJob).toContain("name: registry-packages");
+    expect(validateJob).toContain("overwrite: true");
     expect(npmPublishJob).toContain("actions/download-artifact@");
     expect(npmPublishJob).not.toContain("prepare-npm-package.mjs");
     expect(npmPublishJob).toContain('packages=("$RUNNER_TEMP/npm-package/"*.tgz)');

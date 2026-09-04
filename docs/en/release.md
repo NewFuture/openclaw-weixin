@@ -273,6 +273,6 @@ compatibility, and scan status. Validate the README variants:
 | ClawHub package | English primary README; title `openclaw-wechat`; ClawHub-first |
 
 Source README prompts are ClawHub-first; npm variants are npm-first. Each names
-both specs once, updates the same source or installs the target source, and uses
-`--force` only when the Agent selects npm. Direct commands omit the flag, and
-all links are absolute.
+both specs once, updates an exact package-spec match or installs the target, and
+uses `--force` only when the Agent selects npm. Direct commands omit the flag,
+and all links are absolute.

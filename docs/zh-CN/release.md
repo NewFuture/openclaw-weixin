@@ -218,5 +218,5 @@ artifact。
 | ClawHub 包 | 英文主 README；标题为 `openclaw-wechat`；ClawHub-first |
 
 源 README prompt 为 ClawHub-first，npm 变体为 npm-first。每条 prompt 中两个来源 spec
-各出现一次，同来源则更新，否则安装目标来源；仅当 Agent 选择 npm 时使用 `--force`。
-直接命令省略该参数，所有链接使用绝对地址。
+各出现一次，已记录的包 spec 与目标相同则更新，否则安装目标；仅当 Agent 选择 npm 时
+使用 `--force`。直接命令省略该参数，所有链接使用绝对地址。

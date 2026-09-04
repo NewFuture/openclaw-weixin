@@ -102,7 +102,10 @@ describe("syncContent", () => {
     );
     assert.match(overview, /把下面这段话粘贴到 OpenClaw 聊天框并发送/);
     assert.doesNotMatch(overview, /id="(?:npm|clawhub)-agent-install"/);
-    assert.match(chinesePrompt.value, /与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包/);
+    assert.match(
+      chinesePrompt.value,
+      /已记录的包 spec 与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包/,
+    );
     assert.match(chinesePrompt.value, /按提示审阅并确认插件能力/);
     assert.ok(chinesePrompt.start < overview.indexOf("### 直接运行命令"));
     assert.match(overview, /<details id="verify-connection" class="full-check">/);
@@ -125,7 +128,7 @@ describe("syncContent", () => {
     ]);
     const englishPrompt = assertRegistryPromptOrder(english, "clawhub", { fileName: "en/index.md" });
     assert.doesNotThrow(() => assertRegistryReadmeInstallCommands(english, { fileName: "en/index.md" }));
-    assert.match(englishPrompt.value, /and choose one source\.\r?\nInspect the `openclaw-weixin` source first/);
+    assert.match(englishPrompt.value, /and choose one source\.\r?\nInspect the `openclaw-weixin` install record first/);
     assert.match(english, /<a id="connect-wechat"><\/a>\n\n## Choose an installation method/);
     assert.doesNotMatch(english, /Copy the prompt, or run a command directly/);
     assert.doesNotMatch(
@@ -155,7 +158,7 @@ describe("syncContent", () => {
     );
     assert.match(
       englishPrompt.value,
-      /if it matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package/,
+      /if its package spec matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package/,
     );
     assert.match(englishPrompt.value, /Review and confirm plugin capabilities when prompted/);
     assert.match(english, /already has a WeChat login,[\s>]+you usually only need[\s>]+to confirm the connection/);

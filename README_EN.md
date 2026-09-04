@@ -25,7 +25,7 @@ Paste this prompt into an OpenClaw chat and send it:
 
 ```text
 Install or update the WeChat plugin for this OpenClaw instance. Source priority: `clawhub:openclaw-wechat`; use `npm:openclaw-weixin` only if unavailable, and choose one source.
-Inspect the `openclaw-weixin` source first: if it matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package without uninstalling first. Add `--force` when installing from npm. Review and confirm plugin capabilities when prompted. Preserve configuration and login data, and use the OpenClaw plugin flow rather than plain `npm install`. Then verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the result or failure.
+Inspect the `openclaw-weixin` install record first: if its package spec matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package without uninstalling first. Add `--force` when installing from npm. Review and confirm plugin capabilities when prompted. Preserve configuration and login data, and use the OpenClaw plugin flow rather than plain `npm install`. Then verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the result or failure.
 ```
 <!-- registry-prompt:end -->
 
@@ -33,9 +33,10 @@ Inspect the `openclaw-weixin` source first: if it matches the target, run `openc
 
 ### Run a command directly
 
-**Do not uninstall Tencent's package first when replacing it.** If the source
-matches the target, run `openclaw plugins update openclaw-weixin`; otherwise run
-the target source command. Configuration and login state are preserved.
+**Do not uninstall Tencent's package first when replacing it.** If the recorded
+package spec matches the target, run `openclaw plugins update openclaw-weixin`;
+otherwise run the target source command. Configuration and login state are
+preserved.
 
 <!-- registry-source:clawhub:start -->
 <a id="clawhub-source"></a>

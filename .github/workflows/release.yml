@@ -132,6 +132,7 @@ jobs:
             ${{ runner.temp }}/npm-package
             ${{ runner.temp }}/clawhub-package
           if-no-files-found: error
+          overwrite: true
           retention-days: 7
 
       - name: Resolve registry publication targets
