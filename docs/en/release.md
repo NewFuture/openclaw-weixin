@@ -274,5 +274,6 @@ compatibility, and scan status. Validate the README variants:
 
 Source README prompts are ClawHub-first; npm variants are npm-first. Each names
 both specs once and describes only source priority and safety constraints.
-`--force` applies only when the Agent selects npm. Direct commands omit the
-flag, and all links are absolute.
+`--force` applies to Agent-run npm installs and any replacement install. Direct
+commands omit the flag for a first install; a replacement appends it to the
+selected install command. All links are absolute.
