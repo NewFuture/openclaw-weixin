@@ -37,9 +37,26 @@ function runOpenClaw(rootDirectory, args, env, label) {
     throw new Error(`${label} did not finish before the ${COMMAND_TIMEOUT_MS / 1_000}s timeout`);
   }
   if (result.status !== 0) {
-    throw new Error(`${label} exited with status ${result.status}`);
+    throw new Error(`${label} exited with status ${result.status} (${sanitizedCommandDiagnostic(result)})`);
   }
   return result.stdout;
+}
+
+function sanitizedCommandDiagnostic(result) {
+  const output = `${result.stderr}\n${result.stdout}`.toLowerCase();
+  if (/unknown (?:option|argument|command)|missing required argument/.test(output)) {
+    return "unsupported CLI argument";
+  }
+  if (/not installed|not tracked|not updateable/.test(output)) {
+    return "missing install record";
+  }
+  if (/registry|network|download|fetch|resolve|econn|etimedout|enotfound/.test(output)) {
+    return "registry request failure";
+  }
+  if (/incompatib|requires.*(?:openclaw|node)|unsupported.*(?:host|version)/.test(output)) {
+    return "host compatibility failure";
+  }
+  return "unclassified command failure";
 }
 
 function capabilityAcceptanceArgs(rootDirectory, command, env) {
@@ -47,12 +64,22 @@ function capabilityAcceptanceArgs(rootDirectory, command, env) {
   return help.includes("--accept-capabilities") ? ["--accept-capabilities"] : [];
 }
 
-function includesPluginId(value) {
-  if (Array.isArray(value)) return value.some(includesPluginId);
-  if (value && typeof value === "object") {
-    return value.id === PLUGIN_ID || Object.values(value).some(includesPluginId);
+function findPluginRecord(value) {
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const record = findPluginRecord(entry);
+      if (record) return record;
+    }
+    return undefined;
   }
-  return false;
+  if (value && typeof value === "object") {
+    if (value.id === PLUGIN_ID && typeof value.status === "string") return value;
+    for (const entry of Object.values(value)) {
+      const record = findPluginRecord(entry);
+      if (record) return record;
+    }
+  }
+  return undefined;
 }
 
 function assertPluginInstalled(rootDirectory, env, label) {
@@ -63,20 +90,14 @@ function assertPluginInstalled(rootDirectory, env, label) {
   } catch {
     throw new Error(`${label} plugin listing did not return JSON`);
   }
-  if (!includesPluginId(installed)) {
+  const plugin = findPluginRecord(installed);
+  if (!plugin) {
     throw new Error(`${label} did not register plugin id ${PLUGIN_ID}`);
   }
+  if (plugin.status !== "loaded") throw new Error(`${label} plugin id ${PLUGIN_ID} is not loaded`);
 }
 
-export async function checkPluginInstallUpdate(rootDirectory = process.cwd()) {
-  const hostPackage = JSON.parse(
-    await readFile(path.join(rootDirectory, "node_modules", "openclaw", "package.json"), "utf8"),
-  );
-  const expectedVersion = process.env.OPENCLAW_EXPECTED_VERSION?.trim();
-  if (expectedVersion && hostPackage.version !== expectedVersion) {
-    throw new Error(`expected OpenClaw ${expectedVersion}, found ${hostPackage.version}`);
-  }
-
+async function checkInstallUpdateForTarget(rootDirectory, hostVersion, target) {
   const stateDirectory = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-install-update-"));
   const env = {
     ...process.env,
@@ -92,20 +113,27 @@ export async function checkPluginInstallUpdate(rootDirectory = process.cwd()) {
     const installCapabilityArgs = capabilityAcceptanceArgs(rootDirectory, "install", env);
     const updateCapabilityArgs = capabilityAcceptanceArgs(rootDirectory, "update", env);
 
-    for (const target of INSTALL_TARGETS) {
-      runOpenClaw(rootDirectory, [...target.args, ...installCapabilityArgs], env, `${target.name} install`);
-      assertPluginInstalled(rootDirectory, env, `${target.name} install`);
-      runOpenClaw(
-        rootDirectory,
-        ["plugins", "update", PLUGIN_ID, ...updateCapabilityArgs],
-        env,
-        `${target.name} update`,
-      );
-      assertPluginInstalled(rootDirectory, env, `${target.name} update`);
-      console.log(`Validated ${target.name} install and update with OpenClaw ${hostPackage.version}`);
-    }
+    runOpenClaw(rootDirectory, [...target.args, ...installCapabilityArgs], env, `${target.name} install`);
+    assertPluginInstalled(rootDirectory, env, `${target.name} install`);
+    runOpenClaw(rootDirectory, ["plugins", "update", PLUGIN_ID, ...updateCapabilityArgs], env, `${target.name} update`);
+    assertPluginInstalled(rootDirectory, env, `${target.name} update`);
+    console.log(`Validated ${target.name} install and update with OpenClaw ${hostVersion}`);
   } finally {
     await rm(stateDirectory, { recursive: true, force: true });
+  }
+}
+
+export async function checkPluginInstallUpdate(rootDirectory = process.cwd()) {
+  const hostPackage = JSON.parse(
+    await readFile(path.join(rootDirectory, "node_modules", "openclaw", "package.json"), "utf8"),
+  );
+  const expectedVersion = process.env.OPENCLAW_EXPECTED_VERSION?.trim();
+  if (expectedVersion && hostPackage.version !== expectedVersion) {
+    throw new Error(`expected OpenClaw ${expectedVersion}, found ${hostPackage.version}`);
+  }
+
+  for (const target of INSTALL_TARGETS) {
+    await checkInstallUpdateForTarget(rootDirectory, hostPackage.version, target);
   }
 }
 
