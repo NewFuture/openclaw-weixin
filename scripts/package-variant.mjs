@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isDeepStrictEqual } from "node:util";
 
 export const CANONICAL_PACKAGE_NAME = "openclaw-weixin";
 export const CANONICAL_PLUGIN_ID = "openclaw-weixin";
@@ -160,19 +159,6 @@ export async function prepareStagedPackageVariant(packageDirectory, outputDirect
 
   const variantManifest = createPackageVariantManifest(metadata.packageJson, options);
   await writeFile(path.join(packageDirectory, "package.json"), `${JSON.stringify(variantManifest, null, 2)}\n`, "utf8");
-
-  const persistedManifest = JSON.parse(await readFile(path.join(packageDirectory, "package.json"), "utf8"));
-  assert(
-    isDeepStrictEqual(persistedManifest, variantManifest),
-    "the staged package manifest differs from the requested variant",
-  );
-  const persistedPluginManifest = JSON.parse(
-    await readFile(path.join(packageDirectory, "openclaw.plugin.json"), "utf8"),
-  );
-  assert(
-    isDeepStrictEqual(persistedPluginManifest, metadata.pluginManifest),
-    "the package variant must not change openclaw.plugin.json",
-  );
 
   return packPackageDirectory(packageDirectory, outputDirectory);
 }

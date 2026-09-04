@@ -75,12 +75,12 @@ deploy** once. GitHub applies that one UI action to both jobs, while each job
 receives only its own environment and OIDC trust boundary. If only one target is
 missing, approve only that environment. If both exact targets exist, neither
 environment requests approval. The GitHub Packages job uses the repository's
-`GITHUB_TOKEN` and performs its own exact-version precheck. A missing intermediate
-mirror version is reported but does not block the exact current target.
+`GITHUB_TOKEN` and performs one final exact-version and `latest` check. A missing
+intermediate mirror version does not block the exact current target.
 
 Before an irreversible command, each package job verifies the live tag and
 rechecks its own target. GitHub Packages also rereads `latest` at that boundary
-so another publication during the build cannot make this release move the
+so another publication during the workflow cannot make this release move the
 dist-tag backward. The npmjs and GitHub Packages jobs treat a successful `npm
 publish` response as completion instead of immediately querying a registry that
 may still be propagating the new version. The ClawHub job waits for its publish
@@ -217,7 +217,7 @@ fails before the publication boundary is created, re-run the original workflow:
 only `clawhub-publish` requests approval, while its target recheck skips any
 exact version that appeared during the failure. The reverse partial state is
 handled independently by `npm-publish`, and GitHub Packages retains its own
-idempotent precheck. If both exact protected-registry targets already match,
+idempotent final check. If both exact protected-registry targets already match,
 both protected jobs are skipped while GitHub Packages is reconciled before the
 GitHub Release is finalized.
 

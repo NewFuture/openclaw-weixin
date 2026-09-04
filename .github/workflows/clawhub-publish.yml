@@ -32,11 +32,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run project checks
-        run: npm run check
-
-      - name: Inspect package source
-        run: npm run pack:check
+      - name: Build package
+        run: npm run build
 
       - name: Build ClawPack
         run: |

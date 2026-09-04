@@ -60,10 +60,10 @@ ClawHub 的发布分别使用独立的受保护 GitHub OIDC job 和环境；GitH
 一次 **Approve and deploy**。GitHub 会将这一次 UI 操作应用到两个 job，但每个 job
 仅获得其自身环境和 OIDC 信任边界。如果仅缺失一个目标，只批准对应环境。如果两个精确
 目标都存在，两个环境都不会请求批准。GitHub Packages job 使用仓库的 `GITHUB_TOKEN`，
-并执行自己的精确版本预检查。会报告缺失的中间镜像版本，但不会阻止精确当前目标。
+并执行一次最终精确版本与 `latest` 检查。缺失的中间镜像版本不会阻止精确当前目标。
 
 在不可逆命令之前，每个包 job 都会验证远端标签的当前指向，并重新检查自己的目标。GitHub Packages
-还会在该边界重新读取 `latest`，以免构建期间的另一项发布导致本次发布将 dist-tag
+还会在该边界重新读取 `latest`，以免工作流期间的另一项发布导致本次发布将 dist-tag
 回退。npmjs 和 GitHub Packages job 将成功的 `npm publish` 响应视为完成，而不会立即
 查询可能仍在传播新版本的 registry。ClawHub job 等待其发布响应，并要求
 `publicationStatus` 为 `published`。ClawHub 会存储上传的 ClawPack，且该包的默认
@@ -172,7 +172,7 @@ dry-run；它没有生产分派或 OIDC 权限。
 npmjs 成功，但 ClawHub 在创建发布边界前失败，请重新运行原始工作流：仅
 `clawhub-publish` 请求批准；若故障期间出现精确目标版本，复查会跳过该版本。ClawHub
 成功而 npmjs 失败的反向部分成功状态由 `npm-publish` 独立处理，GitHub Packages 保留
-自己的幂等预检查。如果两个
+自己的幂等最终检查。如果两个
 精确受保护 registry 目标都已匹配，两个受保护 job 都会被跳过，同时会在完成 GitHub
 Release 前协调 GitHub Packages。
 
