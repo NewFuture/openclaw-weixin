@@ -17,6 +17,9 @@ const ISOLATED_ENVIRONMENT_VARIABLES = new Set([
   "OPENCLAW_HOME",
   "OPENCLAW_OAUTH_DIR",
   "OPENCLAW_STATE_DIR",
+  "NODE_AUTH_TOKEN",
+  "NPM_AUTH_TOKEN",
+  "NPM_TOKEN",
 ]);
 const INSTALL_TARGETS = [
   {
@@ -28,6 +31,8 @@ const INSTALL_TARGETS = [
     args: ["plugins", "install", "npm:openclaw-weixin", "--force"],
   },
 ];
+
+export class PluginLifecycleCheckFailure extends Error {}
 
 function runOpenClaw(rootDirectory, args, env, label) {
   const result = spawnSync(
@@ -43,16 +48,18 @@ function runOpenClaw(rootDirectory, args, env, label) {
   );
 
   if (result.error?.code === "ETIMEDOUT") {
-    throw new Error(`${label} did not finish before the ${COMMAND_TIMEOUT_MS / 1_000}s timeout`);
+    throw new PluginLifecycleCheckFailure(`${label} did not finish before the ${COMMAND_TIMEOUT_MS / 1_000}s timeout`);
   }
   if (result.error) {
-    throw new Error(`${label} could not start (${result.error.code ?? "unknown"})`);
+    throw new PluginLifecycleCheckFailure(`${label} could not start`);
   }
   if (result.signal) {
-    throw new Error(`${label} exited with signal ${result.signal}`);
+    throw new PluginLifecycleCheckFailure(`${label} exited with signal ${result.signal}`);
   }
   if (result.status !== 0) {
-    throw new Error(`${label} exited with status ${result.status} (${sanitizedCommandDiagnostic(result)})`);
+    throw new PluginLifecycleCheckFailure(
+      `${label} exited with status ${result.status} (${sanitizedCommandDiagnostic(result)})`,
+    );
   }
   return result.stdout;
 }
@@ -103,19 +110,24 @@ function assertPluginInstalled(rootDirectory, env, label) {
   try {
     installed = JSON.parse(output);
   } catch {
-    throw new Error(`${label} plugin listing did not return JSON`);
+    throw new PluginLifecycleCheckFailure(`${label} plugin listing did not return JSON`);
   }
   const plugin = findPluginRecord(installed);
   if (!plugin) {
-    throw new Error(`${label} did not register plugin id ${PLUGIN_ID}`);
+    throw new PluginLifecycleCheckFailure(`${label} did not register plugin id ${PLUGIN_ID}`);
   }
-  if (plugin.status !== "loaded") throw new Error(`${label} plugin id ${PLUGIN_ID} is not loaded`);
+  if (plugin.status !== "loaded") {
+    throw new PluginLifecycleCheckFailure(`${label} plugin id ${PLUGIN_ID} is not loaded`);
+  }
 }
 
-function isolatedEnvironment(stateDirectory) {
-  const env = { ...process.env };
+export function isolatedEnvironment(stateDirectory, parentEnvironment = process.env) {
+  const env = { ...parentEnvironment };
   for (const name of Object.keys(env)) {
-    if (ISOLATED_ENVIRONMENT_VARIABLES.has(name.toUpperCase())) delete env[name];
+    const normalizedName = name.toUpperCase();
+    if (ISOLATED_ENVIRONMENT_VARIABLES.has(normalizedName) || normalizedName.startsWith("NPM_CONFIG_")) {
+      delete env[name];
+    }
   }
   return {
     ...env,
@@ -127,6 +139,10 @@ function isolatedEnvironment(stateDirectory) {
     OPENCLAW_HOME: stateDirectory,
     OPENCLAW_OAUTH_DIR: path.join(stateDirectory, "oauth"),
     OPENCLAW_STATE_DIR: stateDirectory,
+    NPM_CONFIG_CACHE: path.join(stateDirectory, "npm-cache"),
+    NPM_CONFIG_GLOBALCONFIG: path.join(stateDirectory, "npmrc-global"),
+    NPM_CONFIG_REGISTRY: "https://registry.npmjs.org/",
+    NPM_CONFIG_USERCONFIG: path.join(stateDirectory, "npmrc"),
   };
 }
 
@@ -154,7 +170,7 @@ export async function checkPluginInstallUpdate(rootDirectory = process.cwd()) {
   );
   const expectedVersion = process.env.OPENCLAW_EXPECTED_VERSION?.trim();
   if (expectedVersion && hostPackage.version !== expectedVersion) {
-    throw new Error(`expected OpenClaw ${expectedVersion}, found ${hostPackage.version}`);
+    throw new PluginLifecycleCheckFailure(`expected OpenClaw ${expectedVersion}, found ${hostPackage.version}`);
   }
 
   for (const target of INSTALL_TARGETS) {
@@ -162,7 +178,19 @@ export async function checkPluginInstallUpdate(rootDirectory = process.cwd()) {
   }
 }
 
+export function formatCheckFailure(error) {
+  if (error instanceof PluginLifecycleCheckFailure) {
+    return `Plugin lifecycle check failed: ${error.message}`;
+  }
+  return "Plugin lifecycle check failed: unexpected error";
+}
+
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : undefined;
 if (import.meta.url === invokedPath) {
-  await checkPluginInstallUpdate();
+  try {
+    await checkPluginInstallUpdate();
+  } catch (error) {
+    console.error(formatCheckFailure(error));
+    process.exitCode = 1;
+  }
 }
