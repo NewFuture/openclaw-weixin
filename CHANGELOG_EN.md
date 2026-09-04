@@ -13,7 +13,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
   compatibility coverage and the `2026.6.1` minimum host.
 - **Package source priority:** The repository, website, and ClawHub package are
   now ClawHub-first. npm and GitHub Packages generate npm-first READMEs from the
-  same source package, removing the website-only transformation.
+  same source package, removing the website-only transformation; publishing
+  jobs reuse the exact tarballs created during validation.
 
 ## [3.1.6] - 2026-08-22
 

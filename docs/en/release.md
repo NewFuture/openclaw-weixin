@@ -161,6 +161,8 @@ package name and README titles to `openclaw-wechat`, and uses English as the
 primary README. Both validate package identity, exact install commands, and
 absolute links without modifying the source tarball or runtime
 `openclaw-weixin` id.
+Release validation uploads both tarballs once; publishing jobs download those
+exact artifacts and retain their live tag and registry rechecks.
 
 Before any ClawHub release, run `npm ci`, `npm run check`, and
 `npm run pack:check`, then build and validate the ClawPack with the commands in

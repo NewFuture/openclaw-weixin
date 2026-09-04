@@ -49,17 +49,23 @@ describe("npm package README preparation", () => {
     }
   });
 
-  it("rejects an npm-first source README", async () => {
+  it.each([
+    {
+      label: "direct blocks",
+      transform: (markdown, fileName) => preferRegistryReadmeSource(markdown, "npm", { fileName }),
+      expected: "expected clawhub source first, found npm",
+    },
+    {
+      label: "prompt",
+      transform: (markdown, fileName) => preferRegistryPromptSource(markdown, "npm", { fileName }),
+      expected: "expected clawhub prompt source first, found npm",
+    },
+  ])("rejects npm-first source $label", async ({ transform, expected }) => {
     const directory = await createReadmeDirectory();
     const fileName = REGISTRY_README_FILES[0];
     const filePath = path.join(directory, fileName);
-    const markdown = await readFile(filePath, "utf8");
-    await writeFile(
-      filePath,
-      preferRegistryPromptSource(preferRegistryReadmeSource(markdown, "npm", { fileName }), "npm", { fileName }),
-      "utf8",
-    );
+    await writeFile(filePath, transform(await readFile(filePath, "utf8"), fileName), "utf8");
 
-    await expect(prepareNpmReadmes(directory)).rejects.toThrow(`${fileName}: expected clawhub source first, found npm`);
+    await expect(prepareNpmReadmes(directory)).rejects.toThrow(`${fileName}: ${expected}`);
   });
 });

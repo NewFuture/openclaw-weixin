@@ -126,6 +126,7 @@ ClawHub 分发刻意与 npm 身份分离：
 `scripts/prepare-clawhub-package.mjs` 保留源优先级，将包名和 README 标题改为
 `openclaw-wechat`，并使用英文主 README。两者都会验证包身份、精确安装命令和绝对链接，
 且不修改源 tarball 或 `openclaw-weixin` 运行时 ID。
+发布验证只上传一次两个 tarball；发布 job 下载相同产物，并保留实时标签和 registry 复查。
 
 在任何 ClawHub 发布前，运行 `npm ci`、`npm run check` 和 `npm run pack:check`，然后按
 [贡献指南](./contributing.md)中的命令构建并验证 ClawPack。绝不可复用或覆盖

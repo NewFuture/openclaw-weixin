@@ -153,8 +153,9 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
   if (forceCount !== 1) {
     throw readmeError(fileName, `shared prompt must describe \`--force\` exactly once (found ${forceCount})`);
   }
-  const forceSentence = prompt.value.split(/[.!?。！？\r\n]+/u).find((sentence) => sentence.includes("`--force`"));
-  if (!forceSentence || !/\bnpm\b/iu.test(forceSentence)) {
+  const forceSentence = prompt.value.split(/[.!?。！？]+/u).find((sentence) => sentence.includes("`--force`"));
+  const forceProse = forceSentence?.replace(/`[^`]+`/gu, (code) => (code === "`--force`" ? code : ""));
+  if (!forceProse || !/\bnpm\b/iu.test(forceProse)) {
     throw readmeError(fileName, "shared prompt must scope `--force` to npm");
   }
   return prompt;
@@ -195,11 +196,14 @@ export function preferRegistryPromptSource(markdown, preferredSource, options) {
   const fallbackSource = REGISTRY_SOURCES.find((source) => source !== preferredSource);
   const preferredSpec = `\`${REGISTRY_INSTALL_SPECS[preferredSource]}\``;
   const fallbackSpec = `\`${REGISTRY_INSTALL_SPECS[fallbackSource]}\``;
-  const placeholder = "`registry-prompt-source-placeholder`";
-  const value = prompt.value
-    .replace(preferredSpec, placeholder)
-    .replace(fallbackSpec, preferredSpec)
-    .replace(placeholder, fallbackSpec);
+  const fallbackIndex = prompt.value.indexOf(fallbackSpec);
+  const preferredIndex = prompt.value.indexOf(preferredSpec);
+  const value =
+    prompt.value.slice(0, fallbackIndex) +
+    preferredSpec +
+    prompt.value.slice(fallbackIndex + fallbackSpec.length, preferredIndex) +
+    fallbackSpec +
+    prompt.value.slice(preferredIndex + preferredSpec.length);
   return markdown.slice(0, prompt.start) + value + markdown.slice(prompt.end);
 }
 

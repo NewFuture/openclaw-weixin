@@ -335,12 +335,11 @@ describe("ClawHub package preparation", () => {
         "clawhub",
         "npm",
       ]);
-      const stagedPrompt = assertRegistryPrompt(stagedReadme, { fileName: targetFileName });
-      expect(assertRegistryPromptOrder(stagedReadme, "clawhub", { fileName: targetFileName }).order).toEqual([
-        "clawhub",
-        "npm",
-      ]);
-      const sourcePrompt = assertRegistryPrompt(originalReadmes[sourceFileName], { fileName: sourceFileName });
+      const stagedPrompt = assertRegistryPromptOrder(stagedReadme, "clawhub", { fileName: targetFileName });
+      expect(stagedPrompt.order).toEqual(["clawhub", "npm"]);
+      const sourcePrompt = assertRegistryPromptOrder(originalReadmes[sourceFileName], "clawhub", {
+        fileName: sourceFileName,
+      });
       expect(stagedPrompt.value).toBe(sourcePrompt.value);
       expect(() => assertRegistryReadmeInstallCommands(stagedReadme, { fileName: targetFileName })).not.toThrow();
       expect(() => assertRegistryReadmeLinksAbsolute(stagedReadme, { fileName: targetFileName })).not.toThrow();
@@ -360,7 +359,6 @@ describe("ClawHub package preparation", () => {
         "clawhub",
         "npm",
       ]);
-      expect(() => assertRegistryPrompt(canonicalArchiveReadme, { fileName })).not.toThrow();
       expect(assertRegistryPromptOrder(canonicalArchiveReadme, "clawhub", { fileName }).order).toEqual([
         "clawhub",
         "npm",
@@ -524,6 +522,11 @@ describe("ClawHub package preparation", () => {
       "mailto:support@example.test",
       "https://example.test/docs",
     ]);
+  });
+
+  it("allows the npm force explanation to wrap within a sentence", () => {
+    const readme = canonicalReadme("en").replace("target source is npm", "target\nsource is npm");
+    expect(() => assertRegistryPrompt(readme, { fileName: "README_EN.md" })).not.toThrow();
   });
 
   it.each([
