@@ -80,6 +80,7 @@ describe("syncContent", () => {
       "npm",
     ]);
     const chinesePrompt = assertRegistryPromptOrder(overview, "clawhub", { fileName: "index.md" });
+    assert.match(chinesePrompt.value, /确认插件能力/);
     assert.doesNotThrow(() => assertRegistryReadmeInstallCommands(overview, { fileName: "index.md" }));
     assert.doesNotMatch(overview, /腾讯官方 npm 包|当前能力包括微信私聊|## 社区版与腾讯版/);
     assert.match(overview, /\[社区版与腾讯版\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/distributions\.html\)/);
@@ -121,6 +122,7 @@ describe("syncContent", () => {
       "npm",
     ]);
     const englishPrompt = assertRegistryPromptOrder(english, "clawhub", { fileName: "en/index.md" });
+    assert.match(englishPrompt.value, /Confirm plugin capabilities/);
     assert.doesNotThrow(() => assertRegistryReadmeInstallCommands(english, { fileName: "en/index.md" }));
     assert.match(english, /<a id="connect-wechat"><\/a>\n\n## Choose an installation method/);
     assert.doesNotMatch(english, /Copy the prompt, or run a command directly/);

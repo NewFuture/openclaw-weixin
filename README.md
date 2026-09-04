@@ -23,7 +23,7 @@
 把下面这段话粘贴到 OpenClaw 聊天框并发送：
 
 ```text
-请安装或更新当前 OpenClaw 的微信插件。优先使用 `clawhub:openclaw-wechat`；不可用时使用 `npm:openclaw-weixin`，二选一。使用 npm 时加 `--force`。
+请安装或更新当前 OpenClaw 的微信插件。优先使用 `clawhub:openclaw-wechat`；不可用时使用 `npm:openclaw-weixin`，二选一。使用 npm 安装时加 `--force`。
 不要先卸载，保留现有配置和登录状态。按提示确认插件能力；使用 OpenClaw 插件流程，不要直接运行 `npm install`。
 ```
 <!-- registry-prompt:end -->
@@ -32,11 +32,11 @@
 
 ### 直接运行命令
 
-**之前通过 `openclaw plugins install` 安装社区版：** 运行
+**之前使用下方 ClawHub 或 npm 命令安装社区版：** 运行
 `openclaw plugins update openclaw-weixin`。
 
-**首次安装、替换腾讯官方包，或现有插件不是通过该命令安装：** 从下面任选一个安装命令，无需先卸载。
-配置和登录状态会保留。
+**首次安装、替换腾讯官方包，或现有插件通过其他来源安装：** 从下面任选一个安装命令，无需先卸载。
+替换现有插件时，在所选安装命令末尾加 `--force`。配置和登录状态会保留。
 
 <!-- registry-source:clawhub:start -->
 <a id="clawhub-source"></a>

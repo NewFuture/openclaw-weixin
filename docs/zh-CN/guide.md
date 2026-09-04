@@ -19,10 +19,10 @@
 `channels.openclaw-weixin`、`plugins.entries.openclaw-weixin` 和
 `~/.openclaw/openclaw-weixin/` 状态路径。
 
-之前通过 `openclaw plugins install` 安装社区版时，运行
-`openclaw plugins update openclaw-weixin`。首次安装、替换腾讯官方包，或现有插件不是通过该
-命令安装时，直接运行所选来源的安装命令，不要先卸载。Agent 执行 npm 安装时加 `--force`。
-配置和登录状态会保留。
+之前使用下方 ClawHub 或 npm 命令安装社区版时，运行
+`openclaw plugins update openclaw-weixin`。首次安装、替换腾讯官方包，或现有插件通过其他来源
+安装时，直接运行所选来源的安装命令，不要先卸载。Agent 执行 npm 安装及任何替换安装时加
+`--force`。配置和登录状态会保留。
 
 ### 安装限制
 
