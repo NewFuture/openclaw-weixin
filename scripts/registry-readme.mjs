@@ -149,11 +149,6 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
       throw readmeError(fileName, `shared prompt must include \`${expectedSpec}\` exactly once (found ${specCount})`);
     }
   }
-  const updateCommand = "openclaw plugins update openclaw-weixin";
-  const updateCount = codeSpans.filter((value) => value === updateCommand).length;
-  if (updateCount !== 1) {
-    throw readmeError(fileName, `shared prompt must include \`${updateCommand}\` exactly once (found ${updateCount})`);
-  }
   const forceCount = codeSpans.filter((value) => value === "--force").length;
   if (forceCount !== 1) {
     throw readmeError(fileName, `shared prompt must describe \`--force\` exactly once (found ${forceCount})`);

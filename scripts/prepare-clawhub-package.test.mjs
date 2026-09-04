@@ -130,7 +130,6 @@ function canonicalReadme(language) {
     "",
     "`clawhub:openclaw-wechat`",
     "`npm:openclaw-weixin`",
-    "`openclaw plugins update openclaw-weixin`",
     isEnglish ? "Use `--force` when the target source is npm." : "目标来源为 npm 时使用 `--force`。",
     registryPromptMarker("end"),
     "",
@@ -391,11 +390,6 @@ describe("ClawHub package preparation", () => {
       label: "suffixed prompt spec",
       mutate: (readme) => readme.replace("`npm:openclaw-weixin`", "`npm:openclaw-weixin-typo`"),
       expected: "shared prompt must include `npm:openclaw-weixin` exactly once (found 0)",
-    },
-    {
-      label: "missing update command",
-      mutate: (readme) => readme.replace("`openclaw plugins update openclaw-weixin`", "update the existing plugin"),
-      expected: "shared prompt must include `openclaw plugins update openclaw-weixin` exactly once (found 0)",
     },
     {
       label: "duplicate marker",

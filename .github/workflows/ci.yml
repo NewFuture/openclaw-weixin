@@ -78,7 +78,7 @@ jobs:
     name: ${{ matrix.os }} / Node.js ${{ matrix.node-version }} / OpenClaw ${{ matrix.openclaw_version }}
     needs: release-metadata
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -154,6 +154,11 @@ jobs:
             "openclaw@${OPENCLAW_SPEC}"
           installed_version="$(node -p 'require("./node_modules/openclaw/package.json").version')"
           echo "installed_version=${installed_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify plugin install and update commands
+        env:
+          OPENCLAW_EXPECTED_VERSION: ${{ steps.openclaw.outputs.installed_version || matrix.openclaw_version }}
+        run: node scripts/check-plugin-install-update.mjs
 
       - name: Typecheck and build supported OpenClaw runtime
         if: matrix.compatibility_profile == 'supported'

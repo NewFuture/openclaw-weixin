@@ -21,8 +21,9 @@ preserve the existing `channels.openclaw-weixin`,
 `plugins.entries.openclaw-weixin`, and `~/.openclaw/openclaw-weixin/` state
 paths.
 
-Check the install record first. If its package spec matches the target, run
-`openclaw plugins update openclaw-weixin`; otherwise install the target package
+If the community plugin is already installed, run
+`openclaw plugins update openclaw-weixin`. For a first installation or when
+replacing Tencent's official package, run the matching installation command
 without uninstalling first. Agent-run npm installs add `--force`. Configuration
 and login state are preserved.
 
