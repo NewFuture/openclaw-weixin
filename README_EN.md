@@ -24,7 +24,7 @@ This plugin requires OpenClaw `>=2026.6.1`.
 Paste this prompt into an OpenClaw chat and send it:
 
 ```text
-Install or update the WeChat plugin for this OpenClaw instance. Prefer `clawhub:openclaw-wechat`; if it is unavailable, use `npm:openclaw-weixin`. Choose one source. For an npm installation, add `--force`.
+Install or update the WeChat plugin for this OpenClaw instance. Prefer `clawhub:openclaw-wechat`; if it is unavailable, use `npm:openclaw-weixin`. Choose one source. For npm or replacement installations, add `--force`.
 Do not uninstall first; preserve existing configuration and login state. Confirm plugin capabilities when prompted, and use the OpenClaw plugin flow rather than plain `npm install`.
 ```
 <!-- registry-prompt:end -->
