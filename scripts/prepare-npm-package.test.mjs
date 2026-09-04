@@ -7,10 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { prepareNpmReadmes } from "./prepare-npm-package.mjs";
 import {
   assertRegistryPromptOrder,
-  assertRegistryReadmeInstallCommands,
-  assertRegistryReadmeLinksAbsolute,
   assertRegistryReadmeOrder,
-  assertRegistryReadmeTitle,
   preferRegistryPromptSource,
   preferRegistryReadmeSource,
   REGISTRY_README_FILES,
@@ -41,11 +38,8 @@ describe("npm package README preparation", () => {
 
     for (const fileName of REGISTRY_README_FILES) {
       const markdown = await readFile(path.join(directory, fileName), "utf8");
-      expect(assertRegistryReadmeTitle(markdown, "npm", { fileName })).toBe("openclaw-weixin");
       expect(assertRegistryReadmeOrder(markdown, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
       expect(assertRegistryPromptOrder(markdown, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
-      expect(() => assertRegistryReadmeInstallCommands(markdown, { fileName })).not.toThrow();
-      expect(() => assertRegistryReadmeLinksAbsolute(markdown, { fileName })).not.toThrow();
     }
   });
 

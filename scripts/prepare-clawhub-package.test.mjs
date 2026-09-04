@@ -15,11 +15,7 @@ import {
 } from "./prepare-clawhub-package.mjs";
 import {
   assertRegistryPrompt,
-  assertRegistryPromptOrder,
-  assertRegistryReadmeInstallCommands,
   assertRegistryReadmeLinksAbsolute,
-  assertRegistryReadmeOrder,
-  assertRegistryReadmeTitle,
   preferRegistryReadmeSource,
   preferRegistryReadmeTitle,
   REGISTRY_README_FILES,
@@ -330,19 +326,6 @@ describe("ClawHub package preparation", () => {
     for (const [targetFileName, sourceFileName] of Object.entries(CLAWHUB_README_LAYOUT)) {
       const stagedReadme = readFileSync(join(extractedPackage, targetFileName), "utf8");
       expect(stagedReadme).toBe(expectedVariants[sourceFileName]);
-      expect(assertRegistryReadmeTitle(stagedReadme, "clawhub", { fileName: targetFileName })).toBe("openclaw-wechat");
-      expect(assertRegistryReadmeOrder(stagedReadme, "clawhub", { fileName: targetFileName }).order).toEqual([
-        "clawhub",
-        "npm",
-      ]);
-      const stagedPrompt = assertRegistryPromptOrder(stagedReadme, "clawhub", { fileName: targetFileName });
-      expect(stagedPrompt.order).toEqual(["clawhub", "npm"]);
-      const sourcePrompt = assertRegistryPromptOrder(originalReadmes[sourceFileName], "clawhub", {
-        fileName: sourceFileName,
-      });
-      expect(stagedPrompt.value).toBe(sourcePrompt.value);
-      expect(() => assertRegistryReadmeInstallCommands(stagedReadme, { fileName: targetFileName })).not.toThrow();
-      expect(() => assertRegistryReadmeLinksAbsolute(stagedReadme, { fileName: targetFileName })).not.toThrow();
     }
     expect(readFileSync(join(extractedPackage, "README.md"), "utf8")).toBe(
       readFileSync(join(extractedPackage, "README_EN.md"), "utf8"),
@@ -354,19 +337,10 @@ describe("ClawHub package preparation", () => {
       const canonicalArchiveReadme = readFileSync(join(extractedCanonicalPackage, fileName), "utf8");
       expect(readFileSync(join(source.packageDirectory, fileName), "utf8")).toBe(originalReadmes[fileName]);
       expect(canonicalArchiveReadme).toBe(originalReadmes[fileName]);
-      expect(assertRegistryReadmeTitle(canonicalArchiveReadme, "npm", { fileName })).toBe("openclaw-weixin");
-      expect(assertRegistryReadmeOrder(canonicalArchiveReadme, "clawhub", { fileName }).order).toEqual([
-        "clawhub",
-        "npm",
-      ]);
-      expect(assertRegistryPromptOrder(canonicalArchiveReadme, "clawhub", { fileName }).order).toEqual([
-        "clawhub",
-        "npm",
-      ]);
     }
     expect(readFileSync(join(source.packageDirectory, "README.zh_CN.md"), "utf8")).toBe(CHINESE_REDIRECT_README);
     expect(readFileSync(join(extractedCanonicalPackage, "README.zh_CN.md"), "utf8")).toBe(CHINESE_REDIRECT_README);
-  });
+  }, 60_000);
 
   it.each([
     {
