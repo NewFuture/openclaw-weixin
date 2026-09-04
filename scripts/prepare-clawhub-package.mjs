@@ -7,11 +7,11 @@ import { extract, list } from "tar";
 import { prepareStagedPackageVariant } from "./package-variant.mjs";
 import {
   assertRegistryPrompt,
+  assertRegistryPromptOrder,
   assertRegistryReadmeInstallCommands,
   assertRegistryReadmeLinksAbsolute,
   assertRegistryReadmeOrder,
   assertRegistryReadmeTitle,
-  preferRegistryReadmeSource,
   preferRegistryReadmeTitle,
   REGISTRY_README_FILES,
 } from "./registry-readme.mjs";
@@ -26,7 +26,7 @@ export const CLAWHUB_README_LAYOUT = {
 
 const SAFE_ARCHIVE_ENTRY_TYPES = new Set(["File", "OldFile", "Directory"]);
 
-async function resolveSourceArchive(source) {
+export async function resolveSourceArchive(source) {
   const resolvedSource = path.resolve(source);
   const sourceStat = await stat(resolvedSource);
   if (sourceStat.isFile()) {
@@ -97,17 +97,15 @@ export async function prepareClawHubReadmes(packageDirectory) {
   const variants = Object.fromEntries(
     Object.entries(canonicalReadmes).map(([fileName, markdown]) => {
       assertRegistryReadmeTitle(markdown, "npm", { fileName });
-      assertRegistryReadmeOrder(markdown, "npm", { fileName });
+      assertRegistryReadmeOrder(markdown, "clawhub", { fileName });
       const canonicalPrompt = assertRegistryPrompt(markdown, { fileName });
+      assertRegistryPromptOrder(markdown, "clawhub", { fileName });
       assertRegistryReadmeInstallCommands(markdown, { fileName });
       assertRegistryReadmeLinksAbsolute(markdown, { fileName });
-      const variant = preferRegistryReadmeTitle(
-        preferRegistryReadmeSource(markdown, "clawhub", { fileName }),
-        "clawhub",
-        { fileName },
-      );
+      const variant = preferRegistryReadmeTitle(markdown, "clawhub", { fileName });
       assertRegistryReadmeTitle(variant, "clawhub", { fileName });
       assertRegistryReadmeOrder(variant, "clawhub", { fileName });
+      assertRegistryPromptOrder(variant, "clawhub", { fileName });
       const variantPrompt = assertRegistryPrompt(variant, { fileName });
       if (variantPrompt.value !== canonicalPrompt.value) {
         throw new Error(`${fileName}: ClawHub staging must not change the shared prompt`);
@@ -145,7 +143,7 @@ async function main() {
   const [source, outputDirectory] = process.argv.slice(2);
   if (!source) {
     throw new Error(
-      "usage: node scripts/prepare-clawhub-package.mjs <canonical-package.tgz-or-directory> [output-directory]",
+      "usage: node scripts/prepare-clawhub-package.mjs <source-package.tgz-or-directory> [output-directory]",
     );
   }
   const archivePath = await prepareClawHubPackage(source, outputDirectory);

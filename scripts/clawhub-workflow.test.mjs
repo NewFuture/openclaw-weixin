@@ -6,6 +6,10 @@ const workflow = readFileSync(new URL("../.github/workflows/clawhub-publish.yml"
   "\r\n",
   "\n",
 );
+const releaseWorkflow = readFileSync(new URL("../.github/workflows/release.yml", import.meta.url), "utf8").replaceAll(
+  "\r\n",
+  "\n",
+);
 const releaseGuide = readFileSync(new URL("../docs/en/release.md", import.meta.url), "utf8").replaceAll("\r\n", "\n");
 
 describe("ClawHub publish workflow contract", () => {
@@ -27,15 +31,25 @@ describe("ClawHub publish workflow contract", () => {
     expect(prepareJob).not.toContain("CLAWHUB_TOKEN");
     expect(workflow).not.toContain("environment:");
     expect(workflow).not.toContain("id-token: write");
+    expect(workflow).toContain("$RUNNER_TEMP/source-package");
+    expect(workflow).not.toContain("$RUNNER_TEMP/npm-package");
+    expect(workflow).not.toContain("prepare-npm-package.mjs");
     expect(workflow).not.toContain("--wait");
-    expect(releaseGuide).toContain("uses the English source for its primary `README.md`");
-    expect(releaseGuide).toContain("changes\nall staged README titles to `openclaw-wechat`");
-    expect(releaseGuide).toMatch(
-      /Chinese prompt tries npm before ClawHub[\s\S]*English prompt\s+tries ClawHub before npm/,
-    );
-    expect(releaseGuide).toMatch(/direct-source blocks\s+from npm-first to\s+ClawHub-first/);
-    expect(releaseGuide).toMatch(/Repository and npm package \| Title `openclaw-weixin`; npm-first/);
+    expect(releaseGuide).toContain("uses English as the\nprimary README");
+    expect(releaseGuide).toContain("Source README prompts are ClawHub-first; npm variants are npm-first");
+    expect(releaseGuide).toMatch(/Repository and website \| Title `openclaw-weixin`; ClawHub-first/);
     expect(releaseGuide).not.toContain("## First ClawHub publication");
     expect(workflow).not.toContain("clawhub_token:");
+  });
+
+  it("publishes the staged npm README variant", () => {
+    expect(releaseWorkflow).toContain("node scripts/prepare-npm-package.mjs");
+    expect(releaseWorkflow).toContain(`npm publish "\${packages[0]}"`);
+    expect(releaseWorkflow).not.toContain(
+      "run: npm publish --ignore-scripts --provenance --access public --registry=https://registry.npmjs.org",
+    );
+    expect(releaseWorkflow.indexOf("node scripts/prepare-npm-package.mjs")).toBeLessThan(
+      releaseWorkflow.indexOf("node scripts/prepare-github-package.mjs"),
+    );
   });
 });

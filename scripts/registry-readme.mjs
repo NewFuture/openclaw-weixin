@@ -164,6 +164,45 @@ export function assertRegistryPrompt(markdown, options) {
   return inspectRegistryPrompt(markdown, options);
 }
 
+function registryPromptOrder(prompt) {
+  return [...REGISTRY_SOURCES].sort(
+    (left, right) =>
+      prompt.value.indexOf(`\`${REGISTRY_INSTALL_SPECS[left]}\``) -
+      prompt.value.indexOf(`\`${REGISTRY_INSTALL_SPECS[right]}\``),
+  );
+}
+
+export function assertRegistryPromptOrder(markdown, expectedFirst, options) {
+  if (!REGISTRY_SOURCES.includes(expectedFirst)) {
+    throw new Error(`unknown preferred registry prompt source: ${expectedFirst}`);
+  }
+  const prompt = inspectRegistryPrompt(markdown, options);
+  const order = registryPromptOrder(prompt);
+  if (order[0] !== expectedFirst) {
+    const fileName = options?.fileName ?? "README";
+    throw readmeError(fileName, `expected ${expectedFirst} prompt source first, found ${order[0]}`);
+  }
+  return { ...prompt, order };
+}
+
+export function preferRegistryPromptSource(markdown, preferredSource, options) {
+  if (!REGISTRY_SOURCES.includes(preferredSource)) {
+    throw new Error(`unknown preferred registry prompt source: ${preferredSource}`);
+  }
+  const prompt = inspectRegistryPrompt(markdown, options);
+  if (registryPromptOrder(prompt)[0] === preferredSource) return markdown;
+
+  const fallbackSource = REGISTRY_SOURCES.find((source) => source !== preferredSource);
+  const preferredSpec = `\`${REGISTRY_INSTALL_SPECS[preferredSource]}\``;
+  const fallbackSpec = `\`${REGISTRY_INSTALL_SPECS[fallbackSource]}\``;
+  const placeholder = "`registry-prompt-source-placeholder`";
+  const value = prompt.value
+    .replace(preferredSpec, placeholder)
+    .replace(fallbackSpec, preferredSpec)
+    .replace(placeholder, fallbackSpec);
+  return markdown.slice(0, prompt.start) + value + markdown.slice(prompt.end);
+}
+
 export function assertRegistryReadmeTitle(markdown, expectedSource, options) {
   if (!REGISTRY_SOURCES.includes(expectedSource)) {
     throw new Error(`unknown registry README title source: ${expectedSource}`);

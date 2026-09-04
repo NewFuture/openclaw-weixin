@@ -95,8 +95,11 @@ describe("syncContent", () => {
       chinesePrompt.value.indexOf("clawhub:openclaw-wechat") < chinesePrompt.value.indexOf("npm:openclaw-weixin"),
     );
     assert.match(overview, /<a id="direct-install"><\/a>\n\n### 直接运行命令/);
-    assert.match(overview, /#### npm：`openclaw-weixin`/);
-    assert.match(overview, /#### ClawHub：`openclaw-wechat`/);
+    assert.match(overview, /#### npm：\[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
+    assert.match(
+      overview,
+      /#### ClawHub：\[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/,
+    );
     assert.match(overview, /把下面这段话粘贴到 OpenClaw 聊天框并发送/);
     assert.doesNotMatch(overview, /id="(?:npm|clawhub)-agent-install"/);
     assert.match(chinesePrompt.value, /与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包/);
@@ -106,7 +109,6 @@ describe("syncContent", () => {
     assert.match(overview, /openclaw plugins install clawhub:openclaw-wechat\n/);
     assert.doesNotMatch(overview, /openclaw plugins install (?:npm:openclaw-weixin|clawhub:openclaw-wechat) --force/);
     assert.ok(chinesePrompt.start < overview.indexOf("### 直接运行命令"));
-    assert.ok(overview.indexOf("| 安装来源 | 包名 |") < overview.indexOf("#### npm："));
     assert.match(overview, /<details id="verify-connection" class="full-check">/);
     assert.match(overview, /已有微信登录状态，安装后通常只需确认连接/);
     assert.match(overview, /全新安装需要[\s>]+展开完整检查并扫码绑定/);
@@ -152,8 +154,11 @@ describe("syncContent", () => {
     assert.doesNotMatch(english, /<(?:p|div|h[1-6]|strong|ul|li|code)\b/);
     assert.doesNotMatch(english, /id="(?:npm|clawhub)-agent-install"/);
     assert.match(english, /<a id="direct-install"><\/a>\n\n### Run a command directly/);
-    assert.match(english, /#### npm: `openclaw-weixin`/);
-    assert.match(english, /#### ClawHub: `openclaw-wechat`/);
+    assert.match(english, /#### npm: \[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
+    assert.match(
+      english,
+      /#### ClawHub: \[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/,
+    );
     assert.match(
       englishPrompt.value,
       /if it matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package/,
@@ -174,7 +179,6 @@ describe("syncContent", () => {
     );
     assert.match(english, /global OpenClaw session setting/);
     assert.ok(englishPrompt.start < english.indexOf("### Run a command directly"));
-    assert.ok(english.indexOf("| Source | Package name |") < english.indexOf("#### npm:"));
     assert.match(
       english,
       /https:\/\/openclaw-weixin\.newfuture\.cc\/en\/guide\.html#channel-shows-ok-but-doesn-t-connect/,
@@ -224,19 +228,19 @@ describe("syncContent", () => {
 
   it("keeps source choices in the README and publishes distribution comparison separately", async () => {
     const overview = await readFile(path.join(contentDir, "index.md"), "utf8");
-    assert.match(overview, /npm \| \[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
+    assert.match(overview, /npm：\[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
     assert.match(
       overview,
-      /ClawHub \| \[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/,
+      /ClawHub：\[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/,
     );
     assert.doesNotMatch(overview, /\| 安装后 \|/);
     assert.doesNotMatch(overview, /\| 腾讯上游独立包 \|/);
 
     const english = await readFile(path.join(contentDir, "en", "index.md"), "utf8");
-    assert.match(english, /npm \| \[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
+    assert.match(english, /npm: \[`openclaw-weixin`\]\(https:\/\/www\.npmjs\.com\/package\/openclaw-weixin\)/);
     assert.match(
       english,
-      /ClawHub \| \[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/,
+      /ClawHub: \[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/,
     );
     assert.doesNotMatch(english, /\| After installation \|/);
     assert.doesNotMatch(english, /\| Tencent upstream distribution \|/);

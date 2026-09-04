@@ -122,17 +122,10 @@ ClawHub 分发刻意与 npm 身份分离：
 | 插件和 channel ID | `openclaw-weixin` |
 | ClawHub 发布者 | `newfuture` |
 
-`scripts/prepare-clawhub-package.mjs` 接受一个恰好包含一个规范 npm tarball 的目录（或
-tarball 路径本身）。它会验证规范名称、npm fallback、入口点、宿主元数据、manifest
-版本及插件/channel 身份。它还要求每份本地化 README 都恰好包含一组相邻的 npm 与
-ClawHub 安装块，使用匹配的精确命令且不包含相对 registry link。在临时解压副本中，它会更改
-`package.json.name`，添加 `clawhub:openclaw-wechat`，选择 ClawHub 作为该副本的默认
-installer，以英文源作为其主 `README.md` 和 `README_EN.md`，将完整的中文源写入
-`README.zh_CN.md`，将所有暂存 README 标题改为 `openclaw-wechat`，并保留每种本地化
-prompt。中文 prompt 先尝试 npm 后尝试 ClawHub，英文 prompt 先尝试 ClawHub 后尝试 npm，
-使每个包的主 README 与其默认来源一致。转换器随后将直接来源块从 npm-first 重新排序为
-ClawHub-first。
-它绝不会修改源 tarball，也不会创建 `openclaw-wechat` npm 包。
+仓库源包为 ClawHub-first。`scripts/prepare-npm-package.mjs` 生成 npm-first 的规范包。
+`scripts/prepare-clawhub-package.mjs` 保留源优先级，将包名和 README 标题改为
+`openclaw-wechat`，并使用英文主 README。两者都会验证包身份、精确安装命令和绝对链接，
+且不修改源 tarball 或 `openclaw-weixin` 运行时 ID。
 
 在任何 ClawHub 发布前，运行 `npm ci`、`npm run check` 和 `npm run pack:check`，然后按
 [贡献指南](./contributing.md)中的命令构建并验证 ClawPack。绝不可复用或覆盖
@@ -219,10 +212,10 @@ artifact。
 
 | 表面 | 约束 |
 | --- | --- |
-| 仓库与 npm 包 | 标题为 `openclaw-weixin`；npm-first |
+| 仓库与官网 | 标题为 `openclaw-weixin`；ClawHub-first |
+| npm 与 GitHub Packages | 标题为 `openclaw-weixin`；npm-first |
 | ClawHub 包 | 英文主 README；标题为 `openclaw-wechat`；ClawHub-first |
-| 文档官网 | 两种语言首页均为 ClawHub-first；源 README 不变 |
 
-源 README 的英文 prompt 先尝试 ClawHub，中文 prompt 先尝试 npm。每条 prompt 中两个
-来源 spec 各出现一次，同来源则更新，否则安装目标来源；仅当 Agent 选择 npm 时使用
-`--force`。直接命令省略该参数，所有链接使用绝对地址。
+源 README prompt 为 ClawHub-first，npm 变体为 npm-first。每条 prompt 中两个来源 spec
+各出现一次，同来源则更新，否则安装目标来源；仅当 Agent 选择 npm 时使用 `--force`。
+直接命令省略该参数，所有链接使用绝对地址。

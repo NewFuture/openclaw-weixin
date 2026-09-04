@@ -154,21 +154,13 @@ ClawHub distribution is intentionally separate from npm identity:
 | Plugin and channel id | `openclaw-weixin` |
 | ClawHub publisher | `newfuture` |
 
-`scripts/prepare-clawhub-package.mjs` accepts a directory containing exactly one
-canonical npm tarball (or the tarball path itself). It validates the canonical
-name, npm fallback, entry points, host metadata, manifest version, and
-plugin/channel identity. It also requires one adjacent npm and ClawHub install
-block in each localized README, with the matching exact command and no relative
-registry link. In a temporary extracted copy it changes
-`package.json.name`, adds `clawhub:openclaw-wechat`, selects ClawHub as that
-copy's default installer, uses the English source for its primary `README.md`
-and `README_EN.md`, writes the full Chinese source to `README.zh_CN.md`, changes
-all staged README titles to `openclaw-wechat`, and preserves each localized
-prompt. The Chinese prompt tries npm before ClawHub, while the English prompt
-tries ClawHub before npm, aligning each package's primary README with its default
-source. The converter then reorders the direct-source blocks from npm-first to
-ClawHub-first.
-It never modifies the source tarball or creates an `openclaw-wechat` npm package.
+The repository source package is ClawHub-first.
+`scripts/prepare-npm-package.mjs` creates the npm-first canonical package.
+`scripts/prepare-clawhub-package.mjs` keeps the source priority, changes the
+package name and README titles to `openclaw-wechat`, and uses English as the
+primary README. Both validate package identity, exact install commands, and
+absolute links without modifying the source tarball or runtime
+`openclaw-weixin` id.
 
 Before any ClawHub release, run `npm ci`, `npm run check`, and
 `npm run pack:check`, then build and validate the ClawPack with the commands in
@@ -274,11 +266,11 @@ compatibility, and scan status. Validate the README variants:
 
 | Surface | Contract |
 | --- | --- |
-| Repository and npm package | Title `openclaw-weixin`; npm-first |
+| Repository and website | Title `openclaw-weixin`; ClawHub-first |
+| npm and GitHub Packages | Title `openclaw-weixin`; npm-first |
 | ClawHub package | English primary README; title `openclaw-wechat`; ClawHub-first |
-| Documentation website | Both homepages ClawHub-first; source READMEs unchanged |
 
-Source README prompts try ClawHub first in English and npm first in Chinese.
-Each names both specs once, updates the same source or installs the target
-source, and uses `--force` only when the Agent selects npm. Direct commands omit
-the flag, and all links are absolute.
+Source README prompts are ClawHub-first; npm variants are npm-first. Each names
+both specs once, updates the same source or installs the target source, and uses
+`--force` only when the Agent selects npm. Direct commands omit the flag, and
+all links are absolute.

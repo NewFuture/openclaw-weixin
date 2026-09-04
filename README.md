@@ -23,7 +23,7 @@
 把下面这段话粘贴到 OpenClaw 聊天框并发送：
 
 ```text
-请安装或更新当前 OpenClaw 的微信插件。优先使用 npm `npm:openclaw-weixin`；仅在 npm 明确不可用时使用 ClawHub `clawhub:openclaw-wechat`，只选一个来源。
+请安装或更新当前 OpenClaw 的微信插件。来源优先级：`clawhub:openclaw-wechat`；不可用时再用 `npm:openclaw-weixin`，只选一个来源。
 先检查 `openclaw-weixin` 来源：与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包，不要先卸载。选择 npm 安装时加 `--force`。按提示审阅并确认插件能力。保留配置和登录数据，使用 OpenClaw 插件流程而非普通 `npm install`。完成后确认插件已加载并探测微信 Channel；未登录时提示扫码。简要报告结果或失败原因。
 ```
 <!-- registry-prompt:end -->
@@ -35,27 +35,10 @@
 **替换腾讯版时不要先卸载。** 来源相同则运行
 `openclaw plugins update openclaw-weixin`；否则运行目标来源命令。配置和登录状态会保留。
 
-| 安装来源 | 包名 |
-| --- | --- |
-| npm | [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin) |
-| ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
-
-<!-- registry-source:npm:start -->
-<a id="npm-source"></a>
-
-#### npm：`openclaw-weixin`
-
-<a id="npm-cli-install"></a>
-
-```bash
-openclaw plugins install npm:openclaw-weixin
-```
-<!-- registry-source:npm:end -->
-
 <!-- registry-source:clawhub:start -->
 <a id="clawhub-source"></a>
 
-#### ClawHub：`openclaw-wechat`
+#### ClawHub：[`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat)
 
 <a id="clawhub-cli-install"></a>
 
@@ -63,6 +46,18 @@ openclaw plugins install npm:openclaw-weixin
 openclaw plugins install clawhub:openclaw-wechat
 ```
 <!-- registry-source:clawhub:end -->
+
+<!-- registry-source:npm:start -->
+<a id="npm-source"></a>
+
+#### npm：[`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin)
+
+<a id="npm-cli-install"></a>
+
+```bash
+openclaw plugins install npm:openclaw-weixin
+```
+<!-- registry-source:npm:end -->
 
 **如果当前 OpenClaw 已有微信登录状态，安装后通常只需确认连接。** 全新安装需要
 展开完整检查并扫码绑定；安装报错、未自动恢复连接或需要确认目标账号时，也在此检查。

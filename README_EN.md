@@ -24,7 +24,7 @@ This plugin requires OpenClaw `>=2026.6.1`.
 Paste this prompt into an OpenClaw chat and send it:
 
 ```text
-Install or update the WeChat plugin for this OpenClaw instance. Prefer ClawHub `clawhub:openclaw-wechat`; use npm `npm:openclaw-weixin` only when ClawHub is explicitly unavailable, and choose one source.
+Install or update the WeChat plugin for this OpenClaw instance. Source priority: `clawhub:openclaw-wechat`; use `npm:openclaw-weixin` only if unavailable, and choose one source.
 Inspect the `openclaw-weixin` source first: if it matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package without uninstalling first. Add `--force` when installing from npm. Review and confirm plugin capabilities when prompted. Preserve configuration and login data, and use the OpenClaw plugin flow rather than plain `npm install`. Then verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the result or failure.
 ```
 <!-- registry-prompt:end -->
@@ -37,27 +37,10 @@ Inspect the `openclaw-weixin` source first: if it matches the target, run `openc
 matches the target, run `openclaw plugins update openclaw-weixin`; otherwise run
 the target source command. Configuration and login state are preserved.
 
-| Source | Package name |
-| --- | --- |
-| npm | [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin) |
-| ClawHub | [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat) |
-
-<!-- registry-source:npm:start -->
-<a id="npm-source"></a>
-
-#### npm: `openclaw-weixin`
-
-<a id="npm-cli-install"></a>
-
-```bash
-openclaw plugins install npm:openclaw-weixin
-```
-<!-- registry-source:npm:end -->
-
 <!-- registry-source:clawhub:start -->
 <a id="clawhub-source"></a>
 
-#### ClawHub: `openclaw-wechat`
+#### ClawHub: [`openclaw-wechat`](https://clawhub.ai/newfuture/plugins/openclaw-wechat)
 
 <a id="clawhub-cli-install"></a>
 
@@ -65,6 +48,18 @@ openclaw plugins install npm:openclaw-weixin
 openclaw plugins install clawhub:openclaw-wechat
 ```
 <!-- registry-source:clawhub:end -->
+
+<!-- registry-source:npm:start -->
+<a id="npm-source"></a>
+
+#### npm: [`openclaw-weixin`](https://www.npmjs.com/package/openclaw-weixin)
+
+<a id="npm-cli-install"></a>
+
+```bash
+openclaw plugins install npm:openclaw-weixin
+```
+<!-- registry-source:npm:end -->
 
 **If this OpenClaw instance already has a WeChat login, you usually only need
 to confirm the connection after installation.** For a new installation, open

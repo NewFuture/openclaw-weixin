@@ -4,8 +4,8 @@
  *
  * The documents stay where contributors and GitHub expect them; the website
  * consumes a generated copy so that VitePress sees a plain, locale-shaped page
- * tree. Links are rewritten, explicitly marked repository-only navigation is
- * removed, and the website homepage prefers its default ClawHub source.
+ * tree. Links are rewritten and explicitly marked repository-only navigation is
+ * removed; prose remains unchanged.
  */
 
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -14,7 +14,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createDocumentBySource, createPages, createPathResolver, localeById } from "./docs.mjs";
 import { rewriteLinks } from "./links.mjs";
-import { preferClawHubForWebsiteHome } from "./source-preference.mjs";
 
 const SITE_DIR = fileURLToPath(new URL("..", import.meta.url));
 const REPO_ROOT = path.resolve(SITE_DIR, "..", "..");
@@ -76,7 +75,7 @@ export async function syncContent({ repoRoot = REPO_ROOT, siteDir = SITE_DIR, co
     if (!resolverByLocale.has(page.locale)) {
       resolverByLocale.set(page.locale, createPathResolver(page.locale, documentBySource));
     }
-    const markdown = preferClawHubForWebsiteHome(page, await readFile(path.join(repoRoot, page.source), "utf8"));
+    const markdown = await readFile(path.join(repoRoot, page.source), "utf8");
     const destination = path.join(contentDir, `${page.path}.md`);
     await mkdir(path.dirname(destination), { recursive: true });
     await writeFile(destination, renderPage(page, markdown, resolverByLocale.get(page.locale)), "utf8");

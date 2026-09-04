@@ -15,6 +15,7 @@ import {
 } from "./prepare-clawhub-package.mjs";
 import {
   assertRegistryPrompt,
+  assertRegistryPromptOrder,
   assertRegistryReadmeInstallCommands,
   assertRegistryReadmeLinksAbsolute,
   assertRegistryReadmeOrder,
@@ -128,22 +129,22 @@ function canonicalReadme(language) {
     registryPromptMarker("start"),
     isEnglish ? "## Let OpenClaw choose a source" : "## 让 OpenClaw 选择来源",
     "",
-    "`npm:openclaw-weixin`",
     "`clawhub:openclaw-wechat`",
+    "`npm:openclaw-weixin`",
     isEnglish ? "Use `--force` when the target source is npm." : "目标来源为 npm 时使用 `--force`。",
     registryPromptMarker("end"),
-    "",
-    registrySourceMarker("npm", "start"),
-    isEnglish ? "## npm (recommended here)" : "## npm（当前推荐）",
-    "",
-    "`openclaw plugins install npm:openclaw-weixin`",
-    registrySourceMarker("npm", "end"),
     "",
     registrySourceMarker("clawhub", "start"),
     isEnglish ? "## ClawHub" : "## ClawHub",
     "",
     "`openclaw plugins install clawhub:openclaw-wechat`",
     registrySourceMarker("clawhub", "end"),
+    "",
+    registrySourceMarker("npm", "start"),
+    isEnglish ? "## npm" : "## npm",
+    "",
+    "`openclaw plugins install npm:openclaw-weixin`",
+    registrySourceMarker("npm", "end"),
     "",
     `[${isEnglish ? "Guide" : "指南"}](https://openclaw-weixin.newfuture.cc/${isEnglish ? "en/" : ""}guide.html)`,
     "",
@@ -323,13 +324,7 @@ describe("ClawHub package preparation", () => {
     const expectedVariants = Object.fromEntries(
       REGISTRY_README_FILES.map((fileName) => [
         fileName,
-        preferRegistryReadmeTitle(
-          preferRegistryReadmeSource(originalReadmes[fileName], "clawhub", {
-            fileName,
-          }),
-          "clawhub",
-          { fileName },
-        ),
+        preferRegistryReadmeTitle(originalReadmes[fileName], "clawhub", { fileName }),
       ]),
     );
     for (const [targetFileName, sourceFileName] of Object.entries(CLAWHUB_README_LAYOUT)) {
@@ -341,6 +336,10 @@ describe("ClawHub package preparation", () => {
         "npm",
       ]);
       const stagedPrompt = assertRegistryPrompt(stagedReadme, { fileName: targetFileName });
+      expect(assertRegistryPromptOrder(stagedReadme, "clawhub", { fileName: targetFileName }).order).toEqual([
+        "clawhub",
+        "npm",
+      ]);
       const sourcePrompt = assertRegistryPrompt(originalReadmes[sourceFileName], { fileName: sourceFileName });
       expect(stagedPrompt.value).toBe(sourcePrompt.value);
       expect(() => assertRegistryReadmeInstallCommands(stagedReadme, { fileName: targetFileName })).not.toThrow();
@@ -357,8 +356,15 @@ describe("ClawHub package preparation", () => {
       expect(readFileSync(join(source.packageDirectory, fileName), "utf8")).toBe(originalReadmes[fileName]);
       expect(canonicalArchiveReadme).toBe(originalReadmes[fileName]);
       expect(assertRegistryReadmeTitle(canonicalArchiveReadme, "npm", { fileName })).toBe("openclaw-weixin");
-      expect(assertRegistryReadmeOrder(canonicalArchiveReadme, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
+      expect(assertRegistryReadmeOrder(canonicalArchiveReadme, "clawhub", { fileName }).order).toEqual([
+        "clawhub",
+        "npm",
+      ]);
       expect(() => assertRegistryPrompt(canonicalArchiveReadme, { fileName })).not.toThrow();
+      expect(assertRegistryPromptOrder(canonicalArchiveReadme, "clawhub", { fileName }).order).toEqual([
+        "clawhub",
+        "npm",
+      ]);
     }
     expect(readFileSync(join(source.packageDirectory, "README.zh_CN.md"), "utf8")).toBe(CHINESE_REDIRECT_README);
     expect(readFileSync(join(extractedCanonicalPackage, "README.zh_CN.md"), "utf8")).toBe(CHINESE_REDIRECT_README);
@@ -412,8 +418,8 @@ describe("ClawHub package preparation", () => {
       label: "content between source blocks",
       mutate: (readme) =>
         readme.replace(
-          `${registrySourceMarker("npm", "end")}\n\n${registrySourceMarker("clawhub", "start")}`,
-          `${registrySourceMarker("npm", "end")}\nnot movable\n${registrySourceMarker("clawhub", "start")}`,
+          `${registrySourceMarker("clawhub", "end")}\n\n${registrySourceMarker("npm", "start")}`,
+          `${registrySourceMarker("clawhub", "end")}\nnot movable\n${registrySourceMarker("npm", "start")}`,
         ),
       expected: "registry source blocks must be adjacent and separated only by whitespace",
     },
@@ -557,17 +563,17 @@ describe("ClawHub package preparation", () => {
     ).not.toThrow();
   });
 
-  it("rejects a canonical package whose README is already ClawHub-first", async () => {
+  it("rejects a source package whose README is npm-first", async () => {
     const source = await createCanonicalArchive(undefined, (readmes) => ({
       ...readmes,
-      "README.md": preferRegistryReadmeSource(readmes["README.md"], "clawhub", {
+      "README.md": preferRegistryReadmeSource(readmes["README.md"], "npm", {
         fileName: "README.md",
       }),
     }));
 
     await expect(
       prepareClawHubPackage(source.archive, createTemporaryDirectory("openclaw-weixin-clawhub-rejected-")),
-    ).rejects.toThrow("README.md: expected npm source first, found clawhub");
+    ).rejects.toThrow("README.md: expected clawhub source first, found npm");
   });
 
   it("rejects a canonical package whose README already uses the ClawHub title", async () => {

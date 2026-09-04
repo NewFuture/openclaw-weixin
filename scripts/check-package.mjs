@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { checkVersionFiles } from "./check-versions.mjs";
 import {
   assertRegistryPrompt,
+  assertRegistryPromptOrder,
   assertRegistryReadmeInstallCommands,
   assertRegistryReadmeLinksAbsolute,
   assertRegistryReadmeOrder,
@@ -79,8 +80,9 @@ for (const fileName of REGISTRY_README_FILES) {
   const markdown = readFileSync(fileName, "utf8");
   try {
     assertRegistryReadmeTitle(markdown, "npm", { fileName });
-    assertRegistryReadmeOrder(markdown, "npm", { fileName });
+    assertRegistryReadmeOrder(markdown, "clawhub", { fileName });
     assertRegistryPrompt(markdown, { fileName });
+    assertRegistryPromptOrder(markdown, "clawhub", { fileName });
     assertRegistryReadmeInstallCommands(markdown, { fileName });
     assertRegistryReadmeLinksAbsolute(markdown, { fileName });
   } catch (error) {
