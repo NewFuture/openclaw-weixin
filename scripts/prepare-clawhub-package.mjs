@@ -5,15 +5,7 @@ import { pathToFileURL } from "node:url";
 import { extract, list } from "tar";
 
 import { prepareStagedPackageVariant } from "./package-variant.mjs";
-import {
-  assertRegistryPromptOrder,
-  assertRegistryReadmeInstallCommands,
-  assertRegistryReadmeLinksAbsolute,
-  assertRegistryReadmeOrder,
-  assertRegistryReadmeTitle,
-  preferRegistryReadmeTitle,
-  REGISTRY_README_FILES,
-} from "./registry-readme.mjs";
+import { assertSourceRegistryReadme, preferRegistryReadmeTitle, REGISTRY_README_FILES } from "./registry-readme.mjs";
 
 export const CLAWHUB_PACKAGE_NAME = "openclaw-wechat";
 export const CLAWHUB_INSTALL_SPEC = `clawhub:${CLAWHUB_PACKAGE_NAME}`;
@@ -95,11 +87,7 @@ export async function prepareClawHubReadmes(packageDirectory) {
   );
   const variants = Object.fromEntries(
     Object.entries(canonicalReadmes).map(([fileName, markdown]) => {
-      assertRegistryReadmeTitle(markdown, "npm", { fileName });
-      assertRegistryReadmeOrder(markdown, "clawhub", { fileName });
-      assertRegistryPromptOrder(markdown, "clawhub", { fileName });
-      assertRegistryReadmeInstallCommands(markdown, { fileName });
-      assertRegistryReadmeLinksAbsolute(markdown, { fileName });
+      assertSourceRegistryReadme(markdown, { fileName });
       return [fileName, preferRegistryReadmeTitle(markdown, "clawhub", { fileName })];
     }),
   );

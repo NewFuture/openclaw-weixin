@@ -5,22 +5,14 @@ import { pathToFileURL } from "node:url";
 import { prepareStagedPackageVariant } from "./package-variant.mjs";
 import { extractPackageArchive, resolveSourceArchive } from "./prepare-clawhub-package.mjs";
 import {
-  assertRegistryPromptOrder,
-  assertRegistryReadmeInstallCommands,
-  assertRegistryReadmeLinksAbsolute,
-  assertRegistryReadmeOrder,
-  assertRegistryReadmeTitle,
+  assertSourceRegistryReadme,
   preferRegistryPromptSource,
   preferRegistryReadmeSource,
   REGISTRY_README_FILES,
 } from "./registry-readme.mjs";
 
 export function createNpmReadmeVariant(markdown, fileName) {
-  assertRegistryReadmeTitle(markdown, "npm", { fileName });
-  assertRegistryReadmeOrder(markdown, "clawhub", { fileName });
-  assertRegistryPromptOrder(markdown, "clawhub", { fileName });
-  assertRegistryReadmeInstallCommands(markdown, { fileName });
-  assertRegistryReadmeLinksAbsolute(markdown, { fileName });
+  assertSourceRegistryReadme(markdown, { fileName });
   return preferRegistryPromptSource(preferRegistryReadmeSource(markdown, "npm", { fileName }), "npm", { fileName });
 }
 

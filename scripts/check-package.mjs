@@ -3,14 +3,7 @@ import { readFileSync } from "node:fs";
 
 import { checkVersionFiles } from "./check-versions.mjs";
 import { assertCanonicalPackageMetadata } from "./package-variant.mjs";
-import {
-  assertRegistryPromptOrder,
-  assertRegistryReadmeInstallCommands,
-  assertRegistryReadmeLinksAbsolute,
-  assertRegistryReadmeOrder,
-  assertRegistryReadmeTitle,
-  REGISTRY_README_FILES,
-} from "./registry-readme.mjs";
+import { assertSourceRegistryReadme, REGISTRY_README_FILES } from "./registry-readme.mjs";
 
 function fail(message) {
   console.error(`Package check failed: ${message}`);
@@ -61,11 +54,7 @@ if (packageJson.openclaw?.channel?.docsPath !== docsUrl) {
 for (const fileName of REGISTRY_README_FILES) {
   const markdown = readFileSync(fileName, "utf8");
   try {
-    assertRegistryReadmeTitle(markdown, "npm", { fileName });
-    assertRegistryReadmeOrder(markdown, "clawhub", { fileName });
-    assertRegistryPromptOrder(markdown, "clawhub", { fileName });
-    assertRegistryReadmeInstallCommands(markdown, { fileName });
-    assertRegistryReadmeLinksAbsolute(markdown, { fileName });
+    assertSourceRegistryReadme(markdown, { fileName });
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   }

@@ -15,10 +15,10 @@ import {
 } from "./prepare-clawhub-package.mjs";
 import { prepareNpmPackage } from "./prepare-npm-package.mjs";
 import {
-  assertRegistryPrompt,
   assertRegistryPromptOrder,
   assertRegistryReadmeLinksAbsolute,
   assertRegistryReadmeOrder,
+  inspectRegistryPrompt,
   preferRegistryReadmeSource,
   preferRegistryReadmeTitle,
   REGISTRY_README_FILES,
@@ -520,7 +520,7 @@ describe("ClawHub package preparation", () => {
 
   it("allows the npm force explanation to wrap within a sentence", () => {
     const readme = canonicalReadme("en").replace("target source is npm", "target\nsource is npm");
-    expect(() => assertRegistryPrompt(readme, { fileName: "README_EN.md" })).not.toThrow();
+    expect(() => inspectRegistryPrompt(readme, { fileName: "README_EN.md" })).not.toThrow();
   });
 
   it.each([

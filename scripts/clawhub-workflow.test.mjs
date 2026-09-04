@@ -6,6 +6,7 @@ const workflow = readFileSync(new URL("../.github/workflows/clawhub-publish.yml"
   "\r\n",
   "\n",
 );
+const validationScript = readFileSync(new URL("./validate-clawhub-package.sh", import.meta.url), "utf8");
 const releaseWorkflow = readFileSync(new URL("../.github/workflows/release.yml", import.meta.url), "utf8").replaceAll(
   "\r\n",
   "\n",
@@ -29,10 +30,11 @@ describe("ClawHub publish workflow contract", () => {
     expect(workflow).not.toContain("  workflow_dispatch:");
     expect(workflow).not.toContain("  push:");
     expect(workflow).not.toContain("\n  publish:\n");
-    expect(prepareJob).toContain("clawhub@0.23.3");
-    expect(prepareJob).toContain("package publish");
-    expect(prepareJob).toContain("--dry-run");
-    expect(prepareJob).toContain('--openclaw-version "$openclaw_version"');
+    expect(prepareJob).toContain("bash scripts/validate-clawhub-package.sh");
+    expect(validationScript).toContain("clawhub@0.23.3");
+    expect(validationScript).toContain("package publish");
+    expect(validationScript).toContain("--dry-run");
+    expect(validationScript).toContain('--openclaw-version "$openclaw_version"');
     expect(prepareJob).toContain("contents: read");
     expect(prepareJob).not.toContain("id-token: write");
     expect(prepareJob).not.toContain("CLAWHUB_TOKEN");
@@ -53,6 +55,7 @@ describe("ClawHub publish workflow contract", () => {
 
     expect(validateJob).toContain("node scripts/prepare-npm-package.mjs");
     expect(validateJob).toContain("node scripts/prepare-clawhub-package.mjs");
+    expect(validateJob).toContain("bash scripts/validate-clawhub-package.sh");
     expect(validateJob).toContain("name: registry-packages");
     expect(validateJob).toContain("overwrite: true");
     expect(npmPublishJob).toContain("actions/download-artifact@");
@@ -64,6 +67,7 @@ describe("ClawHub publish workflow contract", () => {
     );
     expect(clawHubPublishJob).toContain("actions/download-artifact@");
     expect(clawHubPublishJob).not.toContain("prepare-clawhub-package.mjs");
+    expect(clawHubPublishJob).toContain("bash scripts/validate-clawhub-package.sh");
     expect(githubPackageJob).toContain("actions/download-artifact@");
     expect(githubPackageJob).not.toContain("prepare-npm-package.mjs");
     expect(githubPackageJob).toContain("node scripts/prepare-github-package.mjs");

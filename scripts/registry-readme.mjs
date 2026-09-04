@@ -166,10 +166,6 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
   return prompt;
 }
 
-export function assertRegistryPrompt(markdown, options) {
-  return inspectRegistryPrompt(markdown, options);
-}
-
 function registryPromptOrder(prompt) {
   return [...REGISTRY_SOURCES].sort(
     (left, right) =>
@@ -270,6 +266,14 @@ export function assertRegistryReadmeInstallCommands(markdown, options) {
     }
   }
   return inspected;
+}
+
+export function assertSourceRegistryReadme(markdown, options) {
+  assertRegistryReadmeTitle(markdown, "npm", options);
+  assertRegistryReadmeOrder(markdown, "clawhub", options);
+  assertRegistryPromptOrder(markdown, "clawhub", options);
+  assertRegistryReadmeInstallCommands(markdown, options);
+  assertRegistryReadmeLinksAbsolute(markdown, options);
 }
 
 function isMarkdownEscaped(value, index) {

@@ -5,7 +5,6 @@ import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { assertRegistryPromptOrder, assertRegistryReadmeOrder } from "../../scripts/registry-readme.mjs";
 import { emitMachineReadable } from "./.vitepress/llms.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -37,8 +36,6 @@ describe("emitMachineReadable", () => {
     const overview = await readFile(path.join(outDir, "index.md"), "utf8");
     assert.match(overview, /\[详细指南\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/guide\.html\)/);
     assert.match(overview, /\[架构说明\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/architecture\.html\)/);
-    assert.deepEqual(assertRegistryPromptOrder(overview, "clawhub").order, ["clawhub", "npm"]);
-    assert.deepEqual(assertRegistryReadmeOrder(overview, "clawhub").order, ["clawhub", "npm"]);
   });
 
   it("indexes every page in llms.txt, Chinese first", async () => {
