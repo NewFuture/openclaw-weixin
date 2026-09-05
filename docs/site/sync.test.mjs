@@ -81,7 +81,6 @@ describe("syncContent", () => {
     ]);
     const chinesePrompt = assertRegistryPromptOrder(overview, "clawhub", { fileName: "index.md" });
     assert.doesNotThrow(() => assertRegistryReadmeInstallCommands(overview, { fileName: "index.md" }));
-    assert.match(chinesePrompt.value, /只选一个来源。\r?\n先检查 `openclaw-weixin`/);
     assert.doesNotMatch(overview, /腾讯官方 npm 包|当前能力包括微信私聊|## 社区版与腾讯版/);
     assert.match(overview, /\[社区版与腾讯版\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/distributions\.html\)/);
     assert.doesNotMatch(overview, /npm 优先，ClawHub 兜底|自己选择 npm 或 ClawHub/);
@@ -102,11 +101,6 @@ describe("syncContent", () => {
     );
     assert.match(overview, /把下面这段话粘贴到 OpenClaw 聊天框并发送/);
     assert.doesNotMatch(overview, /id="(?:npm|clawhub)-agent-install"/);
-    assert.match(
-      chinesePrompt.value,
-      /已记录的包 spec 与目标相同则运行 `openclaw plugins update openclaw-weixin`；否则直接安装目标包/,
-    );
-    assert.match(chinesePrompt.value, /按提示审阅并确认插件能力/);
     assert.ok(chinesePrompt.start < overview.indexOf("### 直接运行命令"));
     assert.match(overview, /<details id="verify-connection" class="full-check">/);
     assert.match(overview, /已有微信登录状态，安装后通常只需确认连接/);
@@ -128,7 +122,6 @@ describe("syncContent", () => {
     ]);
     const englishPrompt = assertRegistryPromptOrder(english, "clawhub", { fileName: "en/index.md" });
     assert.doesNotThrow(() => assertRegistryReadmeInstallCommands(english, { fileName: "en/index.md" }));
-    assert.match(englishPrompt.value, /and choose one source\.\r?\nInspect the `openclaw-weixin` install record first/);
     assert.match(english, /<a id="connect-wechat"><\/a>\n\n## Choose an installation method/);
     assert.doesNotMatch(english, /Copy the prompt, or run a command directly/);
     assert.doesNotMatch(
@@ -156,11 +149,6 @@ describe("syncContent", () => {
       english,
       /#### ClawHub: \[`openclaw-wechat`\]\(https:\/\/clawhub\.ai\/newfuture\/plugins\/openclaw-wechat\)/,
     );
-    assert.match(
-      englishPrompt.value,
-      /if its package spec matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package/,
-    );
-    assert.match(englishPrompt.value, /Review and confirm plugin capabilities when prompted/);
     assert.match(english, /already has a WeChat login,[\s>]+you usually only need[\s>]+to confirm the connection/);
     assert.match(english, /For a new installation, open[\s>]+the full check and scan the QR code/);
     assert.match(english, /openclaw channels login --channel openclaw-weixin --account alice/);

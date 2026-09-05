@@ -24,8 +24,8 @@ This plugin requires OpenClaw `>=2026.6.1`.
 Paste this prompt into an OpenClaw chat and send it:
 
 ```text
-Install or update the WeChat plugin for this OpenClaw instance. Source priority: `clawhub:openclaw-wechat`; use `npm:openclaw-weixin` only if unavailable, and choose one source.
-Inspect the `openclaw-weixin` install record first: if its package spec matches the target, run `openclaw plugins update openclaw-weixin`; otherwise install the target package without uninstalling first. Add `--force` when installing from npm. Review and confirm plugin capabilities when prompted. Preserve configuration and login data, and use the OpenClaw plugin flow rather than plain `npm install`. Then verify that the plugin is loaded and probe the WeChat channel; prompt for QR login if needed. Briefly report the result or failure.
+Install or update the WeChat plugin for this OpenClaw instance. Prefer `clawhub:openclaw-wechat`; if it is unavailable, use `npm:openclaw-weixin`. Choose one source. For npm or replacement installations, add `--force`.
+Do not uninstall first; preserve existing configuration and login state. Confirm plugin capabilities when prompted, and use the OpenClaw plugin flow rather than plain `npm install`.
 ```
 <!-- registry-prompt:end -->
 
@@ -33,10 +33,13 @@ Inspect the `openclaw-weixin` install record first: if its package spec matches 
 
 ### Run a command directly
 
-**Do not uninstall Tencent's package first when replacing it.** If the recorded
-package spec matches the target, run `openclaw plugins update openclaw-weixin`;
-otherwise run the target source command. Configuration and login state are
-preserved.
+**Community plugin previously installed with one of the ClawHub or npm commands below:** run
+`openclaw plugins update openclaw-weixin`.
+
+**First installation, replacing Tencent's official package, or an existing
+plugin installed from another source:** choose one installation command below;
+do not uninstall first. When replacing an existing plugin, add `--force` to the
+chosen installation command. Configuration and login state are preserved.
 
 <!-- registry-source:clawhub:start -->
 <a id="clawhub-source"></a>

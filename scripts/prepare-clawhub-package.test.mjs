@@ -130,8 +130,7 @@ function canonicalReadme(language) {
     "",
     "`clawhub:openclaw-wechat`",
     "`npm:openclaw-weixin`",
-    "`openclaw plugins update openclaw-weixin`",
-    isEnglish ? "Use `--force` when the target source is npm." : "目标来源为 npm 时使用 `--force`。",
+    isEnglish ? "Use `--force` for npm or replacement installations." : "npm 安装或替换安装时使用 `--force`。",
     registryPromptMarker("end"),
     "",
     registrySourceMarker("clawhub", "start"),
@@ -375,8 +374,8 @@ describe("ClawHub package preparation", () => {
     },
     {
       label: "force scoped to ClawHub",
-      mutate: (readme) => readme.replace("target source is npm", "target source is ClawHub"),
-      expected: "shared prompt must scope `--force` to npm",
+      mutate: (readme) => readme.replace("npm or replacement installations", "ClawHub or replacement installations"),
+      expected: "shared prompt must scope `--force` to npm and replacement installations",
     },
     {
       label: "full CLI inside the natural-language prompt",
@@ -391,11 +390,6 @@ describe("ClawHub package preparation", () => {
       label: "suffixed prompt spec",
       mutate: (readme) => readme.replace("`npm:openclaw-weixin`", "`npm:openclaw-weixin-typo`"),
       expected: "shared prompt must include `npm:openclaw-weixin` exactly once (found 0)",
-    },
-    {
-      label: "missing update command",
-      mutate: (readme) => readme.replace("`openclaw plugins update openclaw-weixin`", "update the existing plugin"),
-      expected: "shared prompt must include `openclaw plugins update openclaw-weixin` exactly once (found 0)",
     },
     {
       label: "duplicate marker",
@@ -507,6 +501,30 @@ describe("ClawHub package preparation", () => {
     ).rejects.toThrow(`README_EN.md: ${expected}`);
   });
 
+  it.each([
+    {
+      label: "an English npm-only force instruction",
+      language: "en",
+      forceSentence: "Use `--force` for npm installation.",
+    },
+    {
+      label: "a Chinese replacement-only force instruction",
+      language: "zh",
+      forceSentence: "替换安装时使用 `--force`。",
+    },
+  ])("rejects $label", ({ language, forceSentence }) => {
+    const isEnglish = language === "en";
+    const originalForceSentence = isEnglish
+      ? "Use `--force` for npm or replacement installations."
+      : "npm 安装或替换安装时使用 `--force`。";
+    const readme = canonicalReadme(language).replace(originalForceSentence, forceSentence);
+    const fileName = isEnglish ? "README_EN.md" : "README.md";
+
+    expect(() => inspectRegistryPrompt(readme, { fileName })).toThrow(
+      `${fileName}: shared prompt must scope \`--force\` to npm and replacement installations`,
+    );
+  });
+
   it("accepts absolute, mail, and fragment-only registry links", () => {
     const readme = `${canonicalReadme("en")}\n[Section](#section)\n[Support](mailto:support@example.test)\n<a href="https://example.test/docs">Docs</a>\n`;
 
@@ -516,11 +534,6 @@ describe("ClawHub package preparation", () => {
       "mailto:support@example.test",
       "https://example.test/docs",
     ]);
-  });
-
-  it("allows the npm force explanation to wrap within a sentence", () => {
-    const readme = canonicalReadme("en").replace("target source is npm", "target\nsource is npm");
-    expect(() => inspectRegistryPrompt(readme, { fileName: "README_EN.md" })).not.toThrow();
   });
 
   it.each([
