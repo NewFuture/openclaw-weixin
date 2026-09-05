@@ -51,7 +51,7 @@ export function renderPage(page, markdown, resolvePath = createPathResolver(page
   });
   const isHome = page.slug === "index";
   const pageFrontmatter = isHome
-    ? ['pageClass: "docs-home"', "layout: home", "navbar: false", "sidebar: false", "aside: false"]
+    ? ['pageClass: "docs-home"', "layout: home", "navbar: false", "sidebar: false", "aside: false", "footer: false"]
     : [];
   const frontmatter = [
     "---",

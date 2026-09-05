@@ -77,8 +77,9 @@ describe("syncContent", () => {
         assert.match(frontmatter, /^navbar: false$/m, page.path);
         assert.match(frontmatter, /^sidebar: false$/m, page.path);
         assert.match(frontmatter, /^aside: false$/m, page.path);
+        assert.match(frontmatter, /^footer: false$/m, page.path);
       } else {
-        assert.doesNotMatch(frontmatter, /^(?:layout|navbar|sidebar|aside):/m, page.path);
+        assert.doesNotMatch(frontmatter, /^(?:layout|navbar|sidebar|aside|footer):/m, page.path);
       }
     }
   });
@@ -106,7 +107,7 @@ describe("syncContent", () => {
     const overview = (await readFile(path.join(contentDir, "index.md"), "utf8")).replaceAll("\r\n", "\n");
     assert.match(
       overview,
-      /^---\ntitle: "概览"\ndescription: "[^"]+"\npageClass: "docs-home"\nlayout: home\nnavbar: false\nsidebar: false\naside: false\n---\n/,
+      /^---\ntitle: "概览"\ndescription: "[^"]+"\npageClass: "docs-home"\nlayout: home\nnavbar: false\nsidebar: false\naside: false\nfooter: false\n---\n/,
     );
     assert.match(overview, /# openclaw-weixin/);
     assert.match(overview, /\*\*把 OpenClaw 接入微信\*\*/);
