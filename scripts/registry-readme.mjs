@@ -149,19 +149,6 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
       throw readmeError(fileName, `shared prompt must include \`${expectedSpec}\` exactly once (found ${specCount})`);
     }
   }
-  const forceCount = codeSpans.filter((value) => value === "--force").length;
-  if (forceCount !== 1) {
-    throw readmeError(fileName, `shared prompt must describe \`--force\` exactly once (found ${forceCount})`);
-  }
-  const forceSentence = prompt.value.split(/[.!?。！？]+/u).find((sentence) => sentence.includes("`--force`"));
-  const forceProse = forceSentence?.replace(/`[^`]+`/gu, (code) => (code === "`--force`" ? code : ""));
-  const forceScopedToNpmInstallation =
-    /\bnpm\b[\s\S]*\binstall(?:ation|ations)?\b/iu.test(forceProse) || /npm\s*安装/u.test(forceProse);
-  const forceScopedToReplacementInstallation =
-    /\breplacement\b[\s\S]*\binstall(?:ation|ations)?\b/iu.test(forceProse) || /替换\s*安装/u.test(forceProse);
-  if (!forceProse || !forceScopedToNpmInstallation || !forceScopedToReplacementInstallation) {
-    throw readmeError(fileName, "shared prompt must scope `--force` to npm and replacement installations");
-  }
   return prompt;
 }
 
