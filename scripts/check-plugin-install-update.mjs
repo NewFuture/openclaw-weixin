@@ -35,9 +35,9 @@ export class PluginLifecycleCheckFailure extends Error {}
 function runOpenClaw(rootDirectory, args, env, label) {
   const result = spawnSync(
     process.execPath,
-    [path.join(rootDirectory, "node_modules", "openclaw", "openclaw.mjs"), ...args],
+    [path.resolve(rootDirectory, "node_modules", "openclaw", "openclaw.mjs"), ...args],
     {
-      cwd: rootDirectory,
+      cwd: env.OPENCLAW_STATE_DIR,
       encoding: "utf8",
       env,
       maxBuffer: 20 * 1024 * 1024,

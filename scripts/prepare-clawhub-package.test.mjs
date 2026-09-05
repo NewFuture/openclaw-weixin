@@ -18,6 +18,7 @@ import {
   assertRegistryPromptOrder,
   assertRegistryReadmeLinksAbsolute,
   assertRegistryReadmeOrder,
+  inspectRegistryPrompt,
   preferRegistryReadmeSource,
   preferRegistryReadmeTitle,
   REGISTRY_README_FILES,
@@ -367,6 +368,16 @@ describe("ClawHub package preparation", () => {
       expected: "prompt markers must appear exactly once",
     },
     {
+      label: "missing noninteractive npm confirmation",
+      mutate: (readme) => readme.replace("`--force`", "noninteractive npm confirmation"),
+      expected: "shared prompt must describe `--force` exactly once (found 0)",
+    },
+    {
+      label: "force scoped to ClawHub",
+      mutate: (readme) => readme.replace("npm or replacement installations", "ClawHub or replacement installations"),
+      expected: "shared prompt must scope `--force` to npm and replacement installations",
+    },
+    {
       label: "full CLI inside the natural-language prompt",
       mutate: (readme) =>
         readme.replace(
@@ -488,6 +499,30 @@ describe("ClawHub package preparation", () => {
     await expect(
       prepareClawHubPackage(source.archive, createTemporaryDirectory("openclaw-weixin-clawhub-rejected-")),
     ).rejects.toThrow(`README_EN.md: ${expected}`);
+  });
+
+  it.each([
+    {
+      label: "an English npm-only force instruction",
+      language: "en",
+      forceSentence: "Use `--force` for npm installation.",
+    },
+    {
+      label: "a Chinese replacement-only force instruction",
+      language: "zh",
+      forceSentence: "替换安装时使用 `--force`。",
+    },
+  ])("rejects $label", ({ language, forceSentence }) => {
+    const isEnglish = language === "en";
+    const originalForceSentence = isEnglish
+      ? "Use `--force` for npm or replacement installations."
+      : "npm 安装或替换安装时使用 `--force`。";
+    const readme = canonicalReadme(language).replace(originalForceSentence, forceSentence);
+    const fileName = isEnglish ? "README_EN.md" : "README.md";
+
+    expect(() => inspectRegistryPrompt(readme, { fileName })).toThrow(
+      `${fileName}: shared prompt must scope \`--force\` to npm and replacement installations`,
+    );
   });
 
   it("accepts absolute, mail, and fragment-only registry links", () => {
