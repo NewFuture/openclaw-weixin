@@ -5,13 +5,6 @@
 
 ## 安装说明
 
-### 在不同场景使用哪个名称
-
-| 场景 | 使用的名称 |
-| --- | --- |
-| 从 npm 安装社区版 | `openclaw-weixin` |
-| 从 ClawHub 安装社区版 | `openclaw-wechat` |
-
 这是腾讯上游项目的社区维护发行版；腾讯官方 npm 包是
 `@tencent-weixin/openclaw-weixin`。社区版的包名和发布渠道不同，但沿用
 `openclaw-weixin` 插件、Channel 和状态 ID。任选一个社区来源即可；README 中的
@@ -40,7 +33,15 @@
 `User-Agent`——用于后台日志归因和监控聚合。**默认值为 `OpenClaw`**。声明自己的
 应用名能让你的流量在后台日志中更容易识别。
 
-在 `openclaw.json` 中加一行即可：
+以下两种方式任选其一。
+
+使用命令：
+
+```bash
+openclaw config set channels.openclaw-weixin.botAgent MyBot/1.2.0
+```
+
+或直接编辑 `openclaw.json`：
 
 ```json
 {
@@ -73,8 +74,16 @@
 ## 工具调用进度消息（可选）
 
 `replyProgressMessages` 默认为 `true`。模型调用工具时，插件会发送结构化的
-`TOOL_CALL_START` 和 `TOOL_CALL_RESULT` 进度消息。若不希望显示这些额外消息，可在
-`openclaw.json` 中关闭：
+`TOOL_CALL_START` 和 `TOOL_CALL_RESULT` 进度消息。若不希望显示这些额外消息，以下
+两种方式任选其一。
+
+使用命令：
+
+```bash
+openclaw config set channels.openclaw-weixin.replyProgressMessages false
+```
+
+或直接编辑 `openclaw.json`：
 
 ```json
 {
@@ -87,6 +96,55 @@
 ```
 
 设为 `false` 只会停止工具调用进度消息，不会关闭最终回复或普通文本与媒体消息。
+
+## 分块回复
+
+插件默认按顺序发送模型在多步工具调用之间完成的文本块，再发送最终回复。分块回复不是逐
+token 流式输出；OpenClaw 可能按 Channel 的合并策略组合较短文本。工具调用进度消息由
+独立的 `replyProgressMessages` 设置控制。
+
+如需仅发送最终回复，可关闭分块回复。以下两种方式任选其一。
+
+使用命令：
+
+```bash
+openclaw config set channels.openclaw-weixin.blockStreaming false
+```
+
+或直接编辑 `openclaw.json`：
+
+```json
+{
+  "channels": {
+    "openclaw-weixin": {
+      "blockStreaming": false
+    }
+  }
+}
+```
+
+如需为单个账号覆盖频道设置，可使用命令（将 `account-1` 替换为目标账号的稳定别名或
+账号 ID）：
+
+```bash
+openclaw config set channels.openclaw-weixin.accounts.account-1.blockStreaming false
+```
+
+或在 `openclaw.json` 中配置：
+
+```json
+{
+  "channels": {
+    "openclaw-weixin": {
+      "accounts": {
+        "account-1": {
+          "blockStreaming": false
+        }
+      }
+    }
+  }
+}
+```
 
 ## 主动与定时发送
 

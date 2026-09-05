@@ -1,0 +1,26 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { describe, it } from "node:test";
+
+const css = await readFile(new URL("./.vitepress/theme/custom.css", import.meta.url), "utf8");
+
+describe("documentation theme", () => {
+  it("lets general prose use the full content width", () => {
+    assert.doesNotMatch(css, /\.docs-home \.vp-doc p,\s*\.docs-home \.vp-doc li\s*\{\s*max-width:/s);
+    assert.doesNotMatch(css, /\.VPDoc\.has-aside \.vp-doc > :where\(p, ul, ol, blockquote\)\s*\{\s*max-width:/s);
+  });
+
+  it("does not cap homepage copy with character-based widths", () => {
+    assert.doesNotMatch(css, /\.docs-home \.vp-doc h1 \+ p\s*\{[^}]*max-width:/s);
+    assert.doesNotMatch(css, /\.docs-home \.vp-doc h1 \+ p \+ p\s*\{[^}]*max-width:/s);
+    assert.doesNotMatch(css, /\.docs-home \.vp-doc p:has\(> #agent-install\) \+ h3 \+ p\s*\{[^}]*max-width:/s);
+  });
+
+  it("overrides the scoped VitePress width and contains nested mobile code blocks", () => {
+    assert.match(css, /\.VPDoc\.has-aside \.content > \.content-container\s*\{\s*max-width: 880px;/s);
+    assert.match(
+      css,
+      /@media \(max-width: 639px\)[^{]*\{[^}]*details\.full-check div\[class\*="language-"\][^{]*\{[^}]*margin-inline: -20px;/s,
+    );
+  });
+});

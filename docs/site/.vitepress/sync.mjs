@@ -49,7 +49,10 @@ export function renderPage(page, markdown, resolvePath = createPathResolver(page
       return resolved ? `/${resolved}.md` : undefined;
     },
   });
-  const pageFrontmatter = page.slug === "index" ? ['pageClass: "docs-home"', "sidebar: false", "aside: false"] : [];
+  const pageFrontmatter =
+    page.slug === "index"
+      ? ['pageClass: "docs-home"', "layout: home", "navbar: false", "sidebar: false", "aside: false"]
+      : [];
   const frontmatter = [
     "---",
     `title: ${escapeFrontmatter(page.title)}`,

@@ -69,22 +69,43 @@ html[lang^="zh"] {
   outline-offset: 3px;
 }
 
-.docs-home .VPDoc {
-  padding-top: 48px;
+.docs-home {
+  --vp-nav-height: 0px;
 }
 
-.docs-home .VPDoc .container,
-.docs-home .VPDoc .content,
-.docs-home .VPDoc .content-container {
-  max-width: 960px;
+.docs-home .VPHome {
+  padding-top: clamp(48px, 8vw, 96px);
+}
+
+.docs-home .VPHome > .vp-doc {
+  max-width: 1120px;
+  padding-inline: 24px;
+}
+
+.docs-home .vp-doc h1,
+.docs-home .vp-doc h1 + p,
+.docs-home .vp-doc h1 + p + p {
+  text-align: center;
 }
 
 .docs-home .vp-doc h1 {
-  max-width: none;
   overflow-wrap: anywhere;
-  font-size: clamp(2.55rem, 7vw, 4.35rem);
+  font-size: clamp(2rem, 10vw, 4.35rem);
   line-height: 1;
   letter-spacing: -0.04em;
+}
+
+.docs-home .vp-doc h1::before {
+  display: block;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  background: url("../../logo.svg") center / contain no-repeat;
+  content: "";
+}
+
+.docs-home .vp-doc h1 .header-anchor {
+  display: none;
 }
 
 .docs-home .vp-doc h2 {
@@ -92,7 +113,12 @@ html[lang^="zh"] {
   padding-top: 0;
   border-top: 0;
   font-size: clamp(1.7rem, 4vw, 2.2rem);
+  line-height: 1.25;
   letter-spacing: -0.025em;
+}
+
+.docs-home .vp-doc h2 .header-anchor {
+  top: 0;
 }
 
 .docs-home .vp-doc h3 {
@@ -104,16 +130,10 @@ html[lang^="zh"] {
 .docs-home .vp-doc h3[id],
 .docs-home .vp-doc h4[id],
 .docs-home .vp-doc a[id] {
-  scroll-margin-top: 96px;
-}
-
-.docs-home .vp-doc p,
-.docs-home .vp-doc li {
-  max-width: 72ch;
+  scroll-margin-top: 24px;
 }
 
 .docs-home .vp-doc h1 + p {
-  max-width: 24ch;
   margin: 12px 0 0;
 }
 
@@ -126,7 +146,6 @@ html[lang^="zh"] {
 }
 
 .docs-home .vp-doc h1 + p + p {
-  max-width: 66ch;
   margin: 20px 0 0;
   color: var(--vp-c-text-2);
   font-size: 1.08rem;
@@ -134,52 +153,59 @@ html[lang^="zh"] {
 }
 
 .docs-home .vp-doc p:has(> #connect-wechat) + h2 {
-  margin-top: 48px;
+  margin-top: 72px;
+  text-align: center;
 }
 
 .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  max-width: none;
-  margin: 20px 0 44px;
-  border-top: 1px solid var(--docs-border);
-  border-bottom: 1px solid var(--docs-border);
+  gap: 12px;
+  max-width: 480px;
+  margin: 24px auto 64px;
 }
 
 .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > strong {
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  color: var(--vp-c-text-3);
+  color: var(--vp-c-text-2);
   font-size: 0.875rem;
 }
 
 .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a {
   display: flex;
-  min-height: 80px;
+  min-height: 52px;
   align-items: center;
   justify-content: center;
-  padding: 14px 16px;
-  color: var(--vp-c-brand-1);
-  font-size: 1.05rem;
+  padding: 12px 20px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--vp-c-brand-1);
+  color: var(--vp-c-bg);
+  font-size: 1rem;
   font-weight: 700;
   text-align: center;
   text-decoration: none;
   transition:
-    background-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 120ms ease;
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 
 .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:hover,
 .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:focus-visible {
-  background: var(--docs-accent-surface);
-  box-shadow: inset 0 -2px 0 var(--vp-c-brand-3);
+  background: var(--vp-c-brand-2);
 }
 
-.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:active {
-  transform: translateY(1px);
-  background: var(--docs-accent-active);
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:last-child {
+  border-color: var(--docs-border);
+  background: var(--vp-c-bg-elv);
+  color: var(--vp-c-brand-1);
+}
+
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:last-child:hover,
+.docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:last-child:focus-visible {
+  border-color: var(--docs-accent-border);
+  background: var(--docs-accent-surface);
 }
 
 .docs-home .vp-doc p:has(> a[id]:only-child) {
@@ -188,7 +214,6 @@ html[lang^="zh"] {
 }
 
 .docs-home .vp-doc p:has(> #agent-install) + h3 + p {
-  max-width: 62ch;
   margin: 12px 0 16px;
   color: var(--vp-c-text-2);
   font-size: 1rem;
@@ -197,7 +222,6 @@ html[lang^="zh"] {
 
 .docs-home div[class*="language-"] {
   border: 1px solid var(--docs-border);
-  border-radius: 10px;
 }
 
 .docs-home .vp-doc table code {
@@ -224,43 +248,6 @@ html[lang^="zh"] {
 
 .docs-home :is(h4:has(> code), h4:has(> code) + p) + div[class*="language-"] code {
   font-weight: 650;
-}
-
-.docs-home
-  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
-  + div[class*="language-"] {
-  transition:
-    border-color 180ms ease,
-    background-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.docs-home
-  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
-  + div[class*="language-"]:hover,
-.docs-home
-  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
-  + div[class*="language-"]:focus-within {
-  border-color: var(--docs-accent-border);
-  box-shadow: 0 8px 24px var(--docs-shadow);
-}
-
-.docs-home
-  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
-  + div[class*="language-"]
-  > button.copy {
-  opacity: 0.62;
-}
-
-.docs-home
-  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
-  + div[class*="language-"]:hover
-  > button.copy,
-.docs-home
-  :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
-  + div[class*="language-"]:focus-within
-  > button.copy {
-  opacity: 1;
 }
 
 .docs-home details {
@@ -312,7 +299,7 @@ html[lang^="zh"] {
 }
 
 .docs-home details.full-check {
-  scroll-margin-top: 96px;
+  scroll-margin-top: 24px;
   margin: 16px 0 64px;
   padding: 0 20px;
   border: 1px solid var(--docs-border);
@@ -415,38 +402,31 @@ html[lang^="zh"] {
 }
 
 @media (min-width: 1440px) {
-  .VPDoc.has-aside .content-container {
+  .VPDoc.has-aside .content > .content-container {
     max-width: 880px;
   }
+}
 
-  .VPDoc.has-aside .vp-doc > :where(p, ul, ol, blockquote) {
-    max-width: 74ch;
-  }
-
-  .docs-home .VPDoc:not(.has-sidebar) .container,
-  .docs-home .VPDoc:not(.has-sidebar) .content,
-  .docs-home .VPDoc:not(.has-sidebar) .content-container {
-    max-width: 1120px;
+@media (min-width: 768px) {
+  .docs-home .VPHome > .vp-doc {
+    padding-inline: 32px;
   }
 }
 
 @media (max-width: 767px) {
-  .docs-home .VPDoc {
-    padding-top: 28px;
-  }
-
   .docs-home .vp-doc table {
     font-size: 0.9rem;
   }
 }
 
-@media (max-width: 479px) {
-  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > strong {
-    padding: 0 6px;
+@media (max-width: 639px) {
+  .docs-home details.full-check div[class*="language-"] {
+    margin-inline: -20px;
   }
+}
 
+@media (max-width: 479px) {
   .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a {
-    min-height: 88px;
     padding: 12px 10px;
   }
 
@@ -461,28 +441,33 @@ html[lang^="zh"] {
   }
 }
 
+.home-tools {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 0 24px 32px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+}
+
+.home-tools :is(a, button) {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 8px;
+}
+
+.home-tools :is(a, button):hover,
+.home-tools button[aria-pressed="true"] {
+  background: var(--docs-accent-surface);
+  color: var(--vp-c-brand-1);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html:has(.docs-home) {
     scroll-behavior: smooth;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a,
-  .docs-home
-    :is(p:has(> #agent-install) + h3 + p, p:has(> #npm-cli-install), p:has(> #clawhub-cli-install))
-    + div[class*="language-"],
-  .docs-home details.full-check,
-  .docs-home details:not(.full-check) summary,
-  .docs-home details:not(.full-check) summary::after,
-  .docs-home details.full-check > summary,
-  .docs-home details.full-check > summary::after {
-    animation: none;
-    transition: none;
-  }
-
-  .docs-home .vp-doc p:has(> a[href="#agent-install"]):has(+ p > #agent-install) > a:active {
-    transform: none;
   }
 }
 

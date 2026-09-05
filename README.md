@@ -157,21 +157,6 @@ openclaw channels login --channel openclaw-weixin --account nezha
 
 </details>
 
-## 分块回复
-
-插件默认按顺序发送模型在多步工具调用之间完成的文本块，再发送最终回复。分块回复不是逐
-token 流式输出；OpenClaw 可能按 Channel 的合并策略组合较短文本。工具调用进度消息由
-独立的 `replyProgressMessages` 设置控制。
-
-如需仅发送最终回复，可关闭分块回复：
-
-```bash
-openclaw config set channels.openclaw-weixin.blockStreaming false
-```
-
-也可以通过 `channels.openclaw-weixin.accounts.<accountId>.blockStreaming` 为单个账号覆盖
-频道设置。
-
 ## 主动与定时发送
 
 微信后端要求每条出站消息携带由该收件人入站消息下发的账号级 context token。插件收到
