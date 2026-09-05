@@ -5,13 +5,6 @@
 
 ## Installation Details
 
-### Which name to use
-
-| Situation | Name to use |
-| --- | --- |
-| Install the community build from npm | `openclaw-weixin` |
-| Install the community build from ClawHub | `openclaw-wechat` |
-
 This is a community-maintained distribution of the Tencent upstream project;
 Tencent's official npm package is `@tencent-weixin/openclaw-weixin`. The community
 package names and registries differ, but they keep the `openclaw-weixin` plugin,
@@ -49,7 +42,15 @@ for log attribution and monitoring aggregation. The default is `OpenClaw`.
 Declaring your own app name makes it much easier to trace your traffic in
 backend logs.
 
-Add one line to `openclaw.json`:
+Use either of the following equivalent methods.
+
+Run:
+
+```bash
+openclaw config set channels.openclaw-weixin.botAgent MyBot/1.2.0
+```
+
+Or edit `openclaw.json` directly:
 
 ```json
 {
@@ -85,8 +86,16 @@ added in a future version if needed.
 
 `replyProgressMessages` defaults to `true`. While the model calls tools, the
 plugin sends structured `TOOL_CALL_START` and `TOOL_CALL_RESULT` progress
-messages. Disable these extra messages in `openclaw.json` if they are not
-wanted:
+messages. To suppress these extra messages, use either of the following
+equivalent methods.
+
+Run:
+
+```bash
+openclaw config set channels.openclaw-weixin.replyProgressMessages false
+```
+
+Or edit `openclaw.json` directly:
 
 ```json
 {
@@ -100,6 +109,58 @@ wanted:
 
 Setting it to `false` suppresses only tool-call progress messages. It does not
 disable the final reply or ordinary text and media messages.
+
+## Block replies
+
+By default, the plugin sends completed text blocks produced between multi-step
+tool calls in order, followed by the final reply. Block replies are not token
+streaming; OpenClaw may combine short blocks according to the channel coalescing
+policy. Tool-call progress messages remain controlled separately by
+`replyProgressMessages`.
+
+To send only the final reply, disable block replies using either of the
+following equivalent methods.
+
+Run:
+
+```bash
+openclaw config set channels.openclaw-weixin.blockStreaming false
+```
+
+Or edit `openclaw.json` directly:
+
+```json
+{
+  "channels": {
+    "openclaw-weixin": {
+      "blockStreaming": false
+    }
+  }
+}
+```
+
+To override the channel setting for one account, replace `account-1` with the
+target account's stable alias or account ID, then run:
+
+```bash
+openclaw config set channels.openclaw-weixin.accounts.account-1.blockStreaming false
+```
+
+Or configure the account in `openclaw.json`:
+
+```json
+{
+  "channels": {
+    "openclaw-weixin": {
+      "accounts": {
+        "account-1": {
+          "blockStreaming": false
+        }
+      }
+    }
+  }
+}
+```
 
 ## Proactive and scheduled sends
 

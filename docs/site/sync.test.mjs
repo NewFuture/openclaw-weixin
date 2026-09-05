@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
+import { createMarkdownRenderer, disposeMdItInstance } from "vitepress";
 import {
   assertRegistryPromptOrder,
   assertRegistryReadmeInstallCommands,
@@ -56,6 +57,7 @@ describe("syncContent", () => {
   });
 
   after(async () => {
+    await disposeMdItInstance();
     await rm(path.dirname(contentDir), { recursive: true, force: true });
   });
 
@@ -66,11 +68,46 @@ describe("syncContent", () => {
     }
   });
 
+  it("uses a navigation-free home layout only for localized homepages", async () => {
+    for (const page of pages) {
+      const markdown = await readFile(path.join(contentDir, `${page.path}.md`), "utf8");
+      const frontmatter = markdown.split("---")[1];
+      if (page.slug === "index") {
+        assert.match(frontmatter, /^layout: home$/m, page.path);
+        assert.match(frontmatter, /^navbar: false$/m, page.path);
+        assert.match(frontmatter, /^sidebar: false$/m, page.path);
+        assert.match(frontmatter, /^aside: false$/m, page.path);
+        assert.match(frontmatter, /^footer: false$/m, page.path);
+      } else {
+        assert.doesNotMatch(frontmatter, /^(?:layout|navbar|sidebar|aside|footer):/m, page.path);
+      }
+    }
+  });
+
+  it("renders homepage Markdown inside one main landmark without wrapping other pages", async () => {
+    const renderer = await createMarkdownRenderer(SITE_DIR);
+    for (const page of pages) {
+      const markdown = await readFile(path.join(contentDir, `${page.path}.md`), "utf8");
+      if (page.slug !== "index") {
+        assert.doesNotMatch(markdown, /<\/?main\b/, page.path);
+        continue;
+      }
+
+      const html = renderer.render(markdown, { path: `${page.path}.md`, relativePath: `${page.path}.md` });
+      assert.equal(html.match(/<main>/g)?.length ?? 0, 1, page.path);
+      assert.equal(html.match(/<\/main>/g)?.length ?? 0, 1, page.path);
+      assert.match(html, /<main>\s*<h1\b[^>]*>openclaw-weixin/);
+      assert.match(html, /class="language-bash\b/);
+      assert.match(html, /<a href="#agent-install">/);
+      assert.match(html, /<\/main>\s*$/);
+    }
+  });
+
   it("prefixes every page with its title and description", async () => {
     const overview = (await readFile(path.join(contentDir, "index.md"), "utf8")).replaceAll("\r\n", "\n");
     assert.match(
       overview,
-      /^---\ntitle: "概览"\ndescription: "[^"]+"\npageClass: "docs-home"\nsidebar: false\naside: false\n---\n/,
+      /^---\ntitle: "概览"\ndescription: "[^"]+"\npageClass: "docs-home"\nlayout: home\nnavbar: false\nsidebar: false\naside: false\nfooter: false\n---\n/,
     );
     assert.match(overview, /# openclaw-weixin/);
     assert.match(overview, /\*\*把 OpenClaw 接入微信\*\*/);
@@ -230,14 +267,16 @@ describe("syncContent", () => {
     assert.match(englishDistributions, /in-place replacement that preserves configuration and login\s+state/);
 
     const guide = await readFile(path.join(contentDir, "guide.md"), "utf8");
-    assert.match(guide, /### 在不同场景使用哪个名称/);
+    assert.doesNotMatch(guide, /### 在不同场景使用哪个名称/);
+    assert.doesNotMatch(guide, /\| 从 (?:npm|ClawHub) 安装社区版 \|/);
     assert.doesNotMatch(guide, /\| 安装后 \|/);
     assert.match(guide, /腾讯官方 npm 包是\s+`@tencent-weixin\/openclaw-weixin`/);
     assert.match(guide, /沿用\s+`openclaw-weixin` 插件、Channel 和状态 ID/);
     assert.match(guide, /\[社区版与腾讯版\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/distributions\.html\)/);
 
     const englishGuide = await readFile(path.join(contentDir, "en", "guide.md"), "utf8");
-    assert.match(englishGuide, /### Which name to use/);
+    assert.doesNotMatch(englishGuide, /### Which name to use/);
+    assert.doesNotMatch(englishGuide, /\| Install the community build from (?:npm|ClawHub) \|/);
     assert.doesNotMatch(englishGuide, /\| After installation \|/);
     assert.match(englishGuide, /Tencent's official npm package is `@tencent-weixin\/openclaw-weixin`/);
     assert.match(englishGuide, /keep the `openclaw-weixin` plugin,\s+channel, and state ID/);
@@ -262,11 +301,15 @@ describe("syncContent", () => {
     assert.doesNotMatch(englishBackend, /obtain `upload_param` and `thumb_upload_param`/);
 
     const overview = await readFile(path.join(contentDir, "index.md"), "utf8");
+    assert.doesNotMatch(overview, /## 分块回复/);
+    assert.doesNotMatch(overview, /blockStreaming/);
     assert.match(overview, /## 主动与定时发送/);
     assert.match(overview, /token 缺失时，插件会拒绝发送消息，不会返回本地“成功”\s+结果/);
     assert.match(overview, /`delivery\.to` 和 `delivery\.accountId`/);
 
     const englishOverview = await readFile(path.join(contentDir, "en", "index.md"), "utf8");
+    assert.doesNotMatch(englishOverview, /## Block replies/);
+    assert.doesNotMatch(englishOverview, /blockStreaming/);
     assert.match(englishOverview, /## Proactive and scheduled sends/);
     assert.match(
       englishOverview,
@@ -275,14 +318,30 @@ describe("syncContent", () => {
     assert.match(englishOverview, /`delivery\.to` and `delivery\.accountId`/);
 
     const guide = await readFile(path.join(contentDir, "guide.md"), "utf8");
+    assert.match(guide, /channels\.openclaw-weixin\.botAgent MyBot\/1\.2\.0/);
+    assert.match(guide, /"botAgent": "MyBot\/1\.2\.0"/);
     assert.match(guide, /`replyProgressMessages` 默认为 `true`/);
+    assert.match(guide, /channels\.openclaw-weixin\.replyProgressMessages false/);
     assert.match(guide, /"replyProgressMessages": false/);
     assert.match(guide, /设为 `false` 只会停止工具调用进度消息/);
+    assert.match(guide, /## 分块回复/);
+    assert.match(guide, /channels\.openclaw-weixin\.blockStreaming false/);
+    assert.match(guide, /"blockStreaming": false/);
+    assert.match(guide, /accounts\.account-1\.blockStreaming false/);
+    assert.match(guide, /"account-1": \{\s+"blockStreaming": false/);
 
     const englishGuide = await readFile(path.join(contentDir, "en", "guide.md"), "utf8");
+    assert.match(englishGuide, /channels\.openclaw-weixin\.botAgent MyBot\/1\.2\.0/);
+    assert.match(englishGuide, /"botAgent": "MyBot\/1\.2\.0"/);
     assert.match(englishGuide, /`replyProgressMessages` defaults to `true`/);
+    assert.match(englishGuide, /channels\.openclaw-weixin\.replyProgressMessages false/);
     assert.match(englishGuide, /"replyProgressMessages": false/);
     assert.match(englishGuide, /suppresses only tool-call progress messages/);
+    assert.match(englishGuide, /## Block replies/);
+    assert.match(englishGuide, /channels\.openclaw-weixin\.blockStreaming false/);
+    assert.match(englishGuide, /"blockStreaming": false/);
+    assert.match(englishGuide, /accounts\.account-1\.blockStreaming false/);
+    assert.match(englishGuide, /"account-1": \{\s+"blockStreaming": false/);
   });
 
   it("publishes explicit translations without fallback notices", async () => {
