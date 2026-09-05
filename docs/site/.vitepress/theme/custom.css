@@ -471,6 +471,22 @@ html[lang^="zh"] {
   }
 }
 
+@media (hover: none) {
+  .docs-home div[class*="language-"] > button.copy {
+    width: 44px;
+    height: 44px;
+    opacity: 1;
+  }
+
+  .docs-home div[class*="language-"] > button.copy + span.lang {
+    opacity: 0;
+  }
+
+  .docs-home div[class*="language-"] > pre {
+    padding-top: 64px;
+  }
+}
+
 div[class*="language-"] > button.copy:focus-visible {
   opacity: 1;
 }

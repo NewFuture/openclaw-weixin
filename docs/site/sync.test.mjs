@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
+import { createMarkdownRenderer, disposeMdItInstance } from "vitepress";
 import {
   assertRegistryPromptOrder,
   assertRegistryReadmeInstallCommands,
@@ -56,6 +57,7 @@ describe("syncContent", () => {
   });
 
   after(async () => {
+    await disposeMdItInstance();
     await rm(path.dirname(contentDir), { recursive: true, force: true });
   });
 
@@ -78,6 +80,25 @@ describe("syncContent", () => {
       } else {
         assert.doesNotMatch(frontmatter, /^(?:layout|navbar|sidebar|aside):/m, page.path);
       }
+    }
+  });
+
+  it("renders homepage Markdown inside one main landmark without wrapping other pages", async () => {
+    const renderer = await createMarkdownRenderer(SITE_DIR);
+    for (const page of pages) {
+      const markdown = await readFile(path.join(contentDir, `${page.path}.md`), "utf8");
+      if (page.slug !== "index") {
+        assert.doesNotMatch(markdown, /<\/?main\b/, page.path);
+        continue;
+      }
+
+      const html = renderer.render(markdown, { path: `${page.path}.md`, relativePath: `${page.path}.md` });
+      assert.equal(html.match(/<main>/g)?.length ?? 0, 1, page.path);
+      assert.equal(html.match(/<\/main>/g)?.length ?? 0, 1, page.path);
+      assert.match(html, /<main>\s*<h1\b[^>]*>openclaw-weixin/);
+      assert.match(html, /class="language-bash\b/);
+      assert.match(html, /<a href="#agent-install">/);
+      assert.match(html, /<\/main>\s*$/);
     }
   });
 

@@ -23,4 +23,15 @@ describe("documentation theme", () => {
       /@media \(max-width: 639px\)[^{]*\{[^}]*details\.full-check div\[class\*="language-"\][^{]*\{[^}]*margin-inline: -20px;/s,
     );
   });
+
+  it("keeps touch copy buttons visible without covering code or language labels", () => {
+    const touchStyles = css.match(/@media \(hover: none\) \{([\s\S]*?)\n\}/)?.[1];
+    assert.ok(touchStyles, "touch-only copy affordances must not change desktop hover behavior");
+    assert.match(touchStyles, /\.docs-home div\[class\*="language-"\] > button\.copy\s*\{[^}]*opacity: 1;/s);
+    assert.match(
+      touchStyles,
+      /\.docs-home div\[class\*="language-"\] > button\.copy \+ span\.lang\s*\{[^}]*opacity: 0;/s,
+    );
+    assert.match(touchStyles, /\.docs-home div\[class\*="language-"\] > pre\s*\{[^}]*padding-top: 64px;/s);
+  });
 });

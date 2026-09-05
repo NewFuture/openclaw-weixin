@@ -49,10 +49,10 @@ export function renderPage(page, markdown, resolvePath = createPathResolver(page
       return resolved ? `/${resolved}.md` : undefined;
     },
   });
-  const pageFrontmatter =
-    page.slug === "index"
-      ? ['pageClass: "docs-home"', "layout: home", "navbar: false", "sidebar: false", "aside: false"]
-      : [];
+  const isHome = page.slug === "index";
+  const pageFrontmatter = isHome
+    ? ['pageClass: "docs-home"', "layout: home", "navbar: false", "sidebar: false", "aside: false"]
+    : [];
   const frontmatter = [
     "---",
     `title: ${escapeFrontmatter(page.title)}`,
@@ -62,7 +62,9 @@ export function renderPage(page, markdown, resolvePath = createPathResolver(page
     "",
   ].join("\n");
   const notice = page.translated ? undefined : localeById(page.locale).untranslatedNotice;
-  return `${frontmatter}\n${withUntranslatedNotice(body.trimEnd(), notice)}\n`;
+  const content = withUntranslatedNotice(body.trimEnd(), notice);
+  const pageBody = isHome ? `<main>\n\n${content}\n\n</main>` : content;
+  return `${frontmatter}\n${pageBody}\n`;
 }
 
 export async function syncContent({ repoRoot = REPO_ROOT, siteDir = SITE_DIR, contentDir = CONTENT_DIR } = {}) {
