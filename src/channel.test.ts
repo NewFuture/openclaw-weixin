@@ -274,7 +274,7 @@ describe("weixinPlugin outbound account resolution", () => {
       text: "hello",
     });
 
-    expect(mocks.resolveAccount).toHaveBeenCalledWith(cfg, "account-a");
+    expect(mocks.resolveAccount).toHaveBeenCalledExactlyOnceWith(cfg, "account-a");
     expect(mocks.getContextToken).toHaveBeenCalledWith("account-a", recipient);
     expect(mocks.sendMessage).toHaveBeenCalledWith({
       to: recipient,
@@ -343,31 +343,54 @@ describe("weixinPlugin outbound account resolution", () => {
   });
 
   it.each([
-    { mediaUrl: "C:\\synthetic\\reply.png", hasMedia: true },
-    { mediaUrl: "https://media.example.test/reply.png", hasMedia: true },
-    { mediaUrl: undefined, hasMedia: false },
-    { mediaUrl: "unsupported://synthetic", hasMedia: false },
-  ])("keeps media adapter $mediaUrl hook-free and uses the primary account context", async ({ mediaUrl, hasMedia }) => {
-    mocks.resolveAccount.mockReturnValue(makeAccount("leader", { primaryId: "primary-test", aliasId: "leader" }));
-    mocks.applySendingHook.mockResolvedValue({ cancelled: true, text: "must not run" });
+    { kind: "text", mediaUrl: undefined, hasMedia: false },
+    { kind: "media", mediaUrl: "C:\\synthetic\\reply.png", hasMedia: true },
+    { kind: "media", mediaUrl: "https://media.example.test/reply.png", hasMedia: true },
+    { kind: "media", mediaUrl: undefined, hasMedia: false },
+    { kind: "media", mediaUrl: "unsupported://synthetic", hasMedia: false },
+  ])(
+    "keeps $kind adapter $mediaUrl hook-free and uses the primary account context",
+    async ({ kind, mediaUrl, hasMedia }) => {
+      mocks.resolveAccount.mockReturnValue(makeAccount("leader", { primaryId: "primary-test", aliasId: "leader" }));
+      mocks.applySendingHook.mockResolvedValue({ cancelled: true, text: "must not run" });
 
-    const result = await requireSendMedia()({ cfg, to: recipient, text: "caption", mediaUrl, accountId: "leader" });
+      const send = kind === "text" ? requireSendText() : requireSendMedia();
+      const result = await send({ cfg, to: recipient, text: "caption", mediaUrl, accountId: "leader" });
 
-    expect(mocks.assertSessionActive).toHaveBeenCalledWith("primary-test");
-    expect(mocks.getContextToken).toHaveBeenCalledWith("primary-test", recipient);
-    expect(hasMedia ? mocks.sendMedia : mocks.sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: recipient,
-        text: "caption",
-        opts: expect.objectContaining({ token: "token-primary-test", contextToken: "context-token-test" }),
-      }),
+      expect(mocks.resolveAccount).toHaveBeenCalledExactlyOnceWith(cfg, "leader");
+      expect(mocks.assertSessionActive).toHaveBeenCalledWith("primary-test");
+      expect(mocks.getContextToken).toHaveBeenCalledWith("primary-test", recipient);
+      expect(hasMedia ? mocks.sendMedia : mocks.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: recipient,
+          text: "caption",
+          opts: expect.objectContaining({ token: "token-primary-test", contextToken: "context-token-test" }),
+        }),
+      );
+      expect(result).toEqual({
+        channel: "openclaw-weixin",
+        messageId: hasMedia ? "media-message-test" : "message-test",
+      });
+      expect(mocks.applySendingHook).not.toHaveBeenCalled();
+      expect(mocks.emitMessageSent).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["unconfigured", "paused"])("rejects %s text accounts before transport", async (state) => {
+    mocks.resolveAccount.mockReturnValue(
+      makeAccount("leader", { primaryId: "primary-test", configured: state !== "unconfigured" }),
     );
-    expect(result).toEqual({
-      channel: "openclaw-weixin",
-      messageId: hasMedia ? "media-message-test" : "message-test",
-    });
-    expect(mocks.applySendingHook).not.toHaveBeenCalled();
-    expect(mocks.emitMessageSent).not.toHaveBeenCalled();
+    if (state === "paused") {
+      mocks.assertSessionActive.mockImplementationOnce(() => {
+        throw new Error("synthetic paused session");
+      });
+    }
+
+    await expect(requireSendText()({ cfg, to: recipient, text: "reply", accountId: "leader" })).rejects.toThrow(
+      state === "paused" ? "synthetic paused session" : "weixin not configured",
+    );
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.sendMedia).not.toHaveBeenCalled();
   });
 
   it.each(["text", "media", "download"] as const)(

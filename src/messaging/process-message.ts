@@ -215,7 +215,6 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
 
   // --- Framework command authorization ---
   const rawBody = textBody.trim() || (ctx.Body?.trim() ?? "");
-  ctx.CommandBody = rawBody;
 
   const { senderAllowedForCommands, commandAuthorized } = await resolveSenderCommandAuthorizationWithRuntime({
     cfg: deps.config,
@@ -247,7 +246,6 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
     return;
   }
 
-  ctx.CommandAuthorized = commandAuthorized;
   logger.debug(
     `authorization: senderId=${redactToken(senderId, 6)} commandAuthorized=${String(commandAuthorized)} senderAllowed=${String(senderAllowedForCommands)}`,
   );

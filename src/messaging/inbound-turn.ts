@@ -9,29 +9,25 @@ import { sendWeixinWithHooks } from "./outbound-hooks.js";
 
 type InboundRuntime = PluginRuntime["channel"]["inbound"];
 
-export type WeixinRoutedInboundTurn = Omit<
+type InboundTurnPlan = Pick<
   AssembledInboundReply,
-  "agentId" | "routeSessionKey" | "storePath" | "recordInboundSession" | "dispatchReplyWithBufferedBlockDispatcher"
+  "cfg" | "channel" | "accountId" | "ctxPayload" | "dispatcherOptions" | "replyOptions" | "record" | "replyResolver"
 > & {
-  route: Pick<ReturnType<PluginRuntime["channel"]["routing"]["resolveAgentRoute"]>, "agentId" | "sessionKey">;
+  route: ReturnType<PluginRuntime["channel"]["routing"]["resolveAgentRoute"]>;
+  delivery: Pick<AssembledInboundReply["delivery"], "preparePayload" | "deliver" | "onDelivered" | "onError">;
 };
 
 export type WeixinInboundRuntime = {
   inbound: {
     buildContext: (params: BuildChannelInboundEventContextParams) => BuiltChannelInboundEventContext;
-    dispatch?: (params: WeixinRoutedInboundTurn) => ReturnType<InboundRuntime["dispatchReply"]>;
+    dispatch?: (params: InboundTurnPlan) => ReturnType<InboundRuntime["dispatchReply"]>;
   } & Pick<InboundRuntime, "dispatchReply">;
   reply: Pick<PluginRuntime["channel"]["reply"], "dispatchReplyWithBufferedBlockDispatcher">;
   session: Pick<PluginRuntime["channel"]["session"], "recordInboundSession" | "resolveStorePath">;
 };
 
-export type WeixinInboundTurn = Pick<
-  AssembledInboundReply,
-  "cfg" | "channel" | "accountId" | "ctxPayload" | "dispatcherOptions" | "replyOptions" | "record" | "replyResolver"
-> & {
+export type WeixinInboundTurn = InboundTurnPlan & {
   channelRuntime: WeixinInboundRuntime;
-  route: ReturnType<PluginRuntime["channel"]["routing"]["resolveAgentRoute"]>;
-  delivery: Pick<AssembledInboundReply["delivery"], "preparePayload" | "deliver" | "onDelivered" | "onError">;
   onReplyAdmitted?: () => void;
   onReplyDeferred?: () => void;
   onDeferredComplete?: () => void;
@@ -40,7 +36,7 @@ export type WeixinInboundTurn = Pick<
 /** Only the two public inbound contracts are supported; a failed dispatch is never replayed. */
 export async function dispatchWeixinInboundTurn(
   params: WeixinInboundTurn,
-): Promise<Awaited<ReturnType<InboundRuntime["dispatchReply"]>>> {
+): ReturnType<InboundRuntime["dispatchReply"]> {
   const { channelRuntime, route, onReplyAdmitted, onReplyDeferred, onDeferredComplete, ...turn } = params;
   const inbound = channelRuntime.inbound;
   if (!inbound) {

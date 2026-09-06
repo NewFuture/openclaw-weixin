@@ -98,36 +98,6 @@ function resolveOutboundAccountId(cfg: OpenClawConfig, to: string): string {
   );
 }
 
-async function sendWeixinOutbound(params: {
-  cfg: OpenClawConfig;
-  to: string;
-  text: string;
-  accountId?: string | null;
-  contextToken?: string;
-}): Promise<{ channel: string; messageId: string }> {
-  const account = resolveWeixinAccount(params.cfg, params.accountId);
-  const storageAccountId = account.primaryId;
-  const aLog = logger.withAccount(storageAccountId);
-  assertSessionActive(storageAccountId);
-  if (!account.configured) {
-    aLog.error(`sendWeixinOutbound: account not configured`);
-    throw new Error("weixin not configured: please run `openclaw channels login --channel openclaw-weixin`");
-  }
-  const f = new StreamingMarkdownFilter();
-  const rawText = params.text ?? "";
-  const filteredText = f.feed(rawText) + f.flush();
-  const result = await sendMessageWeixin({
-    to: params.to,
-    text: filteredText,
-    opts: {
-      baseUrl: account.baseUrl,
-      token: account.token,
-      contextToken: params.contextToken,
-    },
-  });
-  return { channel: "openclaw-weixin", messageId: result.messageId };
-}
-
 export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
   id: "openclaw-weixin",
   meta: {
@@ -193,14 +163,22 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
     sendText: async (ctx) => {
       const accountId = ctx.accountId || resolveOutboundAccountId(ctx.cfg, ctx.to);
       const account = resolveWeixinAccount(ctx.cfg, accountId);
-      const result = await sendWeixinOutbound({
-        cfg: ctx.cfg,
+      assertSessionActive(account.primaryId);
+      if (!account.configured) {
+        logger.withAccount(account.primaryId).error("sendText: account not configured");
+        throw new Error("weixin not configured: please run `openclaw channels login --channel openclaw-weixin`");
+      }
+      const filter = new StreamingMarkdownFilter();
+      const result = await sendMessageWeixin({
         to: ctx.to,
-        text: ctx.text,
-        accountId: account.accountId,
-        contextToken: getContextToken(account.primaryId, ctx.to),
+        text: filter.feed(ctx.text ?? "") + filter.flush(),
+        opts: {
+          baseUrl: account.baseUrl,
+          token: account.token,
+          contextToken: getContextToken(account.primaryId, ctx.to),
+        },
       });
-      return result;
+      return { channel: "openclaw-weixin", messageId: result.messageId };
     },
     sendMedia: async (ctx) => {
       const accountId = ctx.accountId || resolveOutboundAccountId(ctx.cfg, ctx.to);
