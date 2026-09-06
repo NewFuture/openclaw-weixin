@@ -25,8 +25,9 @@ import { isDebugMode } from "./debug-mode.js";
 import { sendWeixinErrorNotice } from "./error-notice.js";
 import type { WeixinInboundMediaOpts } from "./inbound.js";
 import { getContextTokenFromMsgContext, isMediaItem, weixinMessageToMsgContext } from "./inbound.js";
+import { dispatchWeixinInboundTurn, type WeixinInboundRuntime, type WeixinInboundTurn } from "./inbound-turn.js";
 import { StreamingMarkdownFilter } from "./markdown-filter.js";
-import { applyWeixinMessageSendingHook, emitWeixinMessageSent } from "./outbound-hooks.js";
+import { sendWeixinWithHooks } from "./outbound-hooks.js";
 import { WeixinReplyProgressSender } from "./reply-progress-sender.js";
 import { sendMessageWeixin } from "./send.js";
 import { sendWeixinMediaFile } from "./send-media.js";
@@ -34,29 +35,11 @@ import { handleSlashCommand } from "./slash-commands.js";
 
 const MEDIA_OUTBOUND_TEMP_DIR = path.join(resolvePreferredOpenClawTmpDir(), "weixin/media/outbound-temp");
 
-type DispatchReplyOptions = NonNullable<
-  Parameters<PluginRuntime["channel"]["reply"]["dispatchReplyFromConfig"]>[0]["replyOptions"]
-> & {
-  queuedFollowupLifecycle?: {
-    onEnqueued?: () => void;
-    onComplete?: () => void;
-  };
-  onTurnAdopted?: () => void | Promise<void>;
-};
-
-export type WeixinChannelRuntime = {
+export type WeixinChannelRuntime = WeixinInboundRuntime & {
   commands: Parameters<typeof resolveSenderCommandAuthorizationWithRuntime>[0]["runtime"];
   media: Pick<PluginRuntime["channel"]["media"], "saveMediaBuffer">;
-  reply: Pick<
-    PluginRuntime["channel"]["reply"],
-    | "createReplyDispatcherWithTyping"
-    | "dispatchReplyFromConfig"
-    | "finalizeInboundContext"
-    | "resolveHumanDelayConfig"
-    | "withReplyDispatcher"
-  >;
+  reply: WeixinInboundRuntime["reply"] & Pick<PluginRuntime["channel"]["reply"], "resolveHumanDelayConfig">;
   routing: Pick<PluginRuntime["channel"]["routing"], "resolveAgentRoute">;
-  session: Pick<PluginRuntime["channel"]["session"], "recordInboundSession" | "resolveStorePath">;
 };
 
 /** Dependencies for processOneMessage, injected by the monitor loop. */
@@ -276,115 +259,80 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
     );
     debugTs.preDispatch = Date.now();
   }
-  // Note: `route` was resolved earlier so downloadMedia could pick the
-  // per-agent subdirectory. Session/storePath/dispatch below reuse the same
-  // resolved object; no second routing call is needed.
-  // Propagate the resolved session key into ctx so dispatchReplyFromConfig uses
-  // the correct session (matching the dmScope from config) instead of falling back
-  // to agent:main:main.
-  ctx.SessionKey = route.sessionKey;
-  const storePath = deps.channelRuntime.session.resolveStorePath(deps.config.session?.store, {
+  if (typeof deps.channelRuntime.inbound?.buildContext !== "function") {
+    throw new Error("weixin: host inbound.buildContext is missing");
+  }
+  const contextRoute = {
     agentId: route.agentId,
+    routeSessionKey: route.sessionKey,
+    ...("dmScope" in route ? { dmScope: route.dmScope } : {}),
+  };
+  const finalized = deps.channelRuntime.inbound.buildContext({
+    channel: "openclaw-weixin",
+    accountId: deps.accountId,
+    from: ctx.From,
+    sender: { id: senderId },
+    conversation: { kind: "direct", id: ctx.To },
+    route: contextRoute,
+    reply: { to: ctx.To },
+    message: { body: ctx.Body, rawBody: ctx.Body, bodyForAgent: ctx.Body, commandBody: rawBody },
+    messageId: ctx.MessageSid,
+    timestamp: ctx.Timestamp,
+    access: { commands: { authorized: commandAuthorized === true } },
+    media:
+      ctx.MediaPath || ctx.MediaUrl
+        ? [{ path: ctx.MediaPath, url: ctx.MediaUrl, contentType: ctx.MediaType }]
+        : undefined,
   });
-  const finalized = deps.channelRuntime.reply.finalizeInboundContext({
-    ...ctx,
-    BodyForAgent: ctx.Body,
-  } as Parameters<typeof deps.channelRuntime.reply.finalizeInboundContext>[0]);
 
   logger.info(
-    `inbound: from=${redactToken(finalized.From)} to=${redactToken(finalized.To)} bodyLen=${(finalized.Body ?? "").length} hasMedia=${Boolean(finalized.MediaPath ?? finalized.MediaUrl)}`,
+    `inbound: from=${redactToken(finalized.From)} to=${redactToken(finalized.To)} bodyLen=${(finalized.Body ?? "").length} hasMedia=${Boolean(ctx.MediaPath ?? ctx.MediaUrl)}`,
   );
-
-  await deps.channelRuntime.session.recordInboundSession({
-    storePath,
-    sessionKey: route.sessionKey,
-    ctx: finalized as Parameters<typeof deps.channelRuntime.session.recordInboundSession>[0]["ctx"],
-    updateLastRoute: {
-      sessionKey: route.mainSessionKey,
-      channel: "openclaw-weixin",
-      to: ctx.To,
-      accountId: deps.accountId,
-    },
-    onRecordError: (err) => deps.errLog(`recordInboundSession: ${redactError(err)}`),
-  });
-  logger.debug(`recordInboundSession: done sessionKey=${redactToken(route.sessionKey, 6)}`);
 
   const contextToken = getContextTokenFromMsgContext(ctx);
   const runId = randomUUID();
+  const sendOptions = { baseUrl: deps.baseUrl, token: deps.token, contextToken, runId };
+  const humanDelay = deps.channelRuntime.reply.resolveHumanDelayConfig(deps.config, route.agentId);
+  const typingTicket = deps.typingTicket;
+  const updateTyping = async (status: number) => {
+    if (typingTicket) {
+      await sendTyping({
+        baseUrl: deps.baseUrl,
+        token: deps.token,
+        body: { ilink_user_id: ctx.To, typing_ticket: typingTicket, status },
+      });
+    }
+  };
+  const typingCallbacks = createTypingCallbacks({
+    start: () => updateTyping(TypingStatus.TYPING),
+    stop: () => updateTyping(TypingStatus.CANCEL),
+    onStartError: (err) => deps.log(`[weixin] typing send error: ${redactError(err)}`),
+    onStopError: (err) => deps.log(`[weixin] typing cancel error: ${redactError(err)}`),
+    keepaliveIntervalMs: 5000,
+  });
   const replyProgressSender = resolveReplyProgressMessagesEnabled(deps.config)
     ? new WeixinReplyProgressSender({
         runId,
         to: ctx.To,
         accountId: deps.accountId,
-        opts: {
-          baseUrl: deps.baseUrl,
-          token: deps.token,
-          contextToken,
-        },
+        opts: sendOptions,
       })
     : undefined;
-  const humanDelay = deps.channelRuntime.reply.resolveHumanDelayConfig(deps.config, route.agentId);
-
-  const typingTicket = deps.typingTicket;
-  const typingCallbacks = createTypingCallbacks({
-    start: typingTicket
-      ? () =>
-          sendTyping({
-            baseUrl: deps.baseUrl,
-            token: deps.token,
-            body: {
-              ilink_user_id: ctx.To,
-              typing_ticket: typingTicket,
-              status: TypingStatus.TYPING,
-            },
-          })
-      : async () => {},
-    stop: typingTicket
-      ? () =>
-          sendTyping({
-            baseUrl: deps.baseUrl,
-            token: deps.token,
-            body: {
-              ilink_user_id: ctx.To,
-              typing_ticket: typingTicket,
-              status: TypingStatus.CANCEL,
-            },
-          })
-      : async () => {},
-    onStartError: (err) => deps.log(`[weixin] typing send error: ${redactError(err)}`),
-    onStopError: (err) => deps.log(`[weixin] typing cancel error: ${redactError(err)}`),
-    keepaliveIntervalMs: 5000,
-  });
 
   /** Delivery records populated synchronously at deliver() entry, safe to read in finally. */
   const debugDeliveries: Array<{ textLen: number; media: string; ts: number }> = [];
 
-  const { dispatcher, replyOptions, markDispatchIdle } = deps.channelRuntime.reply.createReplyDispatcherWithTyping({
-    humanDelay,
-    typingCallbacks,
+  const delivery: WeixinInboundTurn["delivery"] = {
+    preparePayload: (payload) => {
+      const filter = new StreamingMarkdownFilter();
+      return { ...payload, text: filter.feed(payload.text ?? "") + filter.flush() };
+    },
     deliver: async (payload) => {
-      const rawText = payload.text ?? "";
-      let text = (() => {
-        const f = new StreamingMarkdownFilter();
-        return f.feed(rawText) + f.flush();
-      })();
+      const text = payload.text ?? "";
       const mediaUrl = payload.mediaUrl ?? payload.mediaUrls?.[0];
       logger.info(
         `outbound: to=${redactToken(ctx.To)} contextToken=${redactToken(contextToken)} textLen=${text.length} mediaUrl=${mediaUrl ? "present" : "none"}`,
       );
-
-      const sendingResult = await applyWeixinMessageSendingHook({
-        to: ctx.To,
-        text,
-        accountId: deps.accountId,
-        mediaUrl,
-        runId,
-      });
-      if (sendingResult.cancelled) {
-        logger.info(`outbound: cancelled by message_sending hook to=${redactToken(ctx.To)}`);
-        return;
-      }
-      text = sendingResult.text;
 
       if (debug) {
         debugDeliveries.push({
@@ -395,70 +343,34 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
       }
 
       try {
-        if (mediaUrl) {
-          let filePath: string;
-          if (!mediaUrl.includes("://") || mediaUrl.startsWith("file://")) {
-            if (mediaUrl.startsWith("file://")) {
-              filePath = new URL(mediaUrl).pathname;
-            } else if (!path.isAbsolute(mediaUrl)) {
-              filePath = path.resolve(mediaUrl);
-            } else {
-              filePath = mediaUrl;
-            }
-            logger.debug("outbound: local media path resolved");
-          } else if (mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://")) {
+        const remote = mediaUrl?.startsWith("http://") || mediaUrl?.startsWith("https://");
+        let result: { messageId: string };
+        if (mediaUrl && (!mediaUrl.includes("://") || mediaUrl.startsWith("file://") || remote)) {
+          let filePath = mediaUrl;
+          if (remote) {
             logger.debug("outbound: downloading remote media");
             filePath = await downloadRemoteImageToTemp(mediaUrl, MEDIA_OUTBOUND_TEMP_DIR);
             logger.debug("outbound: remote media downloaded");
-          } else {
-            logger.warn("outbound: unrecognized media URL scheme, sending text only");
-            await sendMessageWeixin({
-              to: ctx.To,
-              text,
-              opts: {
-                baseUrl: deps.baseUrl,
-                token: deps.token,
-                contextToken,
-                runId,
-              },
-            });
-            emitWeixinMessageSent({ to: ctx.To, content: text, success: true, accountId: deps.accountId, runId });
-            logger.info(`outbound: text sent to=${redactToken(ctx.To)}`);
-            return;
+          } else if (mediaUrl.startsWith("file://")) {
+            filePath = new URL(mediaUrl).pathname;
+          } else if (!path.isAbsolute(mediaUrl)) {
+            filePath = path.resolve(mediaUrl);
           }
-          await sendWeixinMediaFile({
+          result = await sendWeixinMediaFile({
             filePath,
             to: ctx.To,
             text,
-            opts: { baseUrl: deps.baseUrl, token: deps.token, contextToken, runId },
+            opts: sendOptions,
             cdnBaseUrl: deps.cdnBaseUrl,
           });
-          emitWeixinMessageSent({ to: ctx.To, content: text, success: true, accountId: deps.accountId, runId });
           logger.info(`outbound: media sent OK to=${redactToken(ctx.To)}`);
         } else {
-          logger.debug(`outbound: sending text message to=${redactToken(ctx.To, 6)}`);
-          await sendMessageWeixin({
-            to: ctx.To,
-            text,
-            opts: {
-              baseUrl: deps.baseUrl,
-              token: deps.token,
-              contextToken,
-              runId,
-            },
-          });
-          emitWeixinMessageSent({ to: ctx.To, content: text, success: true, accountId: deps.accountId, runId });
+          if (mediaUrl) logger.warn("outbound: unrecognized media URL scheme, sending text only");
+          result = await sendMessageWeixin({ to: ctx.To, text, opts: sendOptions });
           logger.info(`outbound: text sent OK to=${redactToken(ctx.To)}`);
         }
+        return { messageIds: [result.messageId], content: text };
       } catch (err) {
-        emitWeixinMessageSent({
-          to: ctx.To,
-          content: text,
-          success: false,
-          error: redactError(err),
-          accountId: deps.accountId,
-          runId,
-        });
         logger.error(
           `outbound: FAILED to=${redactToken(ctx.To)} hasMedia=${Boolean(mediaUrl)} err=${redactError(err)}`,
         );
@@ -486,43 +398,45 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
         errLog: deps.errLog,
       });
     },
-  });
-
-  let queuedFollowup = false;
-  const dispatchReplyOptions: DispatchReplyOptions = {
-    ...replyOptions,
-    ...(replyProgressSender?.replyOptions ?? {}),
-    // Newer hosts use this marker for active-run admission; older hosts ignore it.
-    queuedFollowupLifecycle: {
-      onEnqueued: () => {
-        queuedFollowup = true;
-        deps.onReplyAdmitted?.();
-      },
-      onComplete: () => void replyProgressSender?.finalize(),
-    },
-    onAgentRunStart: () => deps.onReplyAdmitted?.(),
-    onTurnAdopted: deps.onReplyAdmitted,
-    disableBlockStreaming: !resolveWeixinBlockStreamingEnabled(deps.config, routeAccountId, deps.accountId),
   };
 
-  logger.debug(`dispatchReplyFromConfig: starting agentId=${redactToken(route.agentId, 6)}`);
+  let queuedFollowup = false;
   try {
-    await deps.channelRuntime.reply.withReplyDispatcher({
-      dispatcher,
-      run: () =>
-        deps.channelRuntime.reply.dispatchReplyFromConfig({
-          ctx: finalized,
-          cfg: deps.config,
-          dispatcher,
-          replyOptions: dispatchReplyOptions,
-        }),
+    logger.debug(`inbound.dispatch: starting agentId=${redactToken(route.agentId, 6)}`);
+    await dispatchWeixinInboundTurn({
+      channelRuntime: deps.channelRuntime,
+      channel: "openclaw-weixin",
+      accountId: deps.accountId,
+      cfg: deps.config,
+      route,
+      ctxPayload: finalized,
+      record: {
+        updateLastRoute: {
+          sessionKey: route.mainSessionKey,
+          channel: "openclaw-weixin",
+          to: ctx.To,
+          accountId: deps.accountId,
+        },
+        onRecordError: (err) => deps.errLog(`recordInboundSession: ${redactError(err)}`),
+      },
+      delivery,
+      dispatcherOptions: { humanDelay, typingCallbacks },
+      replyOptions: {
+        ...(replyProgressSender?.replyOptions ?? {}),
+        runId,
+        disableBlockStreaming: !resolveWeixinBlockStreamingEnabled(deps.config, routeAccountId, deps.accountId),
+      },
+      onReplyAdmitted: deps.onReplyAdmitted,
+      onReplyDeferred: () => {
+        queuedFollowup = true;
+      },
+      onDeferredComplete: () => void replyProgressSender?.finalize(),
     });
-    logger.debug(`dispatchReplyFromConfig: done agentId=${redactToken(route.agentId, 6)}`);
+    logger.debug(`inbound.dispatch: done agentId=${redactToken(route.agentId, 6)}`);
   } catch (err) {
-    logger.error(`dispatchReplyFromConfig: error agentId=${redactToken(route.agentId)} err=${redactError(err)}`);
+    logger.error(`inbound.dispatch: error agentId=${redactToken(route.agentId)} err=${redactError(err)}`);
     throw err;
   } finally {
-    markDispatchIdle();
     if (!queuedFollowup) await replyProgressSender?.finalize();
 
     logger.info(
@@ -560,43 +474,15 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
       const timingText = `⏱ Debug 全链路\n${debugTrace.join("\n")}`;
 
       logger.info(`debug-timing: sending to=${redactToken(ctx.To)}`);
-      let debugSentContent: string | undefined;
       try {
-        const debugSendingResult = await applyWeixinMessageSendingHook({
-          to: ctx.To,
-          text: timingText,
-          accountId: deps.accountId,
-          runId,
-        });
-        if (debugSendingResult.cancelled) {
-          logger.info(`debug-timing: cancelled by message_sending hook to=${redactToken(ctx.To)}`);
-        } else {
-          debugSentContent = debugSendingResult.text;
-          await sendMessageWeixin({
-            to: ctx.To,
-            text: debugSentContent,
-            opts: { baseUrl: deps.baseUrl, token: deps.token, contextToken, runId },
-          });
-          emitWeixinMessageSent({
-            to: ctx.To,
-            content: debugSentContent,
-            success: true,
-            accountId: deps.accountId,
-            runId,
-          });
-          logger.info(`debug-timing: sent OK`);
-        }
+        const result = await sendWeixinWithHooks(
+          { to: ctx.To, text: timingText, accountId: deps.accountId, runId },
+          async (text) => {
+            await sendMessageWeixin({ to: ctx.To, text, opts: sendOptions });
+          },
+        );
+        if (result?.visibleReplySent !== false) logger.info(`debug-timing: sent OK`);
       } catch (debugErr) {
-        if (debugSentContent !== undefined) {
-          emitWeixinMessageSent({
-            to: ctx.To,
-            content: debugSentContent,
-            success: false,
-            error: redactError(debugErr),
-            accountId: deps.accountId,
-            runId,
-          });
-        }
         logger.error(`debug-timing: send FAILED err=${redactError(debugErr)}`);
       }
     }

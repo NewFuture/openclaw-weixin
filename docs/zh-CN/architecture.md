@@ -17,7 +17,8 @@
 | `src/auth/` | 扫码登录、账号持久化、ID 兼容和配对 |
 | `src/api/` | 构造已鉴权的后端请求并分类失败 |
 | `src/monitor/monitor.ts` | 轮询更新、持久化游标并调度入站任务 |
-| `src/messaging/process-message.ts` | 授权、路由、记录并分派单条入站消息 |
+| `src/messaging/process-message.ts` | 授权、路由、准备上下文与媒体，并投递单条入站消息的回复 |
+| `src/messaging/inbound-turn.ts` | 选择宿主公开分派契约，适配 hook 与生命周期归属 |
 | `src/messaging/send*.ts` | 将出站文本和媒体转换为后端消息条目 |
 | `src/cdn/`、`src/media/` | 加密、上传、下载、解密并转码媒体 |
 | `src/storage/` | 解析状态路径并持久化轮询游标 |
@@ -58,33 +59,42 @@ sequenceDiagram
   Monitor->>Processor: 调度消息
   Processor->>Processor: 处理斜杠命令或下载媒体
   Processor->>Runtime: 授权发送者并解析 agent 路由
-  Processor->>Runtime: 记录入站会话
-  Processor->>Runtime: 分派回复
+  Processor->>Runtime: 构建公开入站上下文并分派 turn
+  Runtime->>Runtime: 记录会话并管理回复 dispatcher
   Runtime-->>Processor: 文本、媒体与条目生命周期事件
 ```
 
 普通消息会串行处理，直到 OpenClaw 接受当前 turn；随后轮询即可接纳下一条消息。插件
 审批命令使用独立调度通道，因此活跃的普通 turn 不会阻塞审批。
 
+`inbound-turn.ts` 使用 `inbound.buildContext`，选择 `inbound.dispatch`；仅在后者
+不存在时使用公开的旧版 `inbound.dispatchReply`。两条路径均将会话记录和 dispatcher
+清理交给宿主，失败不会改走另一契约重试。OpenClaw 2026.6.1 下限和账号级状态不变。
+延后回复的进度发送器保留到宿主完成回调触发，而非初次分派返回时关闭。
+
 ## 出站流程
 
 ```mermaid
 flowchart LR
-  A[OpenClaw 出站请求] --> B{是否提供账号 ID？}
+  A[OpenClaw 出站请求] --> F[宿主 message_sending hook]
+  F -->|已取消| G[不进入适配器或后端发送]
+  F -->|继续| B{是否提供账号 ID？}
   B -->|是| C[解析已配置账号]
   B -->|否| D[按账号级 context token 解析]
   D --> C
   C --> E[检查活跃会话]
-  E --> F[运行 message_sending hook]
-  F -->|已取消| G[不向后端发送并返回]
-  F -->|继续| H{文本还是媒体？}
+  E --> H{文本还是媒体？}
   H -->|文本| I[过滤 Markdown 并调用 sendMessage]
   H -->|媒体| J[远程资源则先下载]
   J --> K[加密并上传至 CDN]
   K --> L[构造媒体消息条目]
-  I --> M[触发 message_sent hook]
+  I --> M[宿主 message_sent 观察事件]
   L --> M
 ```
+
+现代入站回复和直接出站发送使用宿主 hook；旧版入站和独立调试消息保留本地 hook，
+旧版通过原样返回载荷的 `beforeDeliver` 禁用 SDK 的重复文本修改。原始投递返回既有
+客户端消息 ID，不会再次进入另一条拥有 hook 的发送路径。
 
 存在多个账号时，只有恰好能选出一个账号，才允许省略账号 ID。上下文缺失或存在歧义时
 必须失败，不得冒险使用错误的 bot 发送消息。

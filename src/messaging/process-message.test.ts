@@ -1,19 +1,28 @@
+import type { createTypingCallbacks } from "openclaw/plugin-sdk/channel-message";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { REFERENCED_IMAGE_MESSAGE } from "../../test/fixtures/inbound-messages.js";
-import { createChannelRuntimeHarness } from "../../test/helpers/channel-runtime.js";
-import { makeTextMessage, SYNTHETIC_ACCOUNT_ID, SYNTHETIC_USER_ID } from "../../test/helpers/messages.js";
-import { MessageItemType } from "../api/types.js";
+import { createChannelRuntimeHarness, deliverInboundReply } from "../../test/helpers/channel-runtime.js";
+import { createDeferred } from "../../test/helpers/deferred.js";
+import {
+  makeTextMessage,
+  SYNTHETIC_ACCOUNT_ID,
+  SYNTHETIC_CONTEXT_TOKEN,
+  SYNTHETIC_USER_ID,
+} from "../../test/helpers/messages.js";
+import { MessageItemType, TypingStatus } from "../api/types.js";
+import type { WeixinInboundTurn } from "./inbound-turn.js";
 import type { ProcessMessageDeps } from "./process-message.js";
 
 const mocks = vi.hoisted(() => ({
   applySendingHook: vi.fn(),
-  createTypingCallbacks: vi.fn(() => ({
+  createTypingCallbacks: vi.fn<typeof createTypingCallbacks>(() => ({
     onReplyStart: vi.fn(),
     onIdle: vi.fn(),
     onCleanup: vi.fn(),
   })),
   directDmOutcome: vi.fn(),
   downloadMedia: vi.fn(),
+  downloadRemote: vi.fn(),
   emitMessageSent: vi.fn(),
   handleSlashCommand: vi.fn(),
   isDebugMode: vi.fn(),
@@ -24,9 +33,11 @@ const mocks = vi.hoisted(() => ({
     warn: vi.fn(),
   },
   resolveSenderAuthorization: vi.fn(),
+  replyProgressEnabled: vi.fn(),
   sendErrorNotice: vi.fn(),
   sendMedia: vi.fn(),
   sendMessage: vi.fn(),
+  sendMessageItem: vi.fn(),
   sendTyping: vi.fn(),
 }));
 
@@ -56,11 +67,11 @@ vi.mock("../auth/pairing.js", () => ({
 }));
 
 vi.mock("../cdn/upload.js", () => ({
-  downloadRemoteImageToTemp: vi.fn(),
+  downloadRemoteImageToTemp: mocks.downloadRemote,
 }));
 
 vi.mock("../config/reply-progress.js", () => ({
-  resolveReplyProgressMessagesEnabled: vi.fn(() => false),
+  resolveReplyProgressMessagesEnabled: mocks.replyProgressEnabled,
 }));
 
 vi.mock("../media/media-download.js", () => ({
@@ -79,13 +90,17 @@ vi.mock("./error-notice.js", () => ({
   sendWeixinErrorNotice: mocks.sendErrorNotice,
 }));
 
-vi.mock("./outbound-hooks.js", () => ({
-  applyWeixinMessageSendingHook: mocks.applySendingHook,
-  emitWeixinMessageSent: mocks.emitMessageSent,
+vi.mock("openclaw/plugin-sdk/plugin-runtime", () => ({
+  getGlobalHookRunner: () => ({
+    hasHooks: () => true,
+    runMessageSending: mocks.applySendingHook,
+    runMessageSent: mocks.emitMessageSent,
+  }),
 }));
 
 vi.mock("./send.js", () => ({
   sendMessageWeixin: mocks.sendMessage,
+  sendMessageItemWeixin: mocks.sendMessageItem,
 }));
 
 vi.mock("./send-media.js", () => ({
@@ -115,14 +130,14 @@ function makeDeps(channelRuntime: ProcessMessageDeps["channelRuntime"], onReplyA
 describe("processOneMessage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.applySendingHook.mockImplementation(async ({ text }: { text: string }) => ({
-      cancelled: false,
-      text,
-    }));
+    mocks.applySendingHook.mockImplementation(async ({ content }: { content: string }) => ({ content }));
+    mocks.emitMessageSent.mockResolvedValue(undefined);
     mocks.directDmOutcome.mockReturnValue("allowed");
     mocks.downloadMedia.mockResolvedValue({});
+    mocks.downloadRemote.mockResolvedValue("C:\\synthetic\\remote.png");
     mocks.handleSlashCommand.mockResolvedValue({ handled: false });
     mocks.isDebugMode.mockReturnValue(false);
+    mocks.replyProgressEnabled.mockReturnValue(false);
     mocks.resolveSenderAuthorization.mockResolvedValue({
       shouldComputeAuth: true,
       effectiveAllowFrom: [SYNTHETIC_USER_ID],
@@ -131,6 +146,8 @@ describe("processOneMessage", () => {
       commandAuthorized: true,
     });
     mocks.sendMessage.mockResolvedValue({ messageId: "message-test" });
+    mocks.sendMessageItem.mockResolvedValue({ messageId: "progress-test" });
+    mocks.sendMedia.mockResolvedValue({ messageId: "media-message-test" });
   });
 
   it("stops before authorization when a slash command handles the message", async () => {
@@ -157,45 +174,48 @@ describe("processOneMessage", () => {
     // but the message is still dropped before session recording / dispatch.
     expect(harness.mocks.resolveAgentRoute).toHaveBeenCalledOnce();
     expect(harness.mocks.recordInboundSession).not.toHaveBeenCalled();
-    expect(harness.mocks.dispatchReplyFromConfig).not.toHaveBeenCalled();
+    expect(harness.mocks.dispatchReply).not.toHaveBeenCalled();
     expect(onReplyAdmitted).not.toHaveBeenCalled();
   });
 
-  it("routes, records, dispatches, and reports agent-run admission", async () => {
-    const harness = createChannelRuntimeHarness();
+  it.each(["legacy", "routed"] as const)("routes through public %s dispatch and reports admission", async (mode) => {
+    const harness = createChannelRuntimeHarness(mode);
     const onReplyAdmitted = vi.fn();
-    harness.mocks.dispatchReplyFromConfig.mockImplementation(async ({ replyOptions }) => {
+    const run = async ({ replyOptions }: Pick<WeixinInboundTurn, "replyOptions">) => {
       await replyOptions?.onAgentRunStart?.("run-test");
-      return {
-        queuedFinal: false,
-        counts: { tool: 0, block: 0, final: 1 },
-      };
-    });
+      return harness.turnResult;
+    };
+    harness.mocks.dispatchReply.mockImplementation(run);
+    harness.mocks.dispatch.mockImplementation(run);
+    const selected = mode === "routed" ? harness.mocks.dispatch : harness.mocks.dispatchReply;
+    const unused = mode === "routed" ? harness.mocks.dispatchReply : harness.mocks.dispatch;
 
     await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
 
+    expect(harness.mocks.buildContext).toHaveBeenCalledOnce();
+    expect(selected).toHaveBeenCalledOnce();
+    expect(unused).not.toHaveBeenCalled();
     expect(harness.mocks.resolveAgentRoute).toHaveBeenCalledWith({
       cfg: {},
       channel: "openclaw-weixin",
       accountId: SYNTHETIC_ACCOUNT_ID,
       peer: { kind: "direct", id: SYNTHETIC_USER_ID },
     });
-    expect(harness.mocks.recordInboundSession).toHaveBeenCalledWith(
+    expect(selected).toHaveBeenCalledWith(
       expect.objectContaining({
-        storePath: "sessions-test.json",
-        sessionKey: "agent:agent-test:openclaw-weixin:account-test:user-test",
-        updateLastRoute: expect.objectContaining({
-          channel: "openclaw-weixin",
-          to: SYNTHETIC_USER_ID,
-          accountId: SYNTHETIC_ACCOUNT_ID,
-        }),
-      }),
-    );
-    expect(harness.mocks.dispatchReplyFromConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ctx: expect.objectContaining({
+        ctxPayload: expect.objectContaining({
           CommandAuthorized: true,
           SessionKey: "agent:agent-test:openclaw-weixin:account-test:user-test",
+        }),
+        record: expect.objectContaining({
+          updateLastRoute: expect.objectContaining({
+            channel: "openclaw-weixin",
+            to: SYNTHETIC_USER_ID,
+            accountId: SYNTHETIC_ACCOUNT_ID,
+          }),
+        }),
+        dispatcherOptions: expect.objectContaining({
+          typingCallbacks: mocks.createTypingCallbacks.mock.results[0]?.value,
         }),
       }),
     );
@@ -206,13 +226,9 @@ describe("processOneMessage", () => {
         keepaliveIntervalMs: 5000,
       }),
     );
-    expect(harness.mocks.createReplyDispatcherWithTyping).toHaveBeenCalledWith(
-      expect.objectContaining({
-        typingCallbacks: mocks.createTypingCallbacks.mock.results[0]?.value,
-      }),
-    );
     expect(onReplyAdmitted).toHaveBeenCalledOnce();
-    expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+    expect(harness.mocks.recordInboundSession).not.toHaveBeenCalled();
+    expect(harness.mocks.dispatchReplyWithBufferedBlockDispatcher).not.toHaveBeenCalled();
     const logs = [
       ...mocks.logger.info.mock.calls,
       ...mocks.logger.debug.mock.calls,
@@ -231,6 +247,70 @@ describe("processOneMessage", () => {
       expect(logs).not.toContain(sensitive);
     }
   });
+
+  it.each([undefined, "typing-ticket-test"])("preserves typing start and stop for ticket %s", async (typingTicket) => {
+    const harness = createChannelRuntimeHarness();
+    const deps = makeDeps(harness.channelRuntime);
+    deps.typingTicket = typingTicket;
+
+    await processOneMessage(makeTextMessage("hello"), deps);
+    const callbacks = mocks.createTypingCallbacks.mock.calls[0]?.[0];
+    await callbacks?.start();
+    await callbacks?.stop?.();
+
+    expect(mocks.sendTyping.mock.calls.map(([request]) => request.body.status)).toEqual(
+      typingTicket ? [TypingStatus.TYPING, TypingStatus.CANCEL] : [],
+    );
+    for (const [request] of mocks.sendTyping.mock.calls) {
+      expect(request).toMatchObject({
+        baseUrl: deps.baseUrl,
+        token: deps.token,
+        body: { ilink_user_id: SYNTHETIC_USER_ID, typing_ticket: typingTicket },
+      });
+    }
+  });
+
+  it.each(["legacy", "routed"] as const)(
+    "keeps alias routing separate from the primary account on %s",
+    async (mode) => {
+      const harness = createChannelRuntimeHarness(mode);
+      const sessionKey = "agent:agent-test:openclaw-weixin:leader:user-test";
+      harness.mocks.resolveAgentRoute.mockReturnValue({
+        agentId: "agent-test",
+        channel: "openclaw-weixin",
+        accountId: "leader",
+        sessionKey,
+        mainSessionKey: "agent:agent-test:main",
+        lastRoutePolicy: "session",
+        matchedBy: "default",
+        ...(mode === "routed" ? { dmScope: "per-account-channel-peer" as const } : {}),
+      });
+      const deps = makeDeps(harness.channelRuntime);
+      deps.routeAccountId = "leader";
+
+      await processOneMessage(makeTextMessage("hello"), deps);
+
+      expect(harness.mocks.resolveAgentRoute).toHaveBeenCalledWith(expect.objectContaining({ accountId: "leader" }));
+      expect(harness.mocks.buildContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId: SYNTHETIC_ACCOUNT_ID,
+          route: {
+            agentId: "agent-test",
+            routeSessionKey: sessionKey,
+            ...(mode === "routed" ? { dmScope: "per-account-channel-peer" } : {}),
+          },
+        }),
+      );
+      const turn =
+        mode === "routed" ? harness.mocks.dispatch.mock.calls[0]?.[0] : harness.mocks.dispatchReply.mock.calls[0]?.[0];
+      expect(turn?.ctxPayload).toMatchObject({ AccountId: SYNTHETIC_ACCOUNT_ID, SessionKey: sessionKey });
+      expect(turn?.record?.updateLastRoute).toMatchObject({
+        sessionKey: "agent:agent-test:main",
+        accountId: SYNTHETIC_ACCOUNT_ID,
+        to: SYNTHETIC_USER_ID,
+      });
+    },
+  );
 
   it.each([
     {
@@ -270,18 +350,13 @@ describe("processOneMessage", () => {
     },
   ])("delivers reply blocks in order with $label", async ({ config, expected, routeAccountId }) => {
     const harness = createChannelRuntimeHarness();
-    harness.mocks.dispatchReplyFromConfig.mockImplementation(async ({ replyOptions }) => {
-      const deliver = harness.mocks.createReplyDispatcherWithTyping.mock.calls[0]?.[0].deliver;
-      if (!deliver) throw new Error("deliver callback missing");
+    harness.mocks.dispatchReply.mockImplementation(async ({ replyOptions, delivery }) => {
       if (replyOptions?.disableBlockStreaming !== true) {
-        await deliver({ text: "First intermediate block" }, { kind: "block" });
-        await deliver({ text: "Second intermediate block" }, { kind: "block" });
+        await deliverInboundReply(delivery, { text: "First intermediate block" }, "block");
+        await deliverInboundReply(delivery, { text: "Second intermediate block" }, "block");
       }
-      await deliver({ text: "Final content" }, { kind: "final" });
-      return {
-        queuedFinal: false,
-        counts: { tool: 0, block: 2, final: 1 },
-      };
+      await deliverInboundReply(delivery, { text: "Final content" });
+      return harness.turnResult;
     });
     const deps = makeDeps(harness.channelRuntime);
     deps.config = config;
@@ -297,7 +372,7 @@ describe("processOneMessage", () => {
   it.each(["queued-followup", "adopted-turn"] as const)("reports %s admission", async (admission) => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();
-    harness.mocks.dispatchReplyFromConfig.mockImplementation(async ({ replyOptions }) => {
+    harness.mocks.dispatchReply.mockImplementation(async ({ replyOptions }) => {
       const lifecycle = replyOptions as {
         queuedFollowupLifecycle?: { onEnqueued?: () => void };
         onTurnAdopted?: () => void | Promise<void>;
@@ -307,48 +382,148 @@ describe("processOneMessage", () => {
       } else {
         await lifecycle.onTurnAdopted?.();
       }
-      return {
-        queuedFinal: false,
-        counts: { tool: 0, block: 0, final: 1 },
-      };
+      return harness.turnResult;
     });
 
     await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
 
     expect(onReplyAdmitted).toHaveBeenCalledOnce();
-    expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+    expect(harness.mocks.dispatchReply).toHaveBeenCalledOnce();
   });
 
-  it("marks dispatch idle and leaves admission unreleased when dispatch setup fails", async () => {
+  it.each(["legacy", "routed"] as const)(
+    "keeps %s deferred progress alive after dispatch returns and closes it on settlement without adoption",
+    async (mode) => {
+      const harness = createChannelRuntimeHarness(mode);
+      const onReplyAdmitted = vi.fn();
+      const progressSent = createDeferred();
+      mocks.replyProgressEnabled.mockReturnValue(true);
+      mocks.sendMessageItem.mockImplementation(async () => {
+        progressSent.resolve();
+        return { messageId: "progress-test" };
+      });
+      harness.mocks.dispatchReply.mockImplementation(async ({ replyOptions }) => {
+        const legacy = replyOptions as { queuedFollowupLifecycle?: { onEnqueued?: () => void } };
+        legacy.queuedFollowupLifecycle?.onEnqueued?.();
+        return harness.turnResult;
+      });
+      harness.mocks.dispatch.mockImplementation(async ({ replyOptions }) => {
+        replyOptions?.turnAdoptionLifecycle?.onDeferred?.();
+        return harness.turnResult;
+      });
+
+      await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
+
+      const options =
+        mode === "routed"
+          ? harness.mocks.dispatch.mock.calls[0]?.[0].replyOptions
+          : harness.mocks.dispatchReply.mock.calls[0]?.[0].replyOptions;
+      expect(onReplyAdmitted).toHaveBeenCalledOnce();
+      await options?.onItemEvent?.({ kind: "tool", phase: "start", name: "synthetic-tool", itemId: "tool-1" });
+      expect(mocks.sendMessageItem).toHaveBeenCalledOnce();
+      await progressSent.promise;
+      if (mode === "routed") {
+        options?.turnAdoptionLifecycle?.onSettled?.();
+      } else {
+        const legacy = options as { queuedFollowupLifecycle?: { onComplete?: () => void } };
+        legacy.queuedFollowupLifecycle?.onComplete?.();
+      }
+      await options?.onItemEvent?.({ kind: "tool", phase: "end", name: "synthetic-tool", itemId: "tool-1" });
+      expect(mocks.sendMessageItem).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(
+    [
+      { mediaUrl: undefined, media: false },
+      { mediaUrl: "C:\\synthetic\\reply.png", media: true },
+      { mediaUrl: "reply.png", media: true },
+      { mediaUrl: "file:///C:/synthetic/reply.png", media: true },
+      { mediaUrl: "https://media.example.test/reply.png", media: true },
+      { mediaUrl: "unsupported://synthetic", media: false },
+    ].flatMap((entry) => (["legacy", "routed"] as const).map((mode) => ({ ...entry, mode }))),
+  )("returns the transport identity for $mode delivery $mediaUrl", async ({ mediaUrl, media, mode }) => {
+    const harness = createChannelRuntimeHarness(mode);
+    const dispatch = async ({ delivery }: Pick<WeixinInboundTurn, "delivery">) => {
+      const result = await deliverInboundReply(delivery, {
+        text: "##### **reply**",
+        ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
+      });
+      expect(result).toMatchObject({
+        messageIds: [media ? "media-message-test" : "message-test"],
+        content: "**reply**",
+      });
+      return harness.turnResult;
+    };
+    harness.mocks.dispatchReply.mockImplementation(dispatch);
+    harness.mocks.dispatch.mockImplementation(dispatch);
+
+    await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime));
+
+    const transport = media ? mocks.sendMedia : mocks.sendMessage;
+    expect(transport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: SYNTHETIC_USER_ID,
+        text: "**reply**",
+        opts: expect.objectContaining({ contextToken: SYNTHETIC_CONTEXT_TOKEN }),
+      }),
+    );
+    if (mode === "legacy") {
+      expect(mocks.applySendingHook).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "**reply**" }),
+        expect.objectContaining({ accountId: SYNTHETIC_ACCOUNT_ID }),
+      );
+    }
+    expect(mocks.applySendingHook).toHaveBeenCalledTimes(mode === "legacy" ? 1 : 0);
+    expect(mocks.emitMessageSent).toHaveBeenCalledTimes(mode === "legacy" ? 1 : 0);
+  });
+
+  it("propagates public dispatch failures without another dispatch or admission", async () => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();
     const failure = new Error("synthetic dispatch failure with private payload");
-    harness.mocks.dispatchReplyFromConfig.mockRejectedValue(failure);
+    harness.mocks.dispatchReply.mockRejectedValue(failure);
 
     await expect(
       processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted)),
     ).rejects.toBe(failure);
 
     expect(onReplyAdmitted).not.toHaveBeenCalled();
-    expect(harness.mocks.markDispatchIdle).toHaveBeenCalledOnce();
+    expect(harness.mocks.dispatchReply).toHaveBeenCalledOnce();
+    expect(harness.mocks.dispatch).not.toHaveBeenCalled();
     expect(mocks.logger.error).toHaveBeenCalledWith(
-      expect.stringMatching(/^dispatchReplyFromConfig: error agentId=\*{4}\(len=\d+\) err=Error$/),
+      expect.stringMatching(/^inbound\.dispatch: error agentId=\*{4}\(len=\d+\) err=Error$/),
     );
     expect(mocks.logger.error.mock.calls.flat().join(" ")).not.toContain("private payload");
   });
 
+  it("does not fall back to sending text after media transport fails", async () => {
+    const harness = createChannelRuntimeHarness();
+    const failure = new Error("synthetic media failure");
+    mocks.sendMedia.mockRejectedValueOnce(failure);
+    harness.mocks.dispatchReply.mockImplementation(async ({ delivery }) => {
+      await expect(
+        deliverInboundReply(delivery, { text: "caption", mediaUrl: "C:\\synthetic\\reply.png" }),
+      ).rejects.toBe(failure);
+      return harness.turnResult;
+    });
+
+    await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime));
+
+    expect(mocks.sendMedia).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.emitMessageSent).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ success: false, error: "Error" }),
+      expect.objectContaining({ accountId: SYNTHETIC_ACCOUNT_ID }),
+    );
+  });
   it("routes safe debug timing through the outbound hook without leaking suppressed content", async () => {
     const harness = createChannelRuntimeHarness();
     mocks.isDebugMode.mockReturnValue(true);
-    mocks.applySendingHook.mockResolvedValue({ cancelled: true, text: "" });
-    harness.mocks.dispatchReplyFromConfig.mockImplementation(async () => {
-      const deliver = harness.mocks.createReplyDispatcherWithTyping.mock.calls[0]?.[0].deliver;
-      if (!deliver) throw new Error("deliver callback missing");
-      await deliver({ text: "private suppressed reply" }, { kind: "final" });
-      return {
-        queuedFinal: false,
-        counts: { tool: 0, block: 0, final: 1 },
-      };
+    mocks.applySendingHook.mockResolvedValue({ cancel: true, content: "" });
+    harness.mocks.dispatchReply.mockImplementation(async ({ delivery }) => {
+      await deliverInboundReply(delivery, { text: "private suppressed reply" });
+      return harness.turnResult;
     });
 
     await processOneMessage(
@@ -357,7 +532,7 @@ describe("processOneMessage", () => {
     );
 
     expect(mocks.applySendingHook).toHaveBeenCalledTimes(2);
-    const timingText = String(mocks.applySendingHook.mock.calls[1]?.[0].text ?? "");
+    const timingText = String(mocks.applySendingHook.mock.calls[1]?.[0].content ?? "");
     expect(timingText).toContain("⏱ Debug 全链路");
     for (const sensitive of [
       "private suppressed reply",
@@ -377,16 +552,11 @@ describe("processOneMessage", () => {
     const harness = createChannelRuntimeHarness();
     mocks.isDebugMode.mockReturnValue(true);
     mocks.applySendingHook
-      .mockResolvedValueOnce({ cancelled: true, text: "" })
-      .mockResolvedValueOnce({ cancelled: false, text: "safe debug timing" });
-    harness.mocks.dispatchReplyFromConfig.mockImplementation(async () => {
-      const deliver = harness.mocks.createReplyDispatcherWithTyping.mock.calls[0]?.[0].deliver;
-      if (!deliver) throw new Error("deliver callback missing");
-      await deliver({ text: "suppressed reply" }, { kind: "final" });
-      return {
-        queuedFinal: false,
-        counts: { tool: 0, block: 0, final: 1 },
-      };
+      .mockResolvedValueOnce({ cancel: true, content: "" })
+      .mockResolvedValueOnce({ content: "safe debug timing" });
+    harness.mocks.dispatchReply.mockImplementation(async ({ delivery }) => {
+      await deliverInboundReply(delivery, { text: "suppressed reply" });
+      return harness.turnResult;
     });
 
     await processOneMessage(makeTextMessage("private inbound body"), makeDeps(harness.channelRuntime));
@@ -399,8 +569,8 @@ describe("processOneMessage", () => {
         to: SYNTHETIC_USER_ID,
         content: "safe debug timing",
         success: true,
-        accountId: SYNTHETIC_ACCOUNT_ID,
       }),
+      expect.objectContaining({ accountId: SYNTHETIC_ACCOUNT_ID }),
     );
   });
 
@@ -409,17 +579,12 @@ describe("processOneMessage", () => {
     const failure = new Error("private debug timing failure");
     mocks.isDebugMode.mockReturnValue(true);
     mocks.applySendingHook
-      .mockResolvedValueOnce({ cancelled: true, text: "" })
-      .mockResolvedValueOnce({ cancelled: false, text: "safe debug timing" });
+      .mockResolvedValueOnce({ cancel: true, content: "" })
+      .mockResolvedValueOnce({ content: "safe debug timing" });
     mocks.sendMessage.mockRejectedValueOnce(failure);
-    harness.mocks.dispatchReplyFromConfig.mockImplementation(async () => {
-      const deliver = harness.mocks.createReplyDispatcherWithTyping.mock.calls[0]?.[0].deliver;
-      if (!deliver) throw new Error("deliver callback missing");
-      await deliver({ text: "suppressed reply" }, { kind: "final" });
-      return {
-        queuedFinal: false,
-        counts: { tool: 0, block: 0, final: 1 },
-      };
+    harness.mocks.dispatchReply.mockImplementation(async ({ delivery }) => {
+      await deliverInboundReply(delivery, { text: "suppressed reply" });
+      return harness.turnResult;
     });
 
     await processOneMessage(makeTextMessage("private inbound body"), makeDeps(harness.channelRuntime));
@@ -430,8 +595,8 @@ describe("processOneMessage", () => {
         content: "safe debug timing",
         success: false,
         error: "Error",
-        accountId: SYNTHETIC_ACCOUNT_ID,
       }),
+      expect.objectContaining({ accountId: SYNTHETIC_ACCOUNT_ID }),
     );
     expect(mocks.emitMessageSent.mock.calls.flat().join(" ")).not.toContain("private debug timing failure");
   });
@@ -448,13 +613,20 @@ describe("processOneMessage", () => {
       expect.objectContaining({ type: 2 }),
       expect.objectContaining({ label: "ref" }),
     );
-    expect(harness.mocks.recordInboundSession).toHaveBeenCalledWith(
+    expect(harness.mocks.buildContext).toHaveBeenCalledWith(
       expect.objectContaining({
-        ctx: expect.objectContaining({
-          MediaPath: "C:\\synthetic\\referenced-image.png",
-          MediaType: "image/*",
-        }),
+        media: [
+          expect.objectContaining({
+            path: "C:\\synthetic\\referenced-image.png",
+            contentType: "image/*",
+          }),
+        ],
       }),
+    );
+    expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload.media).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "C:\\synthetic\\referenced-image.png", contentType: "image/*" }),
+      ]),
     );
   });
 
@@ -529,7 +701,7 @@ describe("processOneMessage", () => {
         expect.objectContaining({ subdir: "weixin/agent-test/inbound" }),
       );
       expect(harness.mocks.recordInboundSession).not.toHaveBeenCalled();
-      expect(harness.mocks.dispatchReplyFromConfig).not.toHaveBeenCalled();
+      expect(harness.mocks.dispatchReply).not.toHaveBeenCalled();
       expect(mocks.resolveSenderAuthorization).toHaveBeenCalledOnce();
     });
 
@@ -645,8 +817,8 @@ describe("processOneMessage", () => {
       expect(mocks.downloadMedia.mock.calls[1]?.[1]).toEqual(
         expect.objectContaining({ subdir: "weixin/agent-test/inbound" }),
       );
-      const storeArgs0 = harness.mocks.recordInboundSession.mock.calls[0]?.[0];
-      const storeArgs1 = harness.mocks.recordInboundSession.mock.calls[1]?.[0];
+      const storeArgs0 = harness.mocks.dispatchReply.mock.calls[0]?.[0].record;
+      const storeArgs1 = harness.mocks.dispatchReply.mock.calls[1]?.[0].record;
       expect(storeArgs0).toEqual(
         expect.objectContaining({ updateLastRoute: expect.objectContaining({ accountId: "account-alpha" }) }),
       );

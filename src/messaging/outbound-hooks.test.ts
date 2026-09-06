@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getGlobalHookRunner: vi.fn(),
   logger: {
     debug: vi.fn(),
+    info: vi.fn(),
     warn: vi.fn(),
   },
   sendMessageWeixin: vi.fn(),
@@ -40,7 +41,7 @@ vi.mock("./send.js", () => ({
 }));
 
 import { sendWeixinErrorNotice } from "./error-notice.js";
-import { applyWeixinMessageSendingHook, emitWeixinMessageSent } from "./outbound-hooks.js";
+import { applyWeixinMessageSendingHook, emitWeixinMessageSent, sendWeixinWithHooks } from "./outbound-hooks.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -53,6 +54,84 @@ describe("applyWeixinMessageSendingHook", () => {
     await expect(applyWeixinMessageSendingHook({ to: "user-1", text: "hello" })).resolves.toEqual({
       cancelled: false,
       text: "hello",
+    });
+  });
+
+  describe("sendWeixinWithHooks", () => {
+    const params = { to: "user-1", text: "original", accountId: "account-1", sessionKey: "session-1", runId: "run-1" };
+    const sending = vi.fn();
+    const sent = vi.fn();
+
+    beforeEach(() => {
+      sending.mockReset().mockResolvedValue({ content: "modified" });
+      sent.mockReset().mockResolvedValue(undefined);
+      mocks.getGlobalHookRunner.mockReturnValue({
+        hasHooks: () => true,
+        runMessageSending: sending,
+        runMessageSent: sent,
+      });
+    });
+
+    it.each([undefined, { messageIds: ["", "message-1"] }])("settles successful delivery %j once", async (result) => {
+      const send = vi.fn(async () => result);
+
+      expect(await sendWeixinWithHooks(params, send)).toBe(result);
+
+      expect(send).toHaveBeenCalledExactlyOnceWith("modified");
+      expect(sending).toHaveBeenCalledOnce();
+      expect(sent).toHaveBeenCalledOnce();
+      expect(mocks.buildCanonicalSentMessageHookContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: "modified",
+          success: true,
+          accountId: "account-1",
+          sessionKey: "session-1",
+          runId: "run-1",
+          messageId: result ? "message-1" : undefined,
+        }),
+      );
+    });
+
+    it("cancels before transport without emitting a sent event", async () => {
+      sending.mockResolvedValue({ cancel: true });
+      const send = vi.fn();
+
+      expect(await sendWeixinWithHooks(params, send)).toEqual({ visibleReplySent: false });
+      expect(send).not.toHaveBeenCalled();
+      expect(sent).not.toHaveBeenCalled();
+    });
+
+    it("preserves an intentionally non-visible result", async () => {
+      const result = { visibleReplySent: false };
+      expect(await sendWeixinWithHooks(params, async () => result)).toBe(result);
+      expect(sent).not.toHaveBeenCalled();
+    });
+
+    it("reports a sanitized transport failure once and preserves the original rejection", async () => {
+      const failure = new Error("synthetic private transport detail");
+      const send = vi.fn().mockRejectedValue(failure);
+
+      await expect(sendWeixinWithHooks(params, send)).rejects.toBe(failure);
+      expect(send).toHaveBeenCalledOnce();
+      expect(sent).toHaveBeenCalledOnce();
+      expect(mocks.buildCanonicalSentMessageHookContext).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "modified", success: false, error: "Error" }),
+      );
+    });
+
+    it("does not reinterpret an observation failure as another transport result", async () => {
+      const failure = new Error("synthetic observer failure");
+      sent.mockImplementation(() => {
+        throw failure;
+      });
+      const send = vi.fn(async () => ({ messageIds: ["message-1"] }));
+
+      await expect(sendWeixinWithHooks(params, send)).rejects.toBe(failure);
+      expect(send).toHaveBeenCalledOnce();
+      expect(sent).toHaveBeenCalledOnce();
+      expect(mocks.buildCanonicalSentMessageHookContext).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ success: true, messageId: "message-1" }),
+      );
     });
   });
 
@@ -80,6 +159,7 @@ describe("applyWeixinMessageSendingHook", () => {
         to: "user-1",
         text: "hello",
         accountId: "acc-1",
+        sessionKey: "session-test",
         mediaUrl: "https://example.invalid/a.png",
       }),
     ).resolves.toEqual({ cancelled: false, text: "changed" });
@@ -94,7 +174,7 @@ describe("applyWeixinMessageSendingHook", () => {
           mediaUrls: ["https://example.invalid/a.png"],
         },
       },
-      { channelId: "openclaw-weixin", accountId: "acc-1" },
+      { channelId: "openclaw-weixin", accountId: "acc-1", sessionKey: "session-test" },
     );
   });
 
@@ -171,6 +251,8 @@ describe("emitWeixinMessageSent", () => {
       success: false,
       error: "network",
       accountId: "acc-1",
+      sessionKey: "session-test",
+      messageId: "message-test",
     });
 
     expect(mocks.buildCanonicalSentMessageHookContext).toHaveBeenCalledWith({
@@ -181,6 +263,8 @@ describe("emitWeixinMessageSent", () => {
       channelId: "openclaw-weixin",
       accountId: "acc-1",
       conversationId: "user-1",
+      sessionKey: "session-test",
+      messageId: "message-test",
     });
     expect(runMessageSent).toHaveBeenCalledWith(
       {
