@@ -470,6 +470,57 @@ describe("monitorWeixinProvider", () => {
     expect(processOneMessageMock).toHaveBeenCalledTimes(1);
   });
 
+  it("retries a replay after an admitted processor fails without blocking an unrelated turn", async () => {
+    const abortController = new AbortController();
+    const harness = createChannelRuntimeHarness();
+    const owner = createDeferred();
+    const unrelatedStarted = createDeferred();
+    const replayStarted = createDeferred();
+    const errLog = vi.fn();
+    const started: string[] = [];
+    getUpdatesMock
+      .mockResolvedValueOnce({
+        ret: 0,
+        msgs: [
+          makeMonitorMessage("owner", { message_id: 901 }),
+          makeMonitorMessage("replay", { message_id: 901 }),
+          makeMonitorMessage("unrelated", { message_id: 902 }),
+        ],
+      })
+      .mockImplementationOnce(
+        async ({ abortSignal }) =>
+          await new Promise<GetUpdatesResp>((_, reject) => {
+            abortSignal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+          }),
+      );
+    processOneMessageMock.mockImplementation(async (message, deps) => {
+      const text = getText(message);
+      started.push(text);
+      if (text === "owner") {
+        deps.onReplyAdmitted?.();
+        await owner.promise;
+      } else if (text === "unrelated") {
+        unrelatedStarted.resolve();
+      } else {
+        replayStarted.resolve();
+      }
+    });
+    const monitor = startMonitor(abortController, harness.channelRuntime, errLog);
+    try {
+      await unrelatedStarted.promise;
+      expect(started).toEqual(["owner", "unrelated"]);
+      owner.reject(new Error("synthetic public dispatcher failure"));
+      await replayStarted.promise;
+      expect(started).toEqual(["owner", "unrelated", "replay"]);
+      expect(processOneMessageMock).toHaveBeenCalledTimes(3);
+      expect(errLog).toHaveBeenCalledWith("weixin inbound message failed: Error");
+    } finally {
+      owner.resolve();
+      abortController.abort();
+      await monitor;
+    }
+  });
+
   it("releases the ordinary lane when preprocessing fails", async () => {
     const abortController = new AbortController();
     const harness = createChannelRuntimeHarness();

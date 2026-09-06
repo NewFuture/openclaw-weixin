@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     vi.fn<(params: { to: string; text: string; accountId: string }) => Promise<{ cancelled: boolean; text: string }>>(),
   assertSessionActive: vi.fn<(accountId: string) => void>(),
   displayQRCode: vi.fn(),
+  downloadRemote: vi.fn(),
   emitMessageSent: vi.fn(),
   findAccountIdsByContextToken: vi.fn<(accountIds: string[], userId: string) => string[]>(),
   getContextToken: vi.fn<(accountId: string, userId: string) => string | undefined>(),
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => ({
         opts: { baseUrl: string; token?: string; contextToken?: string };
       }) => Promise<{ messageId: string }>
     >(),
+  sendMedia: vi.fn(),
   startLogin: vi.fn(),
   triggerChannelReload: vi.fn<() => Promise<void>>(),
   waitLogin: vi.fn(),
@@ -82,7 +84,7 @@ vi.mock("./auth/login-qr.js", () => ({
 }));
 
 vi.mock("./cdn/upload.js", () => ({
-  downloadRemoteImageToTemp: vi.fn(),
+  downloadRemoteImageToTemp: mocks.downloadRemote,
 }));
 
 vi.mock("./messaging/inbound.js", () => ({
@@ -115,7 +117,7 @@ vi.mock("./messaging/send.js", () => ({
 }));
 
 vi.mock("./messaging/send-media.js", () => ({
-  sendWeixinMediaFile: vi.fn(),
+  sendWeixinMediaFile: mocks.sendMedia,
 }));
 
 vi.mock("./util/logger.js", () => ({ logger: loggerMocks.logger }));
@@ -157,6 +159,12 @@ function requireSendText() {
   const sendText = weixinPlugin.outbound?.sendText;
   if (!sendText) throw new Error("Weixin sendText adapter is missing");
   return sendText;
+}
+
+function requireSendMedia() {
+  const sendMedia = weixinPlugin.outbound?.sendMedia;
+  if (!sendMedia) throw new Error("Weixin sendMedia adapter is missing");
+  return sendMedia;
 }
 
 function requireBeforeDeliverPayload() {
@@ -248,6 +256,8 @@ describe("weixinPlugin outbound account resolution", () => {
     mocks.getContextToken.mockReturnValue("context-token-test");
     mocks.resolveAccount.mockImplementation((_config, accountId) => makeAccount(accountId ?? "account-test"));
     mocks.sendMessage.mockResolvedValue({ messageId: "message-test" });
+    mocks.sendMedia.mockResolvedValue({ messageId: "media-message-test" });
+    mocks.downloadRemote.mockResolvedValue("C:\\synthetic\\remote.png");
     mocks.persistLoginAccounts.mockReturnValue({
       primaryId: "bot-im-bot",
       aliasId: null,
@@ -264,7 +274,7 @@ describe("weixinPlugin outbound account resolution", () => {
       text: "hello",
     });
 
-    expect(mocks.resolveAccount).toHaveBeenCalledWith(cfg, "account-a");
+    expect(mocks.resolveAccount).toHaveBeenCalledExactlyOnceWith(cfg, "account-a");
     expect(mocks.getContextToken).toHaveBeenCalledWith("account-a", recipient);
     expect(mocks.sendMessage).toHaveBeenCalledWith({
       to: recipient,
@@ -313,7 +323,7 @@ describe("weixinPlugin outbound account resolution", () => {
     );
   });
 
-  it("honors hook cancellation without contacting the backend", async () => {
+  it("does not rerun host-owned hooks in the direct transport adapter", async () => {
     mocks.applySendingHook.mockResolvedValue({
       cancelled: true,
       text: "blocked",
@@ -326,9 +336,89 @@ describe("weixinPlugin outbound account resolution", () => {
       accountId: "account-a",
     });
 
-    expect(mocks.sendMessage).not.toHaveBeenCalled();
-    expect(result).toEqual({ channel: "openclaw-weixin", messageId: "" });
+    expect(mocks.applySendingHook).not.toHaveBeenCalled();
+    expect(mocks.emitMessageSent).not.toHaveBeenCalled();
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    expect(result).toEqual({ channel: "openclaw-weixin", messageId: "message-test" });
   });
+
+  it.each([
+    { kind: "text", mediaUrl: undefined, hasMedia: false },
+    { kind: "media", mediaUrl: "C:\\synthetic\\reply.png", hasMedia: true },
+    { kind: "media", mediaUrl: "https://media.example.test/reply.png", hasMedia: true },
+    { kind: "media", mediaUrl: undefined, hasMedia: false },
+    { kind: "media", mediaUrl: "unsupported://synthetic", hasMedia: false },
+  ])(
+    "keeps $kind adapter $mediaUrl hook-free and uses the primary account context",
+    async ({ kind, mediaUrl, hasMedia }) => {
+      mocks.resolveAccount.mockReturnValue(makeAccount("leader", { primaryId: "primary-test", aliasId: "leader" }));
+      mocks.applySendingHook.mockResolvedValue({ cancelled: true, text: "must not run" });
+
+      const send = kind === "text" ? requireSendText() : requireSendMedia();
+      const result = await send({ cfg, to: recipient, text: "caption", mediaUrl, accountId: "leader" });
+
+      expect(mocks.resolveAccount).toHaveBeenCalledExactlyOnceWith(cfg, "leader");
+      expect(mocks.assertSessionActive).toHaveBeenCalledWith("primary-test");
+      expect(mocks.getContextToken).toHaveBeenCalledWith("primary-test", recipient);
+      expect(hasMedia ? mocks.sendMedia : mocks.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: recipient,
+          text: "caption",
+          opts: expect.objectContaining({ token: "token-primary-test", contextToken: "context-token-test" }),
+        }),
+      );
+      expect(result).toEqual({
+        channel: "openclaw-weixin",
+        messageId: hasMedia ? "media-message-test" : "message-test",
+      });
+      expect(mocks.applySendingHook).not.toHaveBeenCalled();
+      expect(mocks.emitMessageSent).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["unconfigured", "paused"])("rejects %s text accounts before transport", async (state) => {
+    mocks.resolveAccount.mockReturnValue(
+      makeAccount("leader", { primaryId: "primary-test", configured: state !== "unconfigured" }),
+    );
+    if (state === "paused") {
+      mocks.assertSessionActive.mockImplementationOnce(() => {
+        throw new Error("synthetic paused session");
+      });
+    }
+
+    await expect(requireSendText()({ cfg, to: recipient, text: "reply", accountId: "leader" })).rejects.toThrow(
+      state === "paused" ? "synthetic paused session" : "weixin not configured",
+    );
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.sendMedia).not.toHaveBeenCalled();
+  });
+
+  it.each(["text", "media", "download"] as const)(
+    "propagates %s failure without a second hook emission",
+    async (kind) => {
+      const failure = new Error("synthetic transport failure");
+      if (kind === "text") {
+        mocks.sendMessage.mockRejectedValueOnce(failure);
+      } else if (kind === "media") {
+        mocks.sendMedia.mockRejectedValueOnce(failure);
+      } else {
+        mocks.downloadRemote.mockRejectedValueOnce(failure);
+      }
+      const result =
+        kind === "text"
+          ? requireSendText()({ cfg, to: recipient, text: "reply", accountId: "account-a" })
+          : requireSendMedia()({
+              cfg,
+              to: recipient,
+              text: "caption",
+              mediaUrl: "https://media.example.test/reply.png",
+              accountId: "account-a",
+            });
+      await expect(result).rejects.toBe(failure);
+      expect(mocks.applySendingHook).not.toHaveBeenCalled();
+      expect(mocks.emitMessageSent).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("weixinPlugin auth.login", () => {

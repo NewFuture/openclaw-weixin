@@ -1,3 +1,4 @@
+import type { AssembledInboundReply } from "openclaw/plugin-sdk/channel-inbound";
 import {
   buildCanonicalSentMessageHookContext,
   fireAndForgetHook,
@@ -10,9 +11,39 @@ import { logger } from "../util/logger.js";
 import { redactError } from "../util/redact.js";
 
 const CHANNEL_ID = "openclaw-weixin";
+type DeliveryResult = Awaited<ReturnType<AssembledInboundReply["delivery"]["deliver"]>>;
+
+/** Local sends share cancellation and settlement; host-managed sends bypass this wrapper. */
+export async function sendWeixinWithHooks(
+  params: Parameters<typeof applyWeixinMessageSendingHook>[0],
+  send: (text: string) => Promise<DeliveryResult>,
+): Promise<DeliveryResult> {
+  const sending = await applyWeixinMessageSendingHook(params);
+  if (sending.cancelled) {
+    logger.info("outbound: cancelled by message_sending hook");
+    return { visibleReplySent: false };
+  }
+  let result: DeliveryResult;
+  try {
+    result = await send(sending.text);
+  } catch (error) {
+    emitWeixinMessageSent({ ...params, content: sending.text, success: false, error: redactError(error) });
+    throw error;
+  }
+  if (result?.visibleReplySent !== false) {
+    emitWeixinMessageSent({
+      ...params,
+      content: sending.text,
+      success: true,
+      messageId: result?.messageIds?.find((id) => id.trim()),
+    });
+  }
+  return result;
+}
 
 /**
- * Run message_sending hook before sending.
+ * Local hook boundary for legacy inbound replies and independent debug sends.
+ * Host-managed outbound adapters and routed inbound delivery must not call it.
  * Returns the (possibly modified) text content plus a cancelled flag.
  * Hook errors are caught and logged — sending proceeds regardless.
  */
@@ -22,6 +53,7 @@ export async function applyWeixinMessageSendingHook(params: {
   accountId?: string;
   mediaUrl?: string;
   runId?: string;
+  sessionKey?: string;
 }): Promise<{ cancelled: boolean; text: string }> {
   const hookRunner = getGlobalHookRunner();
   if (!hookRunner?.hasHooks("message_sending")) {
@@ -39,7 +71,11 @@ export async function applyWeixinMessageSendingHook(params: {
           ...(params.mediaUrl ? { mediaUrls: [params.mediaUrl] } : {}),
         },
       },
-      { channelId: CHANNEL_ID, accountId: params.accountId },
+      {
+        channelId: CHANNEL_ID,
+        accountId: params.accountId,
+        ...(params.sessionKey ? { sessionKey: params.sessionKey } : {}),
+      },
     );
     if (hookResult?.cancel) {
       return { cancelled: true, text: params.text };
@@ -64,6 +100,8 @@ export function emitWeixinMessageSent(params: {
   error?: string;
   accountId?: string;
   runId?: string;
+  sessionKey?: string;
+  messageId?: string;
 }): void {
   const hookRunner = getGlobalHookRunner();
   if (!hookRunner?.hasHooks("message_sent")) return;
@@ -76,6 +114,8 @@ export function emitWeixinMessageSent(params: {
     accountId: params.accountId,
     conversationId: params.to,
     runId: params.runId,
+    sessionKey: params.sessionKey,
+    messageId: params.messageId,
   });
   fireAndForgetHook(
     Promise.resolve(hookRunner.runMessageSent(toPluginMessageSentEvent(canonical), toPluginMessageContext(canonical))),

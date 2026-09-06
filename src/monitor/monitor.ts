@@ -41,7 +41,7 @@ export type MonitorWeixinOpts = {
   config: import("openclaw/plugin-sdk/core").OpenClawConfig;
   runtime?: { log?: (msg: string) => void; error?: (msg: string) => void };
   /**
-   * Gateway-injected channel runtime surface (reply/routing/session/media/commands/...).
+   * Gateway-injected channel runtime surface (inbound/reply/routing/session/media/commands/...).
    * Required for inbound message processing; provided by `ChannelGatewayContext.channelRuntime`.
    */
   channelRuntime: WeixinChannelRuntime;
@@ -52,7 +52,7 @@ export type MonitorWeixinOpts = {
 };
 
 /**
- * Long-poll loop: getUpdates -> dispatchReplyFromConfig.
+ * Long-poll loop: getUpdates -> public inbound turn dispatch.
  * Runs until abort.
  */
 export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<void> {

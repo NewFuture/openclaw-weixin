@@ -28,10 +28,6 @@ import {
   getContextToken,
   restoreContextTokens,
 } from "./messaging/inbound.js";
-// Lazy-imported inside startAccount to avoid pulling in the monitor -> process-message ->
-// command-auth chain during plugin registration, which can re-enter plugin/provider registry
-// resolution before the account actually starts.
-import { applyWeixinMessageSendingHook, emitWeixinMessageSent } from "./messaging/outbound-hooks.js";
 import { StreamingMarkdownFilter, sendMessageWeixin } from "./messaging/send.js";
 import { sendWeixinMediaFile } from "./messaging/send-media.js";
 import { logger } from "./util/logger.js";
@@ -102,60 +98,6 @@ function resolveOutboundAccountId(cfg: OpenClawConfig, to: string): string {
   );
 }
 
-async function sendWeixinOutbound(params: {
-  cfg: OpenClawConfig;
-  to: string;
-  text: string;
-  accountId?: string | null;
-  contextToken?: string;
-}): Promise<{ channel: string; messageId: string }> {
-  const account = resolveWeixinAccount(params.cfg, params.accountId);
-  const storageAccountId = account.primaryId;
-  const aLog = logger.withAccount(storageAccountId);
-  assertSessionActive(storageAccountId);
-  if (!account.configured) {
-    aLog.error(`sendWeixinOutbound: account not configured`);
-    throw new Error("weixin not configured: please run `openclaw channels login --channel openclaw-weixin`");
-  }
-  const f = new StreamingMarkdownFilter();
-  const rawText = params.text ?? "";
-  let filteredText = f.feed(rawText) + f.flush();
-
-  const sendingResult = await applyWeixinMessageSendingHook({
-    to: params.to,
-    text: filteredText,
-    accountId: account.accountId,
-  });
-  if (sendingResult.cancelled) {
-    aLog.info(`sendWeixinOutbound: cancelled by message_sending hook to=${redactToken(params.to)}`);
-    return { channel: "openclaw-weixin", messageId: "" };
-  }
-  filteredText = sendingResult.text;
-
-  try {
-    const result = await sendMessageWeixin({
-      to: params.to,
-      text: filteredText,
-      opts: {
-        baseUrl: account.baseUrl,
-        token: account.token,
-        contextToken: params.contextToken,
-      },
-    });
-    emitWeixinMessageSent({ to: params.to, content: filteredText, success: true, accountId: account.accountId });
-    return { channel: "openclaw-weixin", messageId: result.messageId };
-  } catch (err) {
-    emitWeixinMessageSent({
-      to: params.to,
-      content: filteredText,
-      success: false,
-      error: redactError(err),
-      accountId: account.accountId,
-    });
-    throw err;
-  }
-}
-
 export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
   id: "openclaw-weixin",
   meta: {
@@ -221,14 +163,22 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
     sendText: async (ctx) => {
       const accountId = ctx.accountId || resolveOutboundAccountId(ctx.cfg, ctx.to);
       const account = resolveWeixinAccount(ctx.cfg, accountId);
-      const result = await sendWeixinOutbound({
-        cfg: ctx.cfg,
+      assertSessionActive(account.primaryId);
+      if (!account.configured) {
+        logger.withAccount(account.primaryId).error("sendText: account not configured");
+        throw new Error("weixin not configured: please run `openclaw channels login --channel openclaw-weixin`");
+      }
+      const filter = new StreamingMarkdownFilter();
+      const result = await sendMessageWeixin({
         to: ctx.to,
-        text: ctx.text,
-        accountId: account.accountId,
-        contextToken: getContextToken(account.primaryId, ctx.to),
+        text: filter.feed(ctx.text ?? "") + filter.flush(),
+        opts: {
+          baseUrl: account.baseUrl,
+          token: account.token,
+          contextToken: getContextToken(account.primaryId, ctx.to),
+        },
       });
-      return result;
+      return { channel: "openclaw-weixin", messageId: result.messageId };
     },
     sendMedia: async (ctx) => {
       const accountId = ctx.accountId || resolveOutboundAccountId(ctx.cfg, ctx.to);
@@ -242,19 +192,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       }
 
       const mediaUrl = ctx.mediaUrl;
-      let text = ctx.text ?? "";
-
-      const sendingResult = await applyWeixinMessageSendingHook({
-        to: ctx.to,
-        text,
-        accountId: account.accountId,
-        mediaUrl,
-      });
-      if (sendingResult.cancelled) {
-        aLog.info(`sendMedia: cancelled by message_sending hook to=${redactToken(ctx.to)}`);
-        return { channel: "openclaw-weixin", messageId: "" };
-      }
-      text = sendingResult.text;
+      const text = ctx.text ?? "";
 
       if (mediaUrl && (isLocalFilePath(mediaUrl) || isRemoteUrl(mediaUrl))) {
         let filePath: string;
@@ -267,51 +205,27 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           aLog.debug("sendMedia: remote media downloaded");
         }
         const contextToken = getContextToken(storageAccountId, ctx.to);
-        try {
-          const result = await sendWeixinMediaFile({
-            filePath,
-            to: ctx.to,
-            text,
-            opts: { baseUrl: account.baseUrl, token: account.token, contextToken },
-            cdnBaseUrl: account.cdnBaseUrl,
-          });
-          emitWeixinMessageSent({ to: ctx.to, content: text, success: true, accountId: account.accountId });
-          return { channel: "openclaw-weixin", messageId: result.messageId };
-        } catch (err) {
-          emitWeixinMessageSent({
-            to: ctx.to,
-            content: text,
-            success: false,
-            error: redactError(err),
-            accountId: account.accountId,
-          });
-          throw err;
-        }
+        const result = await sendWeixinMediaFile({
+          filePath,
+          to: ctx.to,
+          text,
+          opts: { baseUrl: account.baseUrl, token: account.token, contextToken },
+          cdnBaseUrl: account.cdnBaseUrl,
+        });
+        return { channel: "openclaw-weixin", messageId: result.messageId };
       }
 
       const contextToken = getContextToken(storageAccountId, ctx.to);
-      try {
-        const result = await sendMessageWeixin({
-          to: ctx.to,
-          text,
-          opts: {
-            baseUrl: account.baseUrl,
-            token: account.token,
-            contextToken,
-          },
-        });
-        emitWeixinMessageSent({ to: ctx.to, content: text, success: true, accountId: account.accountId });
-        return { channel: "openclaw-weixin", messageId: result.messageId };
-      } catch (err) {
-        emitWeixinMessageSent({
-          to: ctx.to,
-          content: text,
-          success: false,
-          error: redactError(err),
-          accountId: account.accountId,
-        });
-        throw err;
-      }
+      const result = await sendMessageWeixin({
+        to: ctx.to,
+        text,
+        opts: {
+          baseUrl: account.baseUrl,
+          token: account.token,
+          contextToken,
+        },
+      });
+      return { channel: "openclaw-weixin", messageId: result.messageId };
     },
   },
   status: {
@@ -488,6 +402,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         throw new Error(msg);
       }
 
+      // Avoid loading the inbound command/registry chain during plugin registration.
       const { monitorWeixinProvider } = await import("./monitor/monitor.js");
       return monitorWeixinProvider({
         baseUrl: account.baseUrl,

@@ -153,7 +153,7 @@ export type WeixinMsgContext = {
    * scenarios collapse all senders into a single peer.
    */
   SenderId?: string;
-  /** Set by monitor after resolveAgentRoute so dispatchReplyFromConfig uses the correct session. */
+  /** Optional session key for callers that attach routing metadata. */
   SessionKey?: string;
   context_token?: string;
   MediaUrl?: string;

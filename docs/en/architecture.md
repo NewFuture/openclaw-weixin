@@ -19,7 +19,8 @@ The wire-level endpoint and message shapes are documented in the
 | `src/auth/` | QR login, account persistence, ID compatibility, and pairing |
 | `src/api/` | Build authenticated backend requests and classify failures |
 | `src/monitor/monitor.ts` | Poll updates, persist cursors, and schedule inbound work |
-| `src/messaging/process-message.ts` | Authorize, route, record, and dispatch one inbound message |
+| `src/messaging/process-message.ts` | Authorize, route, prepare context/media, and deliver one inbound message |
+| `src/messaging/inbound-turn.ts` | Select the public host dispatch contract and adapt hook/lifecycle ownership |
 | `src/messaging/send*.ts` | Convert outbound text/media to backend message items |
 | `src/cdn/`, `src/media/` | Encrypt, upload, download, decrypt, and transcode media |
 | `src/storage/` | Resolve state paths and persist the polling cursor |
@@ -61,8 +62,8 @@ sequenceDiagram
   Monitor->>Processor: schedule message
   Processor->>Processor: handle slash command or download media
   Processor->>Runtime: authorize sender and resolve agent route
-  Processor->>Runtime: record inbound session
-  Processor->>Runtime: dispatch reply
+  Processor->>Runtime: build public inbound context and dispatch turn
+  Runtime->>Runtime: record session and manage reply dispatcher
   Runtime-->>Processor: text, media, and item lifecycle events
 ```
 
@@ -70,25 +71,38 @@ Ordinary messages are serialized until OpenClaw accepts the turn, after which
 polling can admit the next message. Plugin approval commands use a separate lane
 so an active ordinary turn cannot block approval.
 
+`inbound-turn.ts` uses `inbound.buildContext` and selects `inbound.dispatch`, or
+the public legacy `inbound.dispatchReply` only when `dispatch` is absent. Both
+delegate session recording and dispatcher cleanup to the host; errors never
+trigger a retry through the other contract. The OpenClaw 2026.6.1 minimum and
+account-scoped state remain unchanged. Deferred replies retain their progress
+sender until the host's completion callback, not merely the initial dispatch
+return.
+
 ## Outbound flow
 
 ```mermaid
 flowchart LR
-  A[OpenClaw outbound request] --> B{Account ID supplied?}
+  A[OpenClaw outbound request] --> F[Host message_sending hook]
+  F -->|cancelled| G[Return without adapter or backend send]
+  F -->|continue| B{Account ID supplied?}
   B -->|yes| C[Resolve configured account]
   B -->|no| D[Resolve by account-scoped context token]
   D --> C
   C --> E[Check active session]
-  E --> F[Run message_sending hook]
-  F -->|cancelled| G[Return without backend send]
-  F -->|continue| H{Text or media?}
+  E --> H{Text or media?}
   H -->|text| I[Filter markdown and call sendMessage]
   H -->|media| J[Download if remote]
   J --> K[Encrypt and upload to CDN]
   K --> L[Build media message item]
-  I --> M[Emit message_sent hook]
+  I --> M[Host message_sent observation]
   L --> M
 ```
+
+Modern inbound and direct outbound sends use host-owned hooks. Legacy inbound
+and independent debug sends retain local hooks; the legacy identity
+`beforeDeliver` disables the SDK's duplicate text modifier. Raw delivery returns
+existing client message IDs and never re-enters another hook-owning send path.
 
 With multiple accounts, an omitted account ID is valid only when exactly one
 account can be selected. Ambiguous or missing context must fail rather than risk

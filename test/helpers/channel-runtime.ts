@@ -1,3 +1,4 @@
+import { type AssembledInboundReply, buildChannelInboundEventContext } from "openclaw/plugin-sdk/channel-inbound";
 import { vi } from "vitest";
 
 import type { WeixinChannelRuntime } from "../../src/messaging/process-message.js";
@@ -14,7 +15,7 @@ const DEFAULT_ROUTE = {
   matchedBy: "default",
 } satisfies ReturnType<ChannelRuntime["routing"]["resolveAgentRoute"]>;
 
-export function createChannelRuntimeHarness() {
+export function createChannelRuntimeHarness(mode: "legacy" | "routed" = "legacy") {
   const resolveAgentRoute = vi.fn<ChannelRuntime["routing"]["resolveAgentRoute"]>(() => DEFAULT_ROUTE);
   const resolveStorePath = vi.fn<ChannelRuntime["session"]["resolveStorePath"]>(() => "sessions-test.json");
   const recordInboundSession = vi.fn<ChannelRuntime["session"]["recordInboundSession"]>(async () => {});
@@ -24,45 +25,20 @@ export function createChannelRuntimeHarness() {
     size: 1,
     contentType: "application/octet-stream",
   }));
-  const finalizeInboundContext: ChannelRuntime["reply"]["finalizeInboundContext"] = (ctx) => {
-    const body = typeof ctx.Body === "string" ? ctx.Body : "";
-    const rawText = typeof ctx.rawText === "string" ? ctx.rawText : body;
-    return Object.assign(ctx, {
-      commandText: typeof ctx.commandText === "string" ? ctx.commandText : rawText,
-      agentText: typeof ctx.agentText === "string" ? ctx.agentText : rawText,
-      rawText,
-      CommandAuthorized: ctx.CommandAuthorized === true,
-    });
-  };
+  const buildContext = vi.fn<ChannelRuntime["inbound"]["buildContext"]>(buildChannelInboundEventContext);
   const resolveHumanDelayConfig = vi.fn<ChannelRuntime["reply"]["resolveHumanDelayConfig"]>(() => undefined);
-  const markDispatchIdle = vi.fn();
-  const markRunComplete = vi.fn();
-  const dispatcher = {
-    sendToolResult: vi.fn(() => true),
-    sendBlockReply: vi.fn(() => true),
-    sendFinalReply: vi.fn(() => true),
-    waitForIdle: vi.fn(async () => {}),
-    getQueuedCounts: vi.fn(() => ({ tool: 0, block: 0, final: 0 })),
-    getFailedCounts: vi.fn(() => ({ tool: 0, block: 0, final: 0 })),
-    markComplete: vi.fn(),
-  } satisfies ReturnType<ChannelRuntime["reply"]["createReplyDispatcherWithTyping"]>["dispatcher"];
-  const createReplyDispatcherWithTyping = vi.fn<ChannelRuntime["reply"]["createReplyDispatcherWithTyping"]>(() => ({
-    dispatcher,
-    replyOptions: {},
-    markDispatchIdle,
-    markRunComplete,
-  }));
-  const dispatchReplyFromConfig = vi.fn<ChannelRuntime["reply"]["dispatchReplyFromConfig"]>(async () => ({
-    queuedFinal: false,
-    counts: { tool: 0, block: 0, final: 1 },
-  }));
-  const withReplyDispatcher: ChannelRuntime["reply"]["withReplyDispatcher"] = async ({ run, onSettled }) => {
-    try {
-      return await run();
-    } finally {
-      await onSettled?.();
-    }
-  };
+  const turnResult = {
+    admission: { kind: "dispatch" },
+    dispatched: true,
+    ctxPayload: {},
+    routeSessionKey: DEFAULT_ROUTE.sessionKey,
+    dispatchResult: { queuedFinal: false, counts: { tool: 0, block: 0, final: 1 } },
+  } satisfies Awaited<ReturnType<ChannelRuntime["inbound"]["dispatchReply"]>>;
+  const dispatchReply = vi.fn<ChannelRuntime["inbound"]["dispatchReply"]>(async () => turnResult);
+  const dispatch = vi.fn<NonNullable<ChannelRuntime["inbound"]["dispatch"]>>(async () => turnResult);
+  const dispatchReplyWithBufferedBlockDispatcher = vi.fn<
+    ChannelRuntime["reply"]["dispatchReplyWithBufferedBlockDispatcher"]
+  >(async () => turnResult.dispatchResult);
 
   const channelRuntime = {
     commands: {
@@ -72,28 +48,34 @@ export function createChannelRuntimeHarness() {
       shouldComputeCommandAuthorized: vi.fn<ChannelRuntime["commands"]["shouldComputeCommandAuthorized"]>(),
     },
     routing: { resolveAgentRoute },
+    inbound: {
+      buildContext,
+      dispatchReply,
+      ...(mode === "routed" ? { dispatch } : {}),
+    },
     session: {
       resolveStorePath,
       recordInboundSession,
     },
     media: { saveMediaBuffer },
     reply: {
-      finalizeInboundContext,
       resolveHumanDelayConfig,
-      createReplyDispatcherWithTyping,
-      dispatchReplyFromConfig,
-      withReplyDispatcher,
+      dispatchReplyWithBufferedBlockDispatcher,
     },
   } satisfies ChannelRuntime;
 
   return {
     channelRuntime,
+    route: DEFAULT_ROUTE,
+    turnResult,
     mocks: {
-      createReplyDispatcherWithTyping,
-      dispatchReplyFromConfig,
-      markDispatchIdle,
+      buildContext,
+      dispatch,
+      dispatchReply,
+      dispatchReplyWithBufferedBlockDispatcher,
       recordInboundSession,
       resolveAgentRoute,
+      resolveHumanDelayConfig,
       resolveStorePath,
       saveMediaBuffer,
     },
@@ -101,3 +83,14 @@ export function createChannelRuntimeHarness() {
 }
 
 export type ChannelRuntimeHarness = ReturnType<typeof createChannelRuntimeHarness>;
+
+export async function deliverInboundReply(
+  delivery: AssembledInboundReply["delivery"],
+  payload: Parameters<AssembledInboundReply["delivery"]["deliver"]>[0],
+  kind: Parameters<AssembledInboundReply["delivery"]["deliver"]>[1]["kind"] = "final",
+) {
+  const info = { kind };
+  const prepared = delivery.preparePayload ? await delivery.preparePayload(payload, info) : payload;
+  if (prepared === null) return { visibleReplySent: false };
+  return await delivery.deliver(prepared, info);
+}
