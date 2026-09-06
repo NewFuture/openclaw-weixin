@@ -1,8 +1,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const configMutationMocks = vi.hoisted(() => ({
+  mutateConfigFile:
+    vi.fn<(params: { base?: "runtime" | "source"; mutate: (draft: OpenClawConfig) => void }) => Promise<void>>(),
+}));
 const configRuntimeMocks = vi.hoisted(() => ({
   loadConfig: vi.fn(),
   writeConfigFile: vi.fn(),
@@ -35,6 +40,7 @@ import {
 } from "./accounts.js";
 import { resolveFrameworkAllowFromPath } from "./pairing.js";
 
+vi.mock("openclaw/plugin-sdk/config-mutation", () => configMutationMocks);
 vi.mock("openclaw/plugin-sdk/config-runtime", () => configRuntimeMocks);
 
 // Mock dependencies before importing module under test
@@ -47,14 +53,19 @@ let tmpDir: string;
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "account-store-test-"));
-  process.env.OPENCLAW_STATE_DIR = tmpDir;
+  vi.stubEnv("OPENCLAW_STATE_DIR", tmpDir);
+  vi.stubEnv("OPENCLAW_OAUTH_DIR", path.join(tmpDir, "credentials"));
+  vi.stubEnv("OPENCLAW_CONFIG", path.join(tmpDir, "openclaw.json"));
+  vi.stubEnv("OPENCLAW_CONFIG_PATH", path.join(tmpDir, "openclaw.json"));
+  configMutationMocks.mutateConfigFile.mockReset();
   configRuntimeMocks.loadConfig.mockReset();
   configRuntimeMocks.writeConfigFile.mockReset();
   vi.clearAllMocks();
 });
 
 afterEach(() => {
-  delete process.env.OPENCLAW_STATE_DIR;
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -86,46 +97,156 @@ describe("raw channel config", () => {
       }
     }
   });
+});
 
-  it("preserves channel config while bumping the reload timestamp", async () => {
-    configRuntimeMocks.loadConfig.mockReturnValue({
-      channels: {
-        "openclaw-weixin": {
-          botAgent: "MyBot/1.2.0",
-          replyProgressMessages: false,
-        },
-      },
+describe("triggerWeixinChannelReload", () => {
+  const timestamp = "2026-08-23T00:00:00.000Z";
+  let sourceConfig: OpenClawConfig;
+  let runtimeConfig: OpenClawConfig;
+  let persistedConfig: OpenClawConfig | undefined;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(timestamp));
+    sourceConfig = {};
+    runtimeConfig = {};
+    persistedConfig = undefined;
+    configRuntimeMocks.loadConfig.mockImplementation(() => structuredClone(runtimeConfig));
+    configRuntimeMocks.writeConfigFile.mockImplementation(async (config: OpenClawConfig) => {
+      persistedConfig = config;
     });
-    configRuntimeMocks.writeConfigFile.mockResolvedValue(undefined);
-
-    await triggerWeixinChannelReload();
-
-    expect(configRuntimeMocks.writeConfigFile).toHaveBeenCalledOnce();
-    expect(configRuntimeMocks.writeConfigFile).toHaveBeenCalledWith({
-      channels: {
-        "openclaw-weixin": {
-          botAgent: "MyBot/1.2.0",
-          replyProgressMessages: false,
-          channelConfigUpdatedAt: expect.any(String),
-        },
-      },
+    configMutationMocks.mutateConfigFile.mockImplementation(async ({ base, mutate }) => {
+      const draft = structuredClone(base === "runtime" ? runtimeConfig : sourceConfig);
+      mutate(draft);
+      persistedConfig = draft;
     });
-    const written = configRuntimeMocks.writeConfigFile.mock.calls[0]?.[0] as {
-      channels?: Record<string, { channelConfigUpdatedAt?: string }>;
-    };
-    expect(Number.isNaN(Date.parse(written.channels?.["openclaw-weixin"]?.channelConfigUpdatedAt ?? ""))).toBe(false);
   });
 
-  it("omits arbitrary config-write errors from reload diagnostics", async () => {
-    const secret = "private-config-path";
-    configRuntimeMocks.loadConfig.mockReturnValue({});
-    configRuntimeMocks.writeConfigFile.mockRejectedValueOnce(Object.assign(new Error(secret), { code: "ENOENT" }));
+  it("preserves the latest source settings instead of writing a stale runtime snapshot", async () => {
+    const current = {
+      gateway: { port: 19001 },
+      channels: {
+        "openclaw-weixin": {
+          botAgent: "MyBot/1.2.0",
+          replyProgressMessages: false,
+          blockStreaming: false,
+          accounts: {
+            "account-1": { enabled: false, routeTag: "route-current" },
+            "account-2": { name: "Second account" },
+          },
+        },
+        telegram: { enabled: false },
+      },
+    } satisfies OpenClawConfig;
+    sourceConfig = current;
+    runtimeConfig = {
+      gateway: { port: 18789 },
+      logging: { level: "debug" },
+      channels: {
+        "openclaw-weixin": { botAgent: "OldBot/1.0", replyProgressMessages: true },
+        telegram: { enabled: true },
+      },
+    };
 
     await triggerWeixinChannelReload();
 
-    const logged = loggerMocks.warn.mock.calls.flat().join(" ");
-    expect(logged).toContain("Error(code=ENOENT)");
-    expect(logged).not.toContain(secret);
+    expect(persistedConfig).toEqual({
+      ...current,
+      channels: {
+        ...current.channels,
+        "openclaw-weixin": {
+          ...current.channels["openclaw-weixin"],
+          channelConfigUpdatedAt: timestamp,
+        },
+      },
+    });
+    expect(configMutationMocks.mutateConfigFile).toHaveBeenCalledExactlyOnceWith({
+      base: "source",
+      afterWrite: { mode: "auto" },
+      mutate: expect.any(Function),
+    });
+    expect(configRuntimeMocks.loadConfig).not.toHaveBeenCalled();
+    expect(configRuntimeMocks.writeConfigFile).not.toHaveBeenCalled();
+    expect(loggerMocks.info).toHaveBeenCalledOnce();
+    expect(loggerMocks.warn).not.toHaveBeenCalled();
+  });
+
+  it.each<OpenClawConfig>([{}, { channels: { telegram: { enabled: false } } }])(
+    "creates only the missing timestamp containers in %j",
+    async (config) => {
+      sourceConfig = config;
+
+      await triggerWeixinChannelReload();
+
+      expect(persistedConfig).toEqual({
+        ...config,
+        channels: {
+          ...config.channels,
+          "openclaw-weixin": { channelConfigUpdatedAt: timestamp },
+        },
+      });
+      expect(configMutationMocks.mutateConfigFile).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("replaces the timestamp on each successful reload", async () => {
+    sourceConfig = { channels: { "openclaw-weixin": { channelConfigUpdatedAt: "2026-08-22T00:00:00.000Z" } } };
+
+    await triggerWeixinChannelReload();
+    expect(persistedConfig?.channels?.["openclaw-weixin"]?.channelConfigUpdatedAt).toBe(timestamp);
+
+    vi.setSystemTime(new Date("2026-08-23T00:01:00.000Z"));
+    await triggerWeixinChannelReload();
+    expect(persistedConfig?.channels?.["openclaw-weixin"]?.channelConfigUpdatedAt).toBe("2026-08-23T00:01:00.000Z");
+    expect(configMutationMocks.mutateConfigFile).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["ENOENT", "Error(code=ENOENT)"],
+    ["private-error-code", "Error"],
+  ])("reports mutation failure with sanitized %s diagnostics and no fallback write", async (code, diagnostic) => {
+    const secret = "synthetic-private-config-token";
+    configMutationMocks.mutateConfigFile.mockRejectedValueOnce(Object.assign(new Error(secret), { code }));
+
+    await expect(triggerWeixinChannelReload()).resolves.toBeUndefined();
+
+    expect(loggerMocks.warn).toHaveBeenCalledExactlyOnceWith(
+      `triggerWeixinChannelReload: failed to update config: ${diagnostic}`,
+    );
+    expect(loggerMocks.warn.mock.calls.flat().join(" ")).not.toContain(secret);
+    expect(loggerMocks.info).not.toHaveBeenCalled();
+    expect(persistedConfig).toBeUndefined();
+    expect(configRuntimeMocks.loadConfig).not.toHaveBeenCalled();
+    expect(configRuntimeMocks.writeConfigFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps saved login credentials, aliases, and other accounts when mutation fails", async () => {
+    persistWeixinLoginAccounts({
+      botAccountId: "other-im-bot",
+      token: "token-other",
+      userId: "user-other",
+    });
+    persistWeixinLoginAccounts({
+      botAccountId: "bot-im-bot",
+      token: "token-current",
+      userId: "user-current",
+      requestedAccountId: "account-alias",
+    });
+    const savedAccount = loadWeixinAccount("bot-im-bot");
+    const otherAccount = loadWeixinAccount("other-im-bot");
+    const index = listIndexedWeixinAccountIds();
+    configMutationMocks.mutateConfigFile.mockRejectedValueOnce(new Error("synthetic mutation failure"));
+
+    await expect(triggerWeixinChannelReload()).resolves.toBeUndefined();
+
+    expect(configMutationMocks.mutateConfigFile).toHaveBeenCalledOnce();
+    expect(loadWeixinAccount("bot-im-bot")).toEqual(savedAccount);
+    expect(savedAccount?.token).toBe("token-current");
+    expect(loadWeixinAccount("other-im-bot")).toEqual(otherAccount);
+    expect(listIndexedWeixinAccountIds()).toEqual(index);
+    expect(resolvePrimaryAccountId("account-alias")).toBe("bot-im-bot");
+    expect(loggerMocks.warn).toHaveBeenCalledOnce();
+    expect(configRuntimeMocks.writeConfigFile).not.toHaveBeenCalled();
   });
 });
 

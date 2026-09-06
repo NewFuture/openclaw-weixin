@@ -18,6 +18,10 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Fixed
 
+- **Login reload:** Update only the channel timestamp in the host's current
+  source config with an explicit automatic reload policy, avoiding stale runtime
+  snapshots overwriting unrelated settings. Failed config writes leave saved
+  login credentials intact.
 - **Block replies:** Restored ordered delivery of completed text blocks between
   tool calls by default, with channel-level and per-account
   `blockStreaming: false` opt-outs for final-only replies.

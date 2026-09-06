@@ -1,6 +1,7 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createDeferred } from "../test/helpers/deferred.js";
 import type { ResolvedWeixinAccount } from "./auth/accounts.js";
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   findAccountIdsByContextToken: vi.fn<(accountIds: string[], userId: string) => string[]>(),
   getContextToken: vi.fn<(accountId: string, userId: string) => string | undefined>(),
   listAccountIds: vi.fn<(cfg: OpenClawConfig) => string[]>(),
+  migrateBoundAccount: vi.fn(),
   monitorProvider: vi.fn<(opts: { accountId: string; abortSignal?: AbortSignal }) => Promise<void>>(),
   notifyStart: vi.fn(),
   notifyStop: vi.fn(),
@@ -27,6 +29,7 @@ const mocks = vi.hoisted(() => ({
       }) => Promise<{ messageId: string }>
     >(),
   startLogin: vi.fn(),
+  triggerChannelReload: vi.fn<() => Promise<void>>(),
   waitLogin: vi.fn(),
 }));
 
@@ -65,10 +68,10 @@ vi.mock("./auth/accounts.js", () => ({
   listWeixinAccountIds: mocks.listAccountIds,
   loadWeixinAccount: vi.fn(),
   persistWeixinLoginAccounts: mocks.persistLoginAccounts,
-  migrateBoundAccountToAlias: vi.fn(() => null),
+  migrateBoundAccountToAlias: mocks.migrateBoundAccount,
   resolvePrimaryAccountId: (accountId: string) => accountId,
   resolveWeixinAccount: mocks.resolveAccount,
-  triggerWeixinChannelReload: vi.fn(),
+  triggerWeixinChannelReload: mocks.triggerChannelReload,
 }));
 
 vi.mock("./auth/login-qr.js", () => ({
@@ -172,6 +175,12 @@ function requireLogin() {
   const login = weixinPlugin.auth?.login;
   if (!login) throw new Error("Weixin login adapter is missing");
   return login;
+}
+
+function requireLoginWithQrWait() {
+  const loginWithQrWait = weixinPlugin.gateway?.loginWithQrWait;
+  if (!loginWithQrWait) throw new Error("Weixin QR login adapter is missing");
+  return loginWithQrWait;
 }
 
 function requireStartAccount(): StartAccount {
@@ -362,6 +371,110 @@ describe("weixinPlugin auth.login", () => {
     const diagnostics = [...runtimeLog.mock.calls, ...loggerMocks.logger.error.mock.calls].flat().join(" ");
     expect(diagnostics).not.toContain("private-save-payload");
     expect(diagnostics).not.toContain("accounts.json");
+  });
+});
+
+describe.each(["CLI", "Gateway"] as const)("weixinPlugin %s login reload", (adapter) => {
+  const persisted = { primaryId: "bot-im-bot", aliasId: "account-alias", canonicalId: "bot-im-bot" };
+
+  function login() {
+    return adapter === "CLI"
+      ? requireLogin()({
+          cfg,
+          accountId: "account-alias",
+          verbose: false,
+          runtime: { log: vi.fn(), error: vi.fn(), exit: vi.fn() },
+        })
+      : requireLoginWithQrWait()({ accountId: "account-alias", timeoutMs: 1000 });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resolveAccount.mockReturnValue(makeAccount("account-alias"));
+    mocks.startLogin.mockResolvedValue({
+      qrcodeUrl: "https://qr.example.test/code",
+      sessionKey: "session-login",
+      message: "scan",
+    });
+    mocks.waitLogin.mockResolvedValue({
+      connected: true,
+      botToken: "token-current",
+      accountId: "bot-im-bot",
+      userId: "user-current",
+      message: "connected",
+    });
+    mocks.persistLoginAccounts.mockReset().mockReturnValue(persisted);
+    mocks.migrateBoundAccount.mockReset().mockReturnValue(persisted);
+    mocks.triggerChannelReload.mockReset().mockResolvedValue(undefined);
+  });
+
+  it.each(["credentials", "alias"] as const)("requests reload after saving %s without blocking login", async (kind) => {
+    if (kind === "alias") {
+      mocks.waitLogin.mockResolvedValue({ connected: false, alreadyConnected: true, message: "connected" });
+    }
+    const reloadStarted = createDeferred();
+    const reloadFinished = createDeferred();
+    mocks.triggerChannelReload.mockImplementation(() => {
+      reloadStarted.resolve();
+      return reloadFinished.promise;
+    });
+    let returned = false;
+    const completion = login().then(() => {
+      returned = true;
+    });
+
+    try {
+      await reloadStarted.promise;
+      await Promise.resolve();
+      const persist = kind === "credentials" ? mocks.persistLoginAccounts : mocks.migrateBoundAccount;
+      expect(persist).toHaveBeenCalledOnce();
+      expect(mocks.triggerChannelReload).toHaveBeenCalledOnce();
+      expect(persist.mock.invocationCallOrder[0]).toBeLessThan(mocks.triggerChannelReload.mock.invocationCallOrder[0]);
+      expect(returned).toBe(true);
+    } finally {
+      reloadFinished.resolve();
+      await completion;
+    }
+  });
+
+  it("does not request reload for an unchanged already-connected binding", async () => {
+    mocks.waitLogin.mockResolvedValue({ connected: false, alreadyConnected: true, message: "connected" });
+    mocks.migrateBoundAccount.mockReturnValue(null);
+
+    await login();
+
+    expect(mocks.migrateBoundAccount).toHaveBeenCalledOnce();
+    expect(mocks.persistLoginAccounts).not.toHaveBeenCalled();
+    expect(mocks.triggerChannelReload).not.toHaveBeenCalled();
+  });
+
+  it.each(["credentials", "alias"] as const)("does not request reload when saving %s fails", async (kind) => {
+    const failure = new Error("synthetic persistence failure");
+    const persist = kind === "credentials" ? mocks.persistLoginAccounts : mocks.migrateBoundAccount;
+    if (kind === "alias") {
+      mocks.waitLogin.mockResolvedValue({ connected: false, alreadyConnected: true, message: "connected" });
+    }
+    persist.mockImplementation(() => {
+      throw failure;
+    });
+
+    await expect(login()).rejects.toBe(failure);
+
+    expect(mocks.triggerChannelReload).not.toHaveBeenCalled();
+  });
+
+  it("does not request reload for an incomplete login", async () => {
+    mocks.waitLogin.mockResolvedValue({ connected: false, message: "incomplete" });
+
+    if (adapter === "CLI") {
+      await expect(login()).rejects.toThrow("incomplete");
+    } else {
+      await expect(login()).resolves.toMatchObject({ connected: false });
+    }
+
+    expect(mocks.persistLoginAccounts).not.toHaveBeenCalled();
+    expect(mocks.migrateBoundAccount).not.toHaveBeenCalled();
+    expect(mocks.triggerChannelReload).not.toHaveBeenCalled();
   });
 });
 

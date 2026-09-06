@@ -3,6 +3,13 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { isDeepStrictEqual } from "node:util";
+
+import {
+  formatCheckFailure,
+  isolatedEnvironment,
+  PluginLifecycleCheckFailure,
+} from "./check-plugin-install-update.mjs";
 
 const CANONICAL_ID = "openclaw-weixin";
 const COMPATIBILITY_ALIAS = "openclaw-wechat";
@@ -95,6 +102,121 @@ function assertConfigSchema(configSchema, label) {
   }
 }
 
+export function assertReloadConfigPreserved(persisted, source) {
+  const timestamp = persisted.channels?.[CANONICAL_ID]?.channelConfigUpdatedAt;
+  if (
+    typeof timestamp !== "string" ||
+    Number.isNaN(Date.parse(timestamp)) ||
+    timestamp === source.channels?.[CANONICAL_ID]?.channelConfigUpdatedAt
+  ) {
+    throw new PluginLifecycleCheckFailure("config mutation did not update the channel timestamp");
+  }
+  const actual = structuredClone(persisted);
+  const expected = structuredClone(source);
+  // The host stamps write metadata independently of the channel mutation.
+  delete actual.meta;
+  delete expected.meta;
+  delete actual.channels[CANONICAL_ID].channelConfigUpdatedAt;
+  delete expected.channels[CANONICAL_ID].channelConfigUpdatedAt;
+  if (!isDeepStrictEqual(actual, expected)) {
+    throw new PluginLifecycleCheckFailure("config mutation changed unrelated source configuration");
+  }
+}
+
+async function exerciseConfigMutation(rootDirectory) {
+  const { mutateConfigFile, readConfigFileSnapshotForWrite } = await import("openclaw/plugin-sdk/config-mutation");
+  const { setRuntimeConfigSnapshot, clearRuntimeConfigSnapshot } = await import("openclaw/plugin-sdk/config-runtime");
+  const { triggerWeixinChannelReload } = await import(
+    pathToFileURL(path.join(rootDirectory, "dist", "src", "auth", "accounts.js")).href
+  );
+  if (typeof mutateConfigFile !== "function") {
+    throw new PluginLifecycleCheckFailure("host does not expose the config mutation function");
+  }
+  const configPath = process.env.OPENCLAW_CONFIG_PATH;
+  const initial = JSON.parse(await readFile(configPath, "utf8"));
+  const { snapshot } = await readConfigFileSnapshotForWrite();
+  if (!snapshot.valid) {
+    throw new PluginLifecycleCheckFailure("config mutation fixture did not pass host validation");
+  }
+
+  setRuntimeConfigSnapshot(snapshot.runtimeConfig, snapshot.sourceConfig);
+  try {
+    const currentSource = structuredClone(initial);
+    currentSource.gateway.port = 19001;
+    delete currentSource.logging;
+    currentSource.channels[CANONICAL_ID].botAgent = "SourceBot/2.0";
+    currentSource.channels[CANONICAL_ID].replyProgressMessages = false;
+    currentSource.channels[CANONICAL_ID].accounts["account-1"].enabled = false;
+    currentSource.channels[CANONICAL_ID].accounts["account-2"] = { enabled: false };
+    await writeFile(configPath, `${JSON.stringify(currentSource, null, 2)}\n`, "utf8");
+
+    await triggerWeixinChannelReload();
+    const persisted = JSON.parse(await readFile(configPath, "utf8"));
+    assertReloadConfigPreserved(persisted, currentSource);
+
+    const result = await mutateConfigFile({
+      base: "source",
+      afterWrite: { mode: "auto" },
+      mutate(draft) {
+        draft.channels[CANONICAL_ID].channelConfigUpdatedAt = "2001-01-01T00:00:00.000Z";
+      },
+    });
+    if (
+      !isDeepStrictEqual(result.afterWrite, { mode: "auto" }) ||
+      !isDeepStrictEqual(result.followUp, { mode: "auto", requiresRestart: false })
+    ) {
+      throw new PluginLifecycleCheckFailure("host did not retain automatic config follow-up intent");
+    }
+    assertReloadConfigPreserved(result.nextConfig, persisted);
+    assertReloadConfigPreserved(JSON.parse(await readFile(configPath, "utf8")), persisted);
+  } finally {
+    clearRuntimeConfigSnapshot();
+  }
+}
+
+async function checkHostConfigMutation(rootDirectory) {
+  const stateDirectory = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-config-compat-"));
+  try {
+    const env = isolatedEnvironment(stateDirectory);
+    await writeFile(
+      env.OPENCLAW_CONFIG_PATH,
+      `${JSON.stringify(
+        {
+          gateway: { mode: "local", port: 18789 },
+          logging: { level: "info" },
+          plugins: {
+            allow: [CANONICAL_ID],
+            entries: { [CANONICAL_ID]: { enabled: true } },
+            load: { paths: [rootDirectory] },
+          },
+          channels: {
+            [CANONICAL_ID]: {
+              botAgent: "SnapshotBot/1.0",
+              replyProgressMessages: true,
+              channelConfigUpdatedAt: "2000-01-01T00:00:00.000Z",
+              accounts: { "account-1": { enabled: true, routeTag: "route-test" } },
+            },
+            telegram: { enabled: false },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    const result = spawnSync(
+      process.execPath,
+      [path.join(rootDirectory, "scripts", "check-host-compatibility.mjs"), "--config-mutation", rootDirectory],
+      { cwd: stateDirectory, env, encoding: "utf8", timeout: 180_000 },
+    );
+    if (result.error || result.status !== 0) {
+      throw new PluginLifecycleCheckFailure("config mutation runtime check failed");
+    }
+  } finally {
+    await rm(stateDirectory, { recursive: true, force: true });
+  }
+}
+
 async function checkHostChannelAliasResolution(rootDirectory, hostVersion) {
   const stateDirectory = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-compat-"));
   const configPath = path.join(stateDirectory, "openclaw.json");
@@ -168,6 +290,9 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
   if (!channelMessageExport) {
     throw new Error(`OpenClaw ${hostPackage.version} does not export plugin-sdk/channel-message`);
   }
+  if (!hostPackage.exports?.["./plugin-sdk/config-mutation"]) {
+    throw new PluginLifecycleCheckFailure("host does not export plugin-sdk/config-mutation");
+  }
   if (
     process.env.OPENCLAW_COMPATIBILITY_PROFILE === "channel-message-only" &&
     hostPackage.exports?.["./plugin-sdk/channel-runtime"]
@@ -222,6 +347,7 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
     throw new Error("plugin registration smoke check failed");
   }
   assertConfigSchema(channels[0]?.plugin?.configSchema, "registered channel");
+  await checkHostConfigMutation(rootDirectory);
 
   if (process.env.OPENCLAW_COMPATIBILITY_PROFILE !== "channel-message-only") {
     await checkHostChannelAliasResolution(rootDirectory, hostPackage.version);
@@ -232,5 +358,14 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
 
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : undefined;
 if (import.meta.url === invokedPath) {
-  await checkHostCompatibility();
+  if (process.argv[2] === "--config-mutation") {
+    try {
+      await exerciseConfigMutation(process.argv[3]);
+    } catch (error) {
+      console.error(formatCheckFailure(error));
+      process.exitCode = 1;
+    }
+  } else {
+    await checkHostCompatibility();
+  }
 }

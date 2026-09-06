@@ -200,6 +200,12 @@ jobs:
         if: matrix.validation == 'strict'
         run: npm run check
 
+      - name: Smoke test current runtime
+        if: matrix.validation == 'strict'
+        env:
+          OPENCLAW_EXPECTED_VERSION: ${{ matrix.openclaw_version }}
+        run: node scripts/check-host-compatibility.mjs
+
       - name: Inspect package contents
         if: matrix.pack_check
         run: npm run pack:check
