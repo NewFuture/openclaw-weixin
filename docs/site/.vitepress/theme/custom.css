@@ -103,6 +103,22 @@ html[lang^="zh"] {
   padding-inline: 24px;
 }
 
+.docs-home .vp-doc blockquote {
+  margin: 24px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--docs-border);
+  border-radius: 10px;
+  background: var(--vp-c-bg-soft);
+}
+
+.docs-home .vp-doc blockquote > p {
+  color: var(--vp-c-text-1);
+}
+
+.docs-home .vp-doc h1 + p {
+  margin: 12px 0 0;
+}
+
 .docs-home .vp-doc h1,
 .docs-home .vp-doc h1 + p,
 .docs-home .vp-doc h1 + p + p {
@@ -152,10 +168,6 @@ html[lang^="zh"] {
 .docs-home .vp-doc h4[id],
 .docs-home .vp-doc a[id] {
   scroll-margin-top: 24px;
-}
-
-.docs-home .vp-doc h1 + p {
-  margin: 12px 0 0;
 }
 
 .docs-home .vp-doc h1 + p > strong {
@@ -249,6 +261,15 @@ html[lang^="zh"] {
   white-space: normal;
 }
 
+.docs-home :is(h4:has(> code), h4:has(> code) + p) + div[class*="language-"] {
+  border-color: var(--docs-accent-border);
+  background: var(--docs-accent-faint);
+}
+
+.docs-home :is(h4:has(> code), h4:has(> code) + p) + div[class*="language-"] code {
+  font-weight: 650;
+}
+
 .docs-home .vp-doc p:has(> #agent-install) + h3 + p + div[class*="language-"] {
   border-color: var(--docs-accent-border);
   background: var(--docs-accent-surface);
@@ -260,15 +281,6 @@ html[lang^="zh"] {
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: pre-wrap;
-}
-
-.docs-home :is(h4:has(> code), h4:has(> code) + p) + div[class*="language-"] {
-  border-color: var(--docs-accent-border);
-  background: var(--docs-accent-faint);
-}
-
-.docs-home :is(h4:has(> code), h4:has(> code) + p) + div[class*="language-"] code {
-  font-weight: 650;
 }
 
 .docs-home details {
@@ -370,18 +382,6 @@ html[lang^="zh"] {
 
 .docs-home details.full-check > h3:first-of-type {
   margin-top: 0;
-}
-
-.docs-home .vp-doc blockquote {
-  margin: 24px 0;
-  padding: 18px 20px;
-  border: 1px solid var(--docs-border);
-  border-radius: 10px;
-  background: var(--vp-c-bg-soft);
-}
-
-.docs-home .vp-doc blockquote > p {
-  color: var(--vp-c-text-1);
 }
 
 .docs-home .vp-doc table {
