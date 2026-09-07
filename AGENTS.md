@@ -66,8 +66,8 @@ contract.
 
 - The npm package, plugin, and channel ID is `openclaw-weixin`. Do not change the
   ID or `~/.openclaw/openclaw-weixin/` state paths without an approved migration.
-- Keep the published package compatible with Node.js 22. CI also validates the
-  recommended Node.js 24 development environment.
+- Keep the published package compatible with Node.js `>=22.22.3`. CI validates
+  the exact floor, the recommended Node.js 24.15.0 environment, and Node.js 26.
 - This is a NodeNext ESM project. TypeScript imports use `.js` specifiers.
 
 ### Privacy, state, and lifecycle
@@ -142,7 +142,7 @@ contract.
 2. Iterate with one affected suite:
    `npm run test:unit -- src/path/to/file.test.ts`.
 3. Run the fast local gate when useful: `npm run check:fast`.
-4. Run the full CI-equivalent gate before finishing: `npm run check`.
+4. Run the full project gate before finishing: `npm run check`.
 5. Also run `npm run pack:check` when entry points, build output, package metadata,
    or dependencies change.
 6. For Markdown or documentation-site changes, run:
