@@ -12,9 +12,6 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
   select routed or legacy public dispatch by runtime capability, while retaining
   the OpenClaw `2026.6.1` minimum, account isolation and independent approval lane.
   Failed dispatches are never retried through another contract.
-- **OpenClaw development baseline:** Updated the lockfile, build metadata, and
-  normal CI baseline to `2026.8.2` while retaining exact `2026.7.1`
-  compatibility coverage and the `2026.6.1` minimum host.
 - **Package source priority:** The repository, website, and ClawHub package are
   now ClawHub-first. npm and GitHub Packages generate npm-first READMEs from the
   same source package, removing the website-only transformation; publishing
