@@ -8,6 +8,8 @@
 
 社区维护的 OpenClaw 微信渠道插件，提供 npm 与 ClawHub 两个安装源。
 本插件需要 OpenClaw `>=2026.6.1`。
+OpenClaw `2026.9.1` / `2026.9.2` 的固定版本及运行环境 CI 覆盖见
+[兼容矩阵](https://openclaw-weixin.newfuture.cc/contributing.html#openclaw-兼容矩阵)。
 
 <a id="connect-wechat"></a>
 

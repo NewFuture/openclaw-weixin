@@ -84,38 +84,47 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            node-version: "22.22.3"
-            openclaw_version: "2026.7.1"
-            validation: compatibility
-            expected_openclaw_version: "2026.7.1"
-            compatibility_profile: supported
-          - os: ubuntu-latest
             node-version: "24.15.0"
             openclaw_version: "2026.6.1"
             validation: compatibility
-            expected_openclaw_version: "2026.6.1"
-            compatibility_profile: supported
           - os: ubuntu-latest
-            node-version: "24.15.0"
-            openclaw_version: beta
+            node-version: "22.22.3"
+            openclaw_version: "2026.7.1"
             validation: compatibility
-            compatibility_profile: supported
           - os: ubuntu-latest
             node-version: "24.15.0"
             openclaw_version: "2026.8.2"
+            validation: compatibility
+          - os: windows-latest
+            node-version: "24.15.0"
+            openclaw_version: "2026.8.2"
+            validation: compatibility
+          - os: ubuntu-latest
+            node-version: "24.15.0"
+            openclaw_version: "2026.9.1"
+            validation: compatibility
+          - os: ubuntu-latest
+            node-version: "22.22.3"
+            openclaw_version: "2026.9.2"
+            validation: compatibility
+          - os: ubuntu-latest
+            node-version: "24.15.0"
+            openclaw_version: "2026.9.2"
             validation: strict
             pack_check: true
             dependency_audit: true
           - os: ubuntu-latest
             node-version: "26"
-            openclaw_version: "2026.8.2"
+            openclaw_version: "2026.9.2"
             validation: compatibility
-            expected_openclaw_version: "2026.8.2"
-            compatibility_profile: supported
           - os: windows-latest
             node-version: "24.15.0"
-            openclaw_version: "2026.8.2"
+            openclaw_version: "2026.9.2"
             validation: strict
+          - os: ubuntu-latest
+            node-version: "24.15.0"
+            openclaw_version: beta
+            validation: compatibility
 
     steps:
       - name: Check out repository
@@ -138,10 +147,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build lockfile runtime for modern API smoke
-        if: matrix.compatibility_profile == 'channel-message-only'
-        run: npm run build
-
       - name: Install compatibility OpenClaw
         id: openclaw
         if: matrix.validation == 'compatibility'
@@ -153,6 +158,11 @@ jobs:
           npm install --no-save --package-lock=false --ignore-scripts \
             "openclaw@${OPENCLAW_SPEC}"
           installed_version="$(node -p 'require("./node_modules/openclaw/package.json").version')"
+          if [[ "$OPENCLAW_SPEC" != "beta" && "$installed_version" != "$OPENCLAW_SPEC" ]]; then
+            echo "::error::Expected OpenClaw ${OPENCLAW_SPEC}, found ${installed_version}."
+            exit 1
+          fi
+          echo "Resolved OpenClaw ${OPENCLAW_SPEC} to ${installed_version}."
           echo "installed_version=${installed_version}" >> "$GITHUB_OUTPUT"
 
       - name: Verify plugin install and update commands
@@ -160,36 +170,14 @@ jobs:
           OPENCLAW_EXPECTED_VERSION: ${{ steps.openclaw.outputs.installed_version || matrix.openclaw_version }}
         run: node scripts/check-plugin-install-update.mjs
 
-      - name: Typecheck and build supported OpenClaw runtime
-        if: matrix.compatibility_profile == 'supported'
-        run: npm run typecheck && npm run build
-
-      - name: Build channel-message compatibility boundary
+      - name: Typecheck and build compatibility runtime
         if: matrix.validation == 'compatibility'
-        shell: bash
-        run: |
-          set -euo pipefail
-          node -e 'require("node:fs").rmSync(".host-compat-dist", { recursive: true, force: true })'
-          node node_modules/typescript/bin/tsc \
-            --ignoreConfig \
-            --target ESNext \
-            --module NodeNext \
-            --moduleResolution NodeNext \
-            --strict \
-            --skipLibCheck \
-            --esModuleInterop \
-            --isolatedModules \
-            --resolveJsonModule \
-            --rootDir . \
-            --outDir .host-compat-dist \
-            src/messaging/process-message.ts
+        run: npm run typecheck && npm run build
 
       - name: Smoke test compatibility runtime
         if: matrix.validation == 'compatibility'
         env:
-          OPENCLAW_EXPECTED_VERSION: ${{ matrix.expected_openclaw_version || steps.openclaw.outputs.installed_version }}
-          OPENCLAW_COMPATIBILITY_PROFILE: ${{ matrix.compatibility_profile }}
-          OPENCLAW_CHANGED_MODULE: .host-compat-dist/src/messaging/process-message.js
+          OPENCLAW_EXPECTED_VERSION: ${{ steps.openclaw.outputs.installed_version }}
         run: node scripts/check-host-compatibility.mjs
 
       - name: Audit all dependencies

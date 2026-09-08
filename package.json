@@ -77,7 +77,7 @@
     "@biomejs/biome": "2.5.12",
     "@types/node": "^26.4.1",
     "@vitest/coverage-v8": "^5.0.0",
-    "openclaw": "2026.8.2",
+    "openclaw": "2026.9.2",
     "silk-wasm": "^3.7.1",
     "tar": "7.5.22",
     "typescript": "^7.0.2",
@@ -88,7 +88,7 @@
       "pluginApi": ">=2026.6.1"
     },
     "build": {
-      "openclawVersion": "2026.8.2"
+      "openclawVersion": "2026.9.2"
     },
     "extensions": [
       "./index.ts"

@@ -11,9 +11,35 @@
 
 请使用 `.nvmrc` 中指定的 Node.js 版本作为推荐开发环境。发布的包支持 Node.js
 `>=22.22.3`，包括 Node.js 24 和 26。CI 会验证 Node.js 22.22.3 的精确下限、推荐的
-Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。推荐的 Node.js 24 与 OpenClaw
-2026.8.2 组合会运行完整验证流程。Node.js 22 下限作业保留 OpenClaw 2026.7.1 的精确
-兼容性覆盖；最低支持宿主 OpenClaw 2026.6.1 和浮动 beta 作业使用 Node.js 24.15.0。
+Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。
+
+### OpenClaw 兼容矩阵
+
+最低支持宿主仍为 `2026.6.1`，锁文件 SDK 和构建元数据固定为 `2026.9.2`。CI 使用
+以下明确组合，不对所有宿主、Node.js 版本和操作系统做全排列：
+
+| OpenClaw 目标 | Node.js | 运行平台 | 验证方式 |
+| --- | --- | --- | --- |
+| `2026.6.1`（最低宿主） | `24.15.0` | Ubuntu | 兼容性 |
+| `2026.7.1`（旧版宿主） | `22.22.3` | Ubuntu | 兼容性 |
+| `2026.8.2`（旧版 SDK） | `24.15.0` | Ubuntu、Windows | 兼容性 |
+| `2026.9.1`（9 月首个稳定版） | `24.15.0` | Ubuntu | 兼容性 |
+| `2026.9.2`（锁文件 SDK） | `24.15.0` | Ubuntu、Windows | 完整 |
+| `2026.9.2`（运行时下限/当前版） | `22.22.3`、`26` | Ubuntu | 兼容性 |
+| `beta`（浮动 npm dist-tag） | `24.15.0` | Ubuntu | 兼容性 |
+
+**完整验证**运行 `npm run check`，Ubuntu 作业还运行 `npm run pack:check` 和
+`npm run audit:all`。**兼容性验证**在不修改锁文件的前提下安装目标宿主，对固定目标
+断言实际安装的精确版本，再使用该宿主运行 `npm run typecheck` 和 `npm run build`。
+
+两种方式都会在全新进程中对刚构建的插件运行
+`node scripts/check-host-compatibility.mjs`，覆盖真实 SDK 导入、插件/channel 注册、
+typing 回调、配置变更以及渠道 ID/别名解析。独立的
+`node scripts/check-plugin-install-update.mjs` 验证的是仓库已发布的包，而非当前源码。
+
+CI 会记录 `beta` 实际解析到的精确版本。该标签可能指向稳定版，也可能落后于最新稳定版，
+因此不能替代固定的 `2026.9.1` 和 `2026.9.2` 作业。此矩阵描述 CI 覆盖范围，不代表
+所有未来 `2026.9.x` 版本或未列出的平台组合均已验证，也不能替代人工整体验证。
 
 ## 选择贡献路径
 
@@ -125,7 +151,7 @@ tar -xzf <clawhub-output>/openclaw-wechat-<version>.tgz -C <clawpack-root>
 
 ```shell
 npx --yes clawhub@0.23.3 package validate <clawpack-root>/package \
-  --out <report-output> --openclaw-version 2026.8.2 --json
+  --out <report-output> --openclaw-version 2026.9.2 --json
 npx --yes clawhub@0.23.3 package publish \
   <clawhub-output>/openclaw-wechat-<version>.tgz \
   --family code-plugin --owner newfuture --display-name WeChat \

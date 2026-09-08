@@ -16,11 +16,40 @@ is approved.
 Use the Node.js version in `.nvmrc` for the recommended development
 environment. The published package supports Node.js `>=22.22.3`, including
 Node.js 24 and 26. CI validates the exact Node.js 22.22.3 floor, the recommended
-Node.js 24.15.0 environment, and a current Node.js 26 runtime. The recommended
-Node.js 24 and OpenClaw 2026.8.2 combinations run the full validation suite.
-The Node.js 22 floor job retains exact OpenClaw 2026.7.1 compatibility coverage;
-the minimum supported host, OpenClaw 2026.6.1, and the moving beta job use
-Node.js 24.15.0.
+Node.js 24.15.0 environment, and a current Node.js 26 runtime.
+
+### OpenClaw compatibility matrix
+
+The minimum supported host remains `2026.6.1`; the lockfile SDK and build metadata
+are pinned to `2026.9.2`. CI covers the following explicit combinations rather
+than every host, Node.js version, and operating system combination:
+
+| OpenClaw target | Node.js | Runner | Validation |
+| --- | --- | --- | --- |
+| `2026.6.1` (minimum) | `24.15.0` | Ubuntu | Compatibility |
+| `2026.7.1` (previous host) | `22.22.3` | Ubuntu | Compatibility |
+| `2026.8.2` (previous SDK) | `24.15.0` | Ubuntu, Windows | Compatibility |
+| `2026.9.1` (first September stable) | `24.15.0` | Ubuntu | Compatibility |
+| `2026.9.2` (lockfile SDK) | `24.15.0` | Ubuntu, Windows | Full |
+| `2026.9.2` (runtime floors/current) | `22.22.3`, `26` | Ubuntu | Compatibility |
+| `beta` (moving npm dist-tag) | `24.15.0` | Ubuntu | Compatibility |
+
+**Full** runs `npm run check`; the Ubuntu job also runs `npm run pack:check`
+and `npm run audit:all`. **Compatibility** installs the selected host without
+changing the lockfile, asserts the exact installed version for fixed targets,
+then runs `npm run typecheck` and `npm run build` against that host.
+
+Both modes run `node scripts/check-host-compatibility.mjs` in a fresh process
+against the newly built plugin: real SDK imports, plugin/channel registration,
+typing callbacks, config mutation, and channel ID/alias resolution. The separate
+`node scripts/check-plugin-install-update.mjs` check exercises registry-published
+packages, not the current source checkout.
+
+CI records the exact version resolved by `beta`. That tag can point to a stable
+release or an older version than the latest stable, so it does not replace the
+fixed `2026.9.1` and `2026.9.2` jobs. This matrix describes CI coverage, not a
+claim that every future `2026.9.x` release or unlisted platform combination has
+been validated. It does not replace human-run whole-system validation.
 
 ## Choose a contribution path
 
@@ -151,7 +180,7 @@ then preview the publish without credentials:
 
 ```shell
 npx --yes clawhub@0.23.3 package validate <clawpack-root>/package \
-  --out <report-output> --openclaw-version 2026.8.2 --json
+  --out <report-output> --openclaw-version 2026.9.2 --json
 npx --yes clawhub@0.23.3 package publish \
   <clawhub-output>/openclaw-wechat-<version>.tgz \
   --family code-plugin --owner newfuture --display-name WeChat \
