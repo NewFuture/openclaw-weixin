@@ -6,6 +6,12 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Added
+
+- **Maintenance report preview:** Added a manually triggered gh-aw maintenance
+  summary with staged-only outputs and separate agent and threat-detection
+  inference budgets; it does not automatically create issues, PRs, or releases.
+
 ### Changed
 
 - **Inbound host orchestration:** Use the shared public context builder and

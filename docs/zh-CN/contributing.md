@@ -204,6 +204,30 @@ Git 忽略；在 `docs/site/` 内只提交源文件。
 `.github/workflows/copilot-setup-steps.yml` 使用 `npm ci` 准备标准 Node.js 24.15.0
 环境，但不能替代定向测试或 `npm run check`。
 
+### 维护报告预览
+
+`.github/workflows/maintenance-report.md` 定义仅面向 `main` 的手动 gh-aw 报告，
+使用 Copilot CLI 以中文总结最近七天默认分支的变更和已合并 PR。输出仅以 staged
+模式预览在 Actions step summary 中，不创建 issue 或 PR、不修改标签、不重跑工作流，
+也不执行发布；不读取原始 CI 日志或用户状态。
+
+首次运行前，维护者需在仓库 Actions secret 中配置 `COPILOT_GITHUB_TOKEN`：
+使用具有 Copilot 推理权限的个人账号创建 fine-grained token，授予账号级
+**Copilot Requests: Read**。不得提供微信凭据，也无需为报告开启 Actions 创建 PR
+权限。staged 模式仍消耗推理额度：主 agent 预算为 100 AIC，最多 20 轮，
+执行 step 超时为 10 分钟；威胁检测另有 50 AIC 预算。这些是用量限制，不是账单保证。
+
+使用固定版本编译器，并同时提交源文件和生成的锁文件：
+
+```shell
+gh extension install github/gh-aw --pin v0.88.2
+gh aw compile maintenance-report --strict --validate
+```
+
+工作流文件合入 `main` 后，通过 `gh aw run maintenance-report --ref main`
+手动运行并查看 Actions 摘要。可用 `gh aw disable maintenance-report` 停用，
+并检查是否仍有排队或运行中的任务。当前没有定时运行或自动实施阶段。
+
 ## 整机实测
 
 自动化测试不得调用真实微信后端、执行二维码登录或使用开发者的 OpenClaw 状态。改变运行时
