@@ -37,7 +37,8 @@ Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。
 typing 回调、配置变更以及渠道 ID/别名解析。独立的
 `node scripts/check-plugin-install-update.mjs` 验证的是仓库已发布的包，而非当前源码。
 
-beta 作业跟随 Node.js 24 的当前补丁版本，以适应新宿主提高运行时下限；固定宿主作业仍
+beta 作业跟随 Node.js 24 的当前补丁版本，以适应新宿主提高运行时下限；仅该作业启用
+`setup-node` 的 `check-latest` 查询，避免复用 runner 缓存中的旧补丁。固定宿主作业仍
 保留各自明确的 Node.js 版本。例如，OpenClaw `2026.9.3` 在 24.x 系列中要求 Node.js
 `24.16.0` 或更新版本。这不会改变插件的 Node.js 下限或 `.nvmrc`。
 
@@ -214,6 +215,8 @@ Git 忽略；在 `docs/site/` 内只提交源文件。
 使用 Copilot CLI 以中文总结最近七天默认分支的变更和已合并 PR。输出仅以 staged
 模式预览在 Actions step summary 中，不创建 issue 或 PR、不修改标签、不重跑工作流，
 也不执行发布；不读取原始 CI 日志或用户状态。
+GitHub 工具使用显式白名单，仅允许读取提交、读取文件、列出提交和搜索 PR；不授权 agent
+调用评论、仓库搜索或 star 接口。
 
 首次运行前，维护者需在仓库 Actions secret 中配置 `COPILOT_GITHUB_TOKEN`：
 使用具有 Copilot 推理权限的个人账号创建 fine-grained token，授予账号级

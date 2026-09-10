@@ -46,7 +46,9 @@ typing callbacks, config mutation, and channel ID/alias resolution. The separate
 packages, not the current source checkout.
 
 The beta job follows the current Node.js 24 patch because newer hosts can raise
-their runtime floor; fixed-host jobs retain their explicit Node.js versions.
+their runtime floor. Only this job enables `setup-node`'s `check-latest` lookup
+instead of accepting an older runner-cached patch; fixed-host jobs retain their
+explicit Node.js versions.
 For example, OpenClaw `2026.9.3` requires Node.js `24.16.0` or newer on the
 24.x line. This does not change the plugin's Node.js floor or `.nvmrc`.
 
@@ -265,6 +267,9 @@ environment with `npm ci`. It does not replace focused tests or `npm run check`.
 changes and merged pull requests in Chinese. Outputs are staged in the Actions
 step summary: the workflow does not create issues or PRs, change labels, rerun
 workflows, or publish releases. It does not read raw CI logs or user state.
+Its explicit GitHub tool allowlist permits only commit reads, file reads,
+commit listing, and PR search; comment, repository-search, and star APIs are
+not authorized for the agent.
 
 Before the first run, a maintainer must configure the repository Actions secret
 `COPILOT_GITHUB_TOKEN` with a personal fine-grained token granting account-level

@@ -28,6 +28,7 @@ tools:
     mode: local
     read-only: true
     toolsets: [repos, pull_requests]
+    allowed: [get_commit, get_file_contents, list_commits, search_pull_requests]
     allowed-repos: ["newfuture/openclaw-weixin"]
     min-integrity: approved
 
@@ -57,8 +58,10 @@ trusted default branch before analyzing changes. Follow the matching project
 skills when evaluating compatibility or stateful-message-processing concerns.
 
 Review default-branch changes and merged pull requests from the last seven days
-in this repository. Do not retrieve external issue discussions, PR comments,
-raw CI logs, attachments, credentials, QR data, or real user/account state.
+in this repository. Restrict PR searches to this repository, merged PRs, and that
+date window; inspect changes with commit reads. Do not retrieve external issue
+discussions, PR comments, raw CI logs, attachments, credentials, QR data, or real
+user/account state.
 Never contact the live Weixin backend or use a developer's OpenClaw state.
 
 Write a concise Chinese report with at most five evidence-backed findings and

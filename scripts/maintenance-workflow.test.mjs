@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+const REPORT_GITHUB_TOOLS = ["get_commit", "get_file_contents", "list_commits", "search_pull_requests"];
+
 function readWorkflow(extension) {
   return readFileSync(
     new URL(`../.github/workflows/maintenance-report.${extension}`, import.meta.url),
@@ -51,6 +53,7 @@ describe("Maintenance report workflow contract", () => {
     expect(config).toContain("  bash: false\n  cli-proxy: false");
     expect(config).toContain("    mode: local\n    read-only: true");
     expect(config).toContain("    toolsets: [repos, pull_requests]");
+    expect(config).toContain(`    allowed: [${REPORT_GITHUB_TOOLS.join(", ")}]`);
     expect(config).toContain('    allowed-repos: ["newfuture/openclaw-weixin"]');
     expect(config).toContain("    min-integrity: approved");
     expect(config).not.toMatch(/^(?:imports|steps|jobs|environment|secrets):/m);
@@ -105,6 +108,21 @@ describe("Maintenance report workflow contract", () => {
       expect(reference).toMatch(/^[\w./-]+@[a-f0-9]{40}$/);
     }
     expect(workflow).not.toMatch(/^\s+(?:contents|issues|pull-requests|packages|id-token): write$/m);
+  });
+
+  it("excludes comment, repository search, and star APIs from the compiled tool inventory", () => {
+    const workflow = readWorkflow("lock.yml");
+    const manifest = JSON.parse(workflow.match(/^# gh-aw-manifest: (.+)$/m)[1]);
+    const github = manifest.mcp_servers.find((server) => server.name === "github");
+    const agent = compiledJob("agent", "conclusion");
+    const permissions = [
+      ...new Set([...agent.matchAll(/--allow-tool\s+['\\]*github\(([^)]+)\)/g)].map((match) => match[1])),
+    ];
+
+    expect(github.tools).toEqual(REPORT_GITHUB_TOOLS);
+    expect(permissions.sort()).toEqual(REPORT_GITHUB_TOOLS);
+    expect(agent).not.toMatch(/--allow-tool\s+['\\]*github(?:['\\]*\s|$)/);
+    expect(agent).not.toContain("--allow-all-tools");
   });
 
   it("carries staged mode and disabled diagnostics through to the output jobs", () => {

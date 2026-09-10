@@ -47,6 +47,16 @@ describe("OpenClaw CI compatibility matrix", () => {
     expect(validateJob).not.toContain("continue-on-error:");
   });
 
+  it("checks for the latest Node.js patch only for the moving beta host", () => {
+    const setup = steps.slice(
+      steps.indexOf("      - name: Set up Node.js\n"),
+      steps.indexOf("      - name: Use lockfile-compatible npm\n"),
+    );
+
+    expect(setup).toContain(`node-version: \${{ matrix.node-version }}`);
+    expect(setup).toContain(`check-latest: \${{ matrix.openclaw_version == 'beta' }}`);
+  });
+
   it("checks exact pins before building instead of accepting any installed version", () => {
     const install = steps.slice(
       steps.indexOf("      - name: Install compatibility OpenClaw\n"),
