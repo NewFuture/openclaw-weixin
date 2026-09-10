@@ -26,7 +26,7 @@ Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。
 | `2026.9.1`（9 月首个稳定版） | `24.15.0` | Ubuntu | 兼容性 |
 | `2026.9.2`（锁文件 SDK） | `24.15.0` | Ubuntu、Windows | 完整 |
 | `2026.9.2`（运行时下限/当前版） | `22.22.3`、`26` | Ubuntu | 兼容性 |
-| `beta`（浮动 npm dist-tag） | `24.15.0` | Ubuntu | 兼容性 |
+| `beta`（浮动 npm dist-tag） | `24`（当前补丁版） | Ubuntu | 兼容性 |
 
 **完整验证**运行 `npm run check`，Ubuntu 作业还运行 `npm run pack:check` 和
 `npm run audit:all`。**兼容性验证**在不修改锁文件的前提下安装目标宿主，对固定目标
@@ -36,6 +36,11 @@ Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。
 `node scripts/check-host-compatibility.mjs`，覆盖真实 SDK 导入、插件/channel 注册、
 typing 回调、配置变更以及渠道 ID/别名解析。独立的
 `node scripts/check-plugin-install-update.mjs` 验证的是仓库已发布的包，而非当前源码。
+
+beta 作业跟随 Node.js 24 的当前补丁版本，以适应新宿主提高运行时下限；仅该作业启用
+`setup-node` 的 `check-latest` 查询，避免复用 runner 缓存中的旧补丁。固定宿主作业仍
+保留各自明确的 Node.js 版本。例如，OpenClaw `2026.9.3` 在 24.x 系列中要求 Node.js
+`24.16.0` 或更新版本。这不会改变插件的 Node.js 下限或 `.nvmrc`。
 
 CI 会记录 `beta` 实际解析到的精确版本。该标签可能指向稳定版，也可能落后于最新稳定版，
 因此不能替代固定的 `2026.9.1` 和 `2026.9.2` 作业。此矩阵描述 CI 覆盖范围，不代表
@@ -203,6 +208,32 @@ Git 忽略；在 `docs/site/` 内只提交源文件。
 
 `.github/workflows/copilot-setup-steps.yml` 使用 `npm ci` 准备标准 Node.js 24.15.0
 环境，但不能替代定向测试或 `npm run check`。
+
+### 维护报告预览
+
+`.github/workflows/maintenance-report.md` 定义仅面向 `main` 的手动 gh-aw 报告，
+使用 Copilot CLI 以中文总结最近七天默认分支的变更和已合并 PR。输出仅以 staged
+模式预览在 Actions step summary 中，不创建 issue 或 PR、不修改标签、不重跑工作流，
+也不执行发布；不读取原始 CI 日志或用户状态。
+GitHub 工具使用显式白名单，仅允许读取提交、读取文件、列出提交和搜索 PR；不授权 agent
+调用评论、仓库搜索或 star 接口。
+
+首次运行前，维护者需在仓库 Actions secret 中配置 `COPILOT_GITHUB_TOKEN`：
+使用具有 Copilot 推理权限的个人账号创建 fine-grained token，授予账号级
+**Copilot Requests: Read**。不得提供微信凭据，也无需为报告开启 Actions 创建 PR
+权限。staged 模式仍消耗推理额度：主 agent 预算为 100 AIC，最多 20 轮，
+执行 step 超时为 10 分钟；威胁检测另有 50 AIC 预算。这些是用量限制，不是账单保证。
+
+使用固定版本编译器，并同时提交源文件和生成的锁文件：
+
+```shell
+gh extension install github/gh-aw --pin v0.88.2
+gh aw compile maintenance-report --strict --validate
+```
+
+工作流文件合入 `main` 后，通过 `gh aw run maintenance-report --ref main`
+手动运行并查看 Actions 摘要。可用 `gh aw disable maintenance-report` 停用，
+并检查是否仍有排队或运行中的任务。当前没有定时运行或自动实施阶段。
 
 ## 整机实测
 

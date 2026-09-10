@@ -5,3 +5,5 @@
 *.jpeg binary
 *.gif binary
 *.webp binary
+
+.github/workflows/*.lock.yml linguist-generated=true

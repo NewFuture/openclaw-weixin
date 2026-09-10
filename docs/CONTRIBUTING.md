@@ -32,7 +32,7 @@ than every host, Node.js version, and operating system combination:
 | `2026.9.1` (first September stable) | `24.15.0` | Ubuntu | Compatibility |
 | `2026.9.2` (lockfile SDK) | `24.15.0` | Ubuntu, Windows | Full |
 | `2026.9.2` (runtime floors/current) | `22.22.3`, `26` | Ubuntu | Compatibility |
-| `beta` (moving npm dist-tag) | `24.15.0` | Ubuntu | Compatibility |
+| `beta` (moving npm dist-tag) | `24` (current patch) | Ubuntu | Compatibility |
 
 **Full** runs `npm run check`; the Ubuntu job also runs `npm run pack:check`
 and `npm run audit:all`. **Compatibility** installs the selected host without
@@ -44,6 +44,13 @@ against the newly built plugin: real SDK imports, plugin/channel registration,
 typing callbacks, config mutation, and channel ID/alias resolution. The separate
 `node scripts/check-plugin-install-update.mjs` check exercises registry-published
 packages, not the current source checkout.
+
+The beta job follows the current Node.js 24 patch because newer hosts can raise
+their runtime floor. Only this job enables `setup-node`'s `check-latest` lookup
+instead of accepting an older runner-cached patch; fixed-host jobs retain their
+explicit Node.js versions.
+For example, OpenClaw `2026.9.3` requires Node.js `24.16.0` or newer on the
+24.x line. This does not change the plugin's Node.js floor or `.nvmrc`.
 
 CI records the exact version resolved by `beta`. That tag can point to a stable
 release or an older version than the latest stable, so it does not replace the
@@ -252,6 +259,37 @@ Agents must not receive Weixin secrets or access the live backend.
 
 `.github/workflows/copilot-setup-steps.yml` prepares the standard Node.js 24.15.0
 environment with `npm ci`. It does not replace focused tests or `npm run check`.
+
+### Maintenance report preview
+
+`.github/workflows/maintenance-report.md` defines a manual gh-aw report for
+`main`, using Copilot CLI to summarize the last seven days of default-branch
+changes and merged pull requests in Chinese. Outputs are staged in the Actions
+step summary: the workflow does not create issues or PRs, change labels, rerun
+workflows, or publish releases. It does not read raw CI logs or user state.
+Its explicit GitHub tool allowlist permits only commit reads, file reads,
+commit listing, and PR search; comment, repository-search, and star APIs are
+not authorized for the agent.
+
+Before the first run, a maintainer must configure the repository Actions secret
+`COPILOT_GITHUB_TOKEN` with a personal fine-grained token granting account-level
+**Copilot Requests: Read**, from an account with Copilot inference access.
+Do not provide Weixin credentials or enable Actions PR creation for this report.
+Staged mode still consumes inference; the main agent has a 100 AIC budget,
+20-turn limit and 10-minute execution-step timeout, with a separate 50 AIC
+threat-detection budget. These are usage guardrails, not a billing guarantee.
+
+Use the pinned compiler and commit the source with its generated lock files:
+
+```shell
+gh extension install github/gh-aw --pin v0.88.2
+gh aw compile maintenance-report --strict --validate
+```
+
+After the workflow files are merged into `main`, run it manually with
+`gh aw run maintenance-report --ref main` and inspect its Actions summary.
+`gh aw disable maintenance-report` disables it; also check for remaining queued
+or running jobs. There is no schedule or automatic implementation phase.
 
 ## Whole-system validation
 

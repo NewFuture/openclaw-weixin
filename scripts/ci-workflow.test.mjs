@@ -18,7 +18,7 @@ describe("OpenClaw CI compatibility matrix", () => {
     ["ubuntu-latest", "24.15.0", "2026.9.2", "strict"],
     ["ubuntu-latest", "26", "2026.9.2", "compatibility"],
     ["windows-latest", "24.15.0", "2026.9.2", "strict"],
-    ["ubuntu-latest", "24.15.0", "beta", "compatibility"],
+    ["ubuntu-latest", "24", "beta", "compatibility"],
   ])("covers %s / Node.js %s / OpenClaw %s with %s validation", (os, node, host, validation) => {
     const hostValue = host === "beta" ? host : JSON.stringify(host);
     const row = matrixRows.find(
@@ -42,6 +42,19 @@ describe("OpenClaw CI compatibility matrix", () => {
     expect(lockfile.packages["node_modules/openclaw"].version).toBe("2026.9.2");
     expect(packageJson.peerDependencies.openclaw).toBe(">=2026.6.1");
     expect(packageJson.openclaw.install.minHostVersion).toBe(">=2026.6.1");
+    expect(packageJson.engines.node).toBe(">=22.22.3");
+    expect(readFileSync(new URL("../.nvmrc", import.meta.url), "utf8").trim()).toBe("24.15.0");
+    expect(validateJob).not.toContain("continue-on-error:");
+  });
+
+  it("checks for the latest Node.js patch only for the moving beta host", () => {
+    const setup = steps.slice(
+      steps.indexOf("      - name: Set up Node.js\n"),
+      steps.indexOf("      - name: Use lockfile-compatible npm\n"),
+    );
+
+    expect(setup).toContain(`node-version: \${{ matrix.node-version }}`);
+    expect(setup).toContain(`check-latest: \${{ matrix.openclaw_version == 'beta' }}`);
   });
 
   it("checks exact pins before building instead of accepting any installed version", () => {
