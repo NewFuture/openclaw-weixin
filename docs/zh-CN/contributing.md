@@ -26,7 +26,7 @@ Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。
 | `2026.9.1`（9 月首个稳定版） | `24.15.0` | Ubuntu | 兼容性 |
 | `2026.9.2`（锁文件 SDK） | `24.15.0` | Ubuntu、Windows | 完整 |
 | `2026.9.2`（运行时下限/当前版） | `22.22.3`、`26` | Ubuntu | 兼容性 |
-| `beta`（浮动 npm dist-tag） | `24.15.0` | Ubuntu | 兼容性 |
+| `beta`（浮动 npm dist-tag） | `24`（当前补丁版） | Ubuntu | 兼容性 |
 
 **完整验证**运行 `npm run check`，Ubuntu 作业还运行 `npm run pack:check` 和
 `npm run audit:all`。**兼容性验证**在不修改锁文件的前提下安装目标宿主，对固定目标
@@ -36,6 +36,10 @@ Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。
 `node scripts/check-host-compatibility.mjs`，覆盖真实 SDK 导入、插件/channel 注册、
 typing 回调、配置变更以及渠道 ID/别名解析。独立的
 `node scripts/check-plugin-install-update.mjs` 验证的是仓库已发布的包，而非当前源码。
+
+beta 作业跟随 Node.js 24 的当前补丁版本，以适应新宿主提高运行时下限；固定宿主作业仍
+保留各自明确的 Node.js 版本。例如，OpenClaw `2026.9.3` 在 24.x 系列中要求 Node.js
+`24.16.0` 或更新版本。这不会改变插件的 Node.js 下限或 `.nvmrc`。
 
 CI 会记录 `beta` 实际解析到的精确版本。该标签可能指向稳定版，也可能落后于最新稳定版，
 因此不能替代固定的 `2026.9.1` 和 `2026.9.2` 作业。此矩阵描述 CI 覆盖范围，不代表

@@ -122,7 +122,7 @@ jobs:
             openclaw_version: "2026.9.2"
             validation: strict
           - os: ubuntu-latest
-            node-version: "24.15.0"
+            node-version: "24"
             openclaw_version: beta
             validation: compatibility
 
