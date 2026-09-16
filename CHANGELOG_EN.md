@@ -25,6 +25,11 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Fixed
 
+- **Plugin icon metadata:** Removed the top-level manifest `icon` URL flagged by
+  ClawHub validation against OpenClaw `2026.9.4` and bundled the existing brand
+  artwork as `assets/icon.png` in every registry package. Plugin/channel IDs and
+  the minimum supported host remain unchanged; icon display follows the host's
+  packaged-icon support.
 - **Reply hooks:** Modern inbound replies and host-managed direct text/media
   sends use one host hook owner, avoiding duplicate content changes and sent
   observations. Legacy inbound replies and independent debug sends retain local

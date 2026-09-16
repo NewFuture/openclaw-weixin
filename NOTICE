@@ -10,6 +10,7 @@ openclaw-weixin is licensed under the MIT.
 
 Modifications Copyright (C) 2026 Contributors to NewFuture/openclaw-weixin.
 
-The OpenClaw lobster artwork in docs/site/logo.svg is adapted from
+assets/icon.png is a 512x512 PNG rendering of docs/site/logo.svg.
+The OpenClaw lobster artwork in both images is adapted from
 openclaw/openclaw ui/public/favicon.svg.
 Copyright (C) 2026 OpenClaw Foundation. Licensed under the MIT License.
