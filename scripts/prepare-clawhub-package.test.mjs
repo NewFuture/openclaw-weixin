@@ -82,7 +82,16 @@ function canonicalManifest() {
     name: "openclaw-weixin",
     version: "3.1.0",
     type: "module",
-    files: ["index.ts", "dist/", "openclaw.plugin.json", "README.md", "README_EN.md", "README.zh_CN.md", "payload.txt"],
+    files: [
+      "index.ts",
+      "dist/",
+      "openclaw.plugin.json",
+      "assets/activity.svg",
+      "README.md",
+      "README_EN.md",
+      "README.zh_CN.md",
+      "payload.txt",
+    ],
     repository: {
       type: "git",
       url: "git+https://github.com/NewFuture/openclaw-weixin.git",
@@ -173,6 +182,11 @@ async function createCanonicalArchive(updateManifest = (manifest) => manifest, u
   const packageDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-source-");
   const archiveDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-canonical-");
   mkdirSync(join(packageDirectory, "dist"));
+  mkdirSync(join(packageDirectory, "assets"));
+  writeFileSync(
+    join(packageDirectory, "assets", "activity.svg"),
+    readFileSync(new URL("../assets/activity.svg", import.meta.url)),
+  );
   writeFileSync(join(packageDirectory, "index.ts"), "export default {};\n", "utf8");
   writeFileSync(join(packageDirectory, "dist", "index.js"), "export default {};\n", "utf8");
   writeFileSync(join(packageDirectory, "payload.txt"), "payload\n", "utf8");
@@ -308,6 +322,13 @@ describe("ClawHub package preparation", () => {
     const extractedPackage = await extractPackageArchive(archive, extractionDirectory);
     const extractedNpmPackage = await extractPackageArchive(npmArchive, npmExtractionDirectory);
     const extractedCanonicalPackage = await extractPackageArchive(source.archive, canonicalExtractionDirectory);
+    const activityIcon = readFileSync(new URL("../assets/activity.svg", import.meta.url), "utf8");
+    for (const packageDirectory of [extractedCanonicalPackage, extractedNpmPackage, extractedPackage]) {
+      expect(readFileSync(join(packageDirectory, "assets", "activity.svg"), "utf8")).toBe(activityIcon);
+      expect(JSON.parse(readFileSync(join(packageDirectory, "openclaw.plugin.json"), "utf8"))).not.toHaveProperty(
+        "icon",
+      );
+    }
     const variantManifest = JSON.parse(readFileSync(join(extractedPackage, "package.json"), "utf8"));
     const expectedManifest = canonicalManifest();
     expectedManifest.name = CLAWHUB_PACKAGE_NAME;

@@ -25,6 +25,9 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Fixed
 
+- **ClawHub icon metadata:** Remove the unsupported top-level manifest `icon`
+  field and ship a monochrome `assets/activity.svg` for inline activity icons on
+  supporting hosts.
 - **Reply hooks:** Modern inbound replies and host-managed direct text/media
   sends use one host hook owner, avoiding duplicate content changes and sent
   observations. Legacy inbound replies and independent debug sends retain local
