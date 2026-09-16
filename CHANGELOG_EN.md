@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-09-16
+
 ### Added
 
 - **Maintenance report preview:** Added a manually triggered gh-aw maintenance
