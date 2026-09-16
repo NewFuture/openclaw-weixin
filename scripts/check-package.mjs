@@ -21,7 +21,6 @@ const pluginManifest = JSON.parse(readFileSync("openclaw.plugin.json", "utf8"));
 const canonicalPackageName = "openclaw-weixin";
 const displayName = "WeChat";
 const description = "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.";
-const icon = "https://openclaw-weixin.newfuture.cc/logo.svg";
 const docsUrl = "https://openclaw-weixin.newfuture.cc/";
 const HOST_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
@@ -75,8 +74,8 @@ if (pluginManifest.name !== displayName) {
 if (pluginManifest.description !== description) {
   fail("openclaw.plugin.json description must match package.json");
 }
-if (pluginManifest.icon !== icon) {
-  fail(`openclaw.plugin.json icon must remain ${icon}`);
+if (Object.hasOwn(pluginManifest, "icon")) {
+  fail("openclaw.plugin.json must not declare icon; ship assets/icon.png instead");
 }
 const runtimePlugin = (await import(new URL("../dist/index.js", import.meta.url))).default;
 if (runtimePlugin.id !== canonicalPackageName) {
@@ -134,6 +133,7 @@ for (const required of [
   "CHANGELOG.md",
   "CHANGELOG_EN.md",
   "openclaw.plugin.json",
+  "assets/icon.png",
   "index.ts",
   "dist/index.js",
   "docs/zh-CN/distributions.md",

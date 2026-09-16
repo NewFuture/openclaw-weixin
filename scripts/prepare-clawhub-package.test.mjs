@@ -13,6 +13,7 @@ import {
   extractPackageArchive,
   prepareClawHubPackage,
 } from "./prepare-clawhub-package.mjs";
+import { prepareGitHubPackage } from "./prepare-github-package.mjs";
 import { prepareNpmPackage } from "./prepare-npm-package.mjs";
 import {
   assertRegistryPromptOrder,
@@ -27,6 +28,7 @@ import {
 } from "./registry-readme.mjs";
 
 const temporaryDirectories = [];
+const brandIcon = readFileSync(new URL("../assets/icon.png", import.meta.url));
 const PACKAGED_README_FILES = [...REGISTRY_README_FILES, "README.zh_CN.md"];
 const CHINESE_REDIRECT_README =
   "# openclaw-weixin\n\n中文文档已移至 [在线文档](https://openclaw-weixin.newfuture.cc/)。\n";
@@ -82,7 +84,16 @@ function canonicalManifest() {
     name: "openclaw-weixin",
     version: "3.1.0",
     type: "module",
-    files: ["index.ts", "dist/", "openclaw.plugin.json", "README.md", "README_EN.md", "README.zh_CN.md", "payload.txt"],
+    files: [
+      "index.ts",
+      "dist/",
+      "openclaw.plugin.json",
+      "assets/icon.png",
+      "README.md",
+      "README_EN.md",
+      "README.zh_CN.md",
+      "payload.txt",
+    ],
     repository: {
       type: "git",
       url: "git+https://github.com/NewFuture/openclaw-weixin.git",
@@ -173,6 +184,8 @@ async function createCanonicalArchive(updateManifest = (manifest) => manifest, u
   const packageDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-source-");
   const archiveDirectory = createTemporaryDirectory("openclaw-weixin-clawhub-canonical-");
   mkdirSync(join(packageDirectory, "dist"));
+  mkdirSync(join(packageDirectory, "assets"));
+  writeFileSync(join(packageDirectory, "assets", "icon.png"), brandIcon);
   writeFileSync(join(packageDirectory, "index.ts"), "export default {};\n", "utf8");
   writeFileSync(join(packageDirectory, "dist", "index.js"), "export default {};\n", "utf8");
   writeFileSync(join(packageDirectory, "payload.txt"), "payload\n", "utf8");
@@ -354,7 +367,44 @@ describe("ClawHub package preparation", () => {
     }
     expect(readFileSync(join(source.packageDirectory, "README.zh_CN.md"), "utf8")).toBe(CHINESE_REDIRECT_README);
     expect(readFileSync(join(extractedCanonicalPackage, "README.zh_CN.md"), "utf8")).toBe(CHINESE_REDIRECT_README);
+
+    const githubStage = await extractPackageArchive(
+      npmArchive,
+      createTemporaryDirectory("openclaw-weixin-github-stage-"),
+    );
+    prepareGitHubPackage(githubStage);
+    const githubArchive = await packPackageDirectory(
+      githubStage,
+      createTemporaryDirectory("openclaw-weixin-github-output-"),
+    );
+    const extractedGitHubPackage = await extractPackageArchive(
+      githubArchive,
+      createTemporaryDirectory("openclaw-weixin-github-extract-"),
+    );
+    for (const directory of [
+      extractedCanonicalPackage,
+      extractedNpmPackage,
+      extractedPackage,
+      extractedGitHubPackage,
+    ]) {
+      expect(readFileSync(join(directory, "assets", "icon.png"))).toEqual(brandIcon);
+      expect(JSON.parse(readFileSync(join(directory, "openclaw.plugin.json"), "utf8"))).not.toHaveProperty("icon");
+    }
   }, 90_000);
+
+  it("distinguishes an unpackaged source icon from an icon shipped by the npm file allowlist", async () => {
+    const source = await createCanonicalArchive((manifest) => ({
+      ...manifest,
+      files: manifest.files.filter((file) => file !== "assets/icon.png"),
+    }));
+    const extractedPackage = await extractPackageArchive(
+      source.archive,
+      createTemporaryDirectory("openclaw-weixin-unlisted-icon-extract-"),
+    );
+
+    expect(readFileSync(join(source.packageDirectory, "assets", "icon.png"))).toEqual(brandIcon);
+    expect(existsSync(join(extractedPackage, "assets", "icon.png"))).toBe(false);
+  }, 30_000);
 
   it.each([
     {

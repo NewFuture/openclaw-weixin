@@ -26,6 +26,7 @@
   "files": [
     "index.ts",
     "openclaw.plugin.json",
+    "assets/icon.png",
     "dist/",
     "docs/",
     "!docs/CONTRIBUTING.md",

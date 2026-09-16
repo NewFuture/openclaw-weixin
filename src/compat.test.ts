@@ -13,6 +13,7 @@ import {
 interface PackageCompatibility {
   devDependencies: { openclaw: string };
   engines: { node: string };
+  files: string[];
   openclaw: {
     build: { openclawVersion: string };
     channel: { aliases: string[]; id: string };
@@ -28,7 +29,6 @@ const packageJson = JSON.parse(
 const pluginManifest = JSON.parse(readFileSync(new URL("../openclaw.plugin.json", import.meta.url), "utf8")) as {
   channels: string[];
   description: string;
-  icon: string;
   id: string;
   name: string;
 };
@@ -48,8 +48,17 @@ describe("compatibility metadata", () => {
     expect(pluginManifest).toMatchObject({
       name: "WeChat",
       description: "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.",
-      icon: "https://openclaw-weixin.newfuture.cc/logo.svg",
     });
+    expect(pluginManifest).not.toHaveProperty("icon");
+  });
+
+  it("ships a portable PNG brand icon rather than relying on a manifest URL or an activity SVG", () => {
+    expect(packageJson.files).toContain("assets/icon.png");
+    const icon = readFileSync(new URL("../assets/icon.png", import.meta.url));
+    expect(icon.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    expect(icon.toString("ascii", 12, 16)).toBe("IHDR");
+    expect(icon.readUInt32BE(16)).toBe(512);
+    expect(icon.readUInt32BE(20)).toBe(512);
   });
 
   it("accepts the ClawHub package name as a channel alias without changing canonical identities", () => {
