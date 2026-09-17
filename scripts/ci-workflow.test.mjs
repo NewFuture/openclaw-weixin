@@ -15,9 +15,9 @@ describe("OpenClaw CI compatibility matrix", () => {
     ["windows-latest", "24.15.0", "2026.8.2", "compatibility"],
     ["ubuntu-latest", "24.15.0", "2026.9.1", "compatibility"],
     ["ubuntu-latest", "22.22.3", "2026.9.2", "compatibility"],
-    ["ubuntu-latest", "24.15.0", "2026.9.2", "strict"],
-    ["ubuntu-latest", "26", "2026.9.2", "compatibility"],
-    ["windows-latest", "24.15.0", "2026.9.2", "strict"],
+    ["ubuntu-latest", "24.16.0", "2026.9.4", "strict"],
+    ["ubuntu-latest", "26", "2026.9.4", "compatibility"],
+    ["windows-latest", "24.16.0", "2026.9.4", "strict"],
     ["ubuntu-latest", "24", "beta", "compatibility"],
   ])("covers %s / Node.js %s / OpenClaw %s with %s validation", (os, node, host, validation) => {
     const hostValue = host === "beta" ? host : JSON.stringify(host);
@@ -36,15 +36,51 @@ describe("OpenClaw CI compatibility matrix", () => {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
     const lockfile = JSON.parse(readFileSync(new URL("../package-lock.json", import.meta.url), "utf8"));
 
-    expect(packageJson.devDependencies.openclaw).toBe("2026.9.2");
-    expect(packageJson.openclaw.build.openclawVersion).toBe("2026.9.2");
-    expect(lockfile.packages[""].devDependencies.openclaw).toBe("2026.9.2");
-    expect(lockfile.packages["node_modules/openclaw"].version).toBe("2026.9.2");
+    expect(packageJson.devDependencies.openclaw).toBe("2026.9.4");
+    expect(packageJson.openclaw.build.openclawVersion).toBe("2026.9.4");
+    expect(lockfile.packages[""].devDependencies.openclaw).toBe("2026.9.4");
+    expect(lockfile.packages["node_modules/openclaw"].version).toBe("2026.9.4");
     expect(packageJson.peerDependencies.openclaw).toBe(">=2026.6.1");
     expect(packageJson.openclaw.install.minHostVersion).toBe(">=2026.6.1");
     expect(packageJson.engines.node).toBe(">=22.22.3");
-    expect(readFileSync(new URL("../.nvmrc", import.meta.url), "utf8").trim()).toBe("24.15.0");
+    expect(readFileSync(new URL("../.nvmrc", import.meta.url), "utf8").trim()).toBe("24.16.0");
     expect(validateJob).not.toContain("continue-on-error:");
+  });
+
+  it("installs the SDK on a supported Node.js before switching to the compatibility runtime", () => {
+    const dependencySetupIndex = steps.indexOf("      - name: Set up dependency Node.js\n");
+    const installIndex = steps.indexOf("      - name: Install dependencies\n");
+    const hostInstallIndex = steps.indexOf("      - name: Install compatibility OpenClaw\n");
+    const runtimeSetupIndex = steps.indexOf("      - name: Set up Node.js\n");
+    const verifyIndex = steps.indexOf("      - name: Verify plugin install and update commands\n");
+
+    expect(dependencySetupIndex).toBeGreaterThan(-1);
+    expect(installIndex).toBeGreaterThan(dependencySetupIndex);
+    expect(hostInstallIndex).toBeGreaterThan(installIndex);
+    expect(runtimeSetupIndex).toBeGreaterThan(hostInstallIndex);
+    expect(verifyIndex).toBeGreaterThan(runtimeSetupIndex);
+    const dependencySetup = steps.slice(dependencySetupIndex, installIndex);
+    expect(dependencySetup).toContain(`node-version: \${{ matrix.openclaw_version == 'beta' && '24' || '24.16.0' }}`);
+    expect(dependencySetup).toContain(`check-latest: \${{ matrix.openclaw_version == 'beta' }}`);
+    expect(steps.slice(runtimeSetupIndex, verifyIndex)).toContain("if: matrix.validation == 'compatibility'");
+  });
+
+  it.each([
+    ["copilot-setup-steps.yml", "copilot-setup-steps", "Install dependencies"],
+    ["clawhub-publish.yml", "prepare", "Install dependencies"],
+    ["release.yml", "validate", "Install dependencies"],
+    ["release.yml", "clawhub-publish", "Validate and dry-run ClawHub publish"],
+  ])("uses the development Node.js version in %s / %s before %s", (file, job, boundary) => {
+    const contents = readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), "utf8").replaceAll(
+      "\r\n",
+      "\n",
+    );
+    const jobIndex = contents.indexOf(`\n  ${job}:\n`);
+    const boundaryIndex = contents.indexOf(`      - name: ${boundary}`, jobIndex);
+
+    expect(jobIndex).toBeGreaterThan(-1);
+    expect(boundaryIndex).toBeGreaterThan(jobIndex);
+    expect(contents.slice(jobIndex, boundaryIndex)).toContain('node-version: "24.16.0"');
   });
 
   it("checks for the latest Node.js patch only for the moving beta host", () => {

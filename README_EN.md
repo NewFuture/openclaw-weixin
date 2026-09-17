@@ -10,7 +10,7 @@ A community-maintained OpenClaw WeChat channel plugin available from npm and
 ClawHub.
 This plugin requires OpenClaw `>=2026.6.1`.
 See the [compatibility matrix](https://openclaw-weixin.newfuture.cc/en/contributing.html#openclaw-compatibility-matrix)
-for pinned OpenClaw `2026.9.1` / `2026.9.2` coverage and runtime/platform CI targets.
+for pinned OpenClaw `2026.9.1` / `2026.9.2` / `2026.9.4` coverage and runtime/platform CI targets.
 
 <a id="connect-wechat"></a>
 

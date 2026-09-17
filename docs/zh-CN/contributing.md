@@ -6,16 +6,16 @@
 
 ## 前置条件
 
-- Node.js 24.15.0
+- Node.js 24.16.0
 - npm
 
 请使用 `.nvmrc` 中指定的 Node.js 版本作为推荐开发环境。发布的包支持 Node.js
 `>=22.22.3`，包括 Node.js 24 和 26。CI 会验证 Node.js 22.22.3 的精确下限、推荐的
-Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。
+Node.js 24.16.0 环境，以及当前 Node.js 26 运行时。
 
 ### OpenClaw 兼容矩阵
 
-最低支持宿主仍为 `2026.6.1`，锁文件 SDK 和构建元数据固定为 `2026.9.2`。CI 使用
+最低支持宿主仍为 `2026.6.1`，锁文件 SDK 和构建元数据固定为 `2026.9.4`。CI 使用
 以下明确组合，不对所有宿主、Node.js 版本和操作系统做全排列：
 
 | OpenClaw 目标 | Node.js | 运行平台 | 验证方式 |
@@ -24,13 +24,18 @@ Node.js 24.15.0 环境，以及当前 Node.js 26 运行时。
 | `2026.7.1`（旧版宿主） | `22.22.3` | Ubuntu | 兼容性 |
 | `2026.8.2`（旧版 SDK） | `24.15.0` | Ubuntu、Windows | 兼容性 |
 | `2026.9.1`（9 月首个稳定版） | `24.15.0` | Ubuntu | 兼容性 |
-| `2026.9.2`（锁文件 SDK） | `24.15.0` | Ubuntu、Windows | 完整 |
-| `2026.9.2`（运行时下限/当前版） | `22.22.3`、`26` | Ubuntu | 兼容性 |
+| `2026.9.2`（旧版 SDK / Node.js 22 下限） | `22.22.3` | Ubuntu | 兼容性 |
+| `2026.9.4`（锁文件 SDK） | `24.16.0` | Ubuntu、Windows | 完整 |
+| `2026.9.4`（当前运行时） | `26` | Ubuntu | 兼容性 |
 | `beta`（浮动 npm dist-tag） | `24`（当前补丁版） | Ubuntu | 兼容性 |
 
 **完整验证**运行 `npm run check`，Ubuntu 作业还运行 `npm run pack:check` 和
 `npm run audit:all`。**兼容性验证**在不修改锁文件的前提下安装目标宿主，对固定目标
 断言实际安装的精确版本，再使用该宿主运行 `npm run typecheck` 和 `npm run build`。
+
+依赖安装使用 Node.js `24.16.0`（`beta` 使用 24.x 当前补丁版），随后再切换到矩阵列出的
+运行时。OpenClaw `2026.9.4` 要求 Node.js `>=24.16.0 <25 || >=26.1.0`，因此 Node.js 22
+作业保留旧版宿主；插件自身的 Node.js `22.22.3` 下限不变。
 
 两种方式都会在全新进程中对刚构建的插件运行
 `node scripts/check-host-compatibility.mjs`，覆盖真实 SDK 导入、插件/channel 注册、
@@ -39,11 +44,10 @@ typing 回调、配置变更以及渠道 ID/别名解析。独立的
 
 beta 作业跟随 Node.js 24 的当前补丁版本，以适应新宿主提高运行时下限；仅该作业启用
 `setup-node` 的 `check-latest` 查询，避免复用 runner 缓存中的旧补丁。固定宿主作业仍
-保留各自明确的 Node.js 版本。例如，OpenClaw `2026.9.3` 在 24.x 系列中要求 Node.js
-`24.16.0` 或更新版本。这不会改变插件的 Node.js 下限或 `.nvmrc`。
+保留各自明确的 Node.js 版本。
 
 CI 会记录 `beta` 实际解析到的精确版本。该标签可能指向稳定版，也可能落后于最新稳定版，
-因此不能替代固定的 `2026.9.1` 和 `2026.9.2` 作业。此矩阵描述 CI 覆盖范围，不代表
+因此不能替代固定的 `2026.9.1`、`2026.9.2` 和 `2026.9.4` 作业。此矩阵描述 CI 覆盖范围，不代表
 所有未来 `2026.9.x` 版本或未列出的平台组合均已验证，也不能替代人工整体验证。
 
 ## 选择贡献路径
@@ -156,7 +160,7 @@ tar -xzf <clawhub-output>/openclaw-wechat-<version>.tgz -C <clawpack-root>
 
 ```shell
 npx --yes clawhub@0.23.3 package validate <clawpack-root>/package \
-  --out <report-output> --openclaw-version 2026.9.2 --json
+  --out <report-output> --openclaw-version 2026.9.4 --json
 npx --yes clawhub@0.23.3 package publish \
   <clawhub-output>/openclaw-wechat-<version>.tgz \
   --family code-plugin --owner newfuture --display-name WeChat \
@@ -206,7 +210,7 @@ Git 忽略；在 `docs/site/` 内只提交源文件。
 仓库委派任务产生的 PR 必须关联该任务，并说明可观察结果、定向判据、最高风险和剩余
 不确定性。不得向 Agent 提供微信凭据，也不得让其访问真实后端。
 
-`.github/workflows/copilot-setup-steps.yml` 使用 `npm ci` 准备标准 Node.js 24.15.0
+`.github/workflows/copilot-setup-steps.yml` 使用 `npm ci` 准备标准 Node.js 24.16.0
 环境，但不能替代定向测试或 `npm run check`。
 
 ### 维护报告预览
