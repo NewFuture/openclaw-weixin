@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-09-18
+
 ### Changed
 
 - **OpenClaw development SDK:** Pin `2026.9.4` with matching build metadata and
