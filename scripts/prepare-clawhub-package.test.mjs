@@ -559,6 +559,12 @@ describe("ClawHub package preparation", () => {
     },
   );
 
+  it.each(["npm:wrong", "clawhub:wrong"])("rejects an extra noncanonical prompt spec: %s", (spec) => {
+    const readme = canonicalReadme("en").replace("clawhub:openclaw-wechat", `${spec} clawhub:openclaw-wechat`);
+
+    expect(() => inspectRegistryPrompt(readme)).toThrow("shared prompt must not include noncanonical registry specs");
+  });
+
   it("rejects duplicate specs even when only one is backticked", () => {
     const readme = canonicalReadme("en").replace("npm:openclaw-weixin", "npm:openclaw-weixin or `npm:openclaw-weixin`");
 

@@ -147,6 +147,9 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
       throw readmeError(fileName, `shared prompt must include \`${expectedSpec}\` exactly once (found ${specCount})`);
     }
   }
+  if (specs.some((spec) => !Object.values(REGISTRY_INSTALL_SPECS).includes(spec))) {
+    throw readmeError(fileName, "shared prompt must not include noncanonical registry specs");
+  }
   if (specs.indexOf(REGISTRY_INSTALL_SPECS.clawhub) > specs.indexOf(REGISTRY_INSTALL_SPECS.npm)) {
     throw readmeError(fileName, "expected clawhub prompt source first, found npm");
   }
