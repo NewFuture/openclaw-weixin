@@ -34,10 +34,6 @@ function countOccurrences(value, fragment) {
   return value.split(fragment).length - 1;
 }
 
-function singleBacktickCodeSpans(value) {
-  return [...value.matchAll(/(?<!`)`([^`\r\n]+)`(?!`)/g)].map((match) => match[1]);
-}
-
 function countExactCommandLines(value, command) {
   return value.split(/\r?\n/).filter((line) => {
     const trimmed = line.trim();
@@ -141,70 +137,20 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
   if (/\bopenclaw\s+plugins\s+install\b/iu.test(prompt.value)) {
     throw readmeError(fileName, "shared prompt must describe installation in natural language, not embed a full CLI");
   }
-  const codeSpans = singleBacktickCodeSpans(prompt.value);
+  const specs = [...prompt.value.matchAll(/(?<![\w:/@.-])(?:npm|clawhub):[\w@/.:+~-]+/g)].map(([spec]) =>
+    spec.replace(/\.$/u, ""),
+  );
   for (const source of REGISTRY_SOURCES) {
     const expectedSpec = REGISTRY_INSTALL_SPECS[source];
-    const specCount = codeSpans.filter((value) => value === expectedSpec).length;
+    const specCount = specs.filter((value) => value === expectedSpec).length;
     if (specCount !== 1) {
       throw readmeError(fileName, `shared prompt must include \`${expectedSpec}\` exactly once (found ${specCount})`);
     }
   }
-  const forceCount = codeSpans.filter((value) => value === "--force").length;
-  if (forceCount !== 1) {
-    throw readmeError(fileName, `shared prompt must describe \`--force\` exactly once (found ${forceCount})`);
-  }
-  const forceSentence = prompt.value.split(/[.!?。！？]+/u).find((sentence) => sentence.includes("`--force`"));
-  const forceProse = forceSentence?.replace(/`[^`]+`/gu, (code) => (code === "`--force`" ? code : ""));
-  const forceScopedToNpmInstallation =
-    /\bnpm\b[\s\S]*\binstall(?:ation|ations)?\b/iu.test(forceProse) || /npm\s*安装/u.test(forceProse);
-  const forceScopedToReplacementInstallation =
-    /\breplacement\b[\s\S]*\binstall(?:ation|ations)?\b/iu.test(forceProse) || /替换\s*安装/u.test(forceProse);
-  if (!forceProse || !forceScopedToNpmInstallation || !forceScopedToReplacementInstallation) {
-    throw readmeError(fileName, "shared prompt must scope `--force` to npm and replacement installations");
+  if (specs.indexOf(REGISTRY_INSTALL_SPECS.clawhub) > specs.indexOf(REGISTRY_INSTALL_SPECS.npm)) {
+    throw readmeError(fileName, "expected clawhub prompt source first, found npm");
   }
   return prompt;
-}
-
-function registryPromptOrder(prompt) {
-  return [...REGISTRY_SOURCES].sort(
-    (left, right) =>
-      prompt.value.indexOf(`\`${REGISTRY_INSTALL_SPECS[left]}\``) -
-      prompt.value.indexOf(`\`${REGISTRY_INSTALL_SPECS[right]}\``),
-  );
-}
-
-export function assertRegistryPromptOrder(markdown, expectedFirst, options) {
-  if (!REGISTRY_SOURCES.includes(expectedFirst)) {
-    throw new Error(`unknown preferred registry prompt source: ${expectedFirst}`);
-  }
-  const prompt = inspectRegistryPrompt(markdown, options);
-  const order = registryPromptOrder(prompt);
-  if (order[0] !== expectedFirst) {
-    const fileName = options?.fileName ?? "README";
-    throw readmeError(fileName, `expected ${expectedFirst} prompt source first, found ${order[0]}`);
-  }
-  return { ...prompt, order };
-}
-
-export function preferRegistryPromptSource(markdown, preferredSource, options) {
-  if (!REGISTRY_SOURCES.includes(preferredSource)) {
-    throw new Error(`unknown preferred registry prompt source: ${preferredSource}`);
-  }
-  const prompt = inspectRegistryPrompt(markdown, options);
-  if (registryPromptOrder(prompt)[0] === preferredSource) return markdown;
-
-  const fallbackSource = REGISTRY_SOURCES.find((source) => source !== preferredSource);
-  const preferredSpec = `\`${REGISTRY_INSTALL_SPECS[preferredSource]}\``;
-  const fallbackSpec = `\`${REGISTRY_INSTALL_SPECS[fallbackSource]}\``;
-  const fallbackIndex = prompt.value.indexOf(fallbackSpec);
-  const preferredIndex = prompt.value.indexOf(preferredSpec);
-  const value =
-    prompt.value.slice(0, fallbackIndex) +
-    preferredSpec +
-    prompt.value.slice(fallbackIndex + fallbackSpec.length, preferredIndex) +
-    fallbackSpec +
-    prompt.value.slice(preferredIndex + preferredSpec.length);
-  return markdown.slice(0, prompt.start) + value + markdown.slice(prompt.end);
 }
 
 export function assertRegistryReadmeTitle(markdown, expectedSource, options) {
@@ -270,7 +216,7 @@ export function assertRegistryReadmeInstallCommands(markdown, options) {
 export function assertSourceRegistryReadme(markdown, options) {
   assertRegistryReadmeTitle(markdown, "npm", options);
   assertRegistryReadmeOrder(markdown, "clawhub", options);
-  assertRegistryPromptOrder(markdown, "clawhub", options);
+  inspectRegistryPrompt(markdown, options);
   assertRegistryReadmeInstallCommands(markdown, options);
   assertRegistryReadmeLinksAbsolute(markdown, options);
 }

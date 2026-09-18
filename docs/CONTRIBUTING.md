@@ -176,11 +176,13 @@ mkdir <clawpack-root>
 tar -xzf <clawhub-output>/openclaw-wechat-<version>.tgz -C <clawpack-root>
 ```
 
-The source README files are ClawHub-first. The npm converter changes only their
-source priority to npm-first. The ClawHub converter keeps that priority, changes
-the staged title and package metadata to `openclaw-wechat`, and uses English as
-its primary README. Neither converter changes the `openclaw-weixin` plugin and
-channel id.
+The source README files list ClawHub's direct command first. The npm converter
+changes only the direct-command order to npm-first. Every registry preserves
+the same installation prompt: update an existing installation from its current
+source to the latest version; prefer ClawHub with npm fallback for a new install.
+The ClawHub converter keeps the direct-command order, changes the staged title
+and package metadata to `openclaw-wechat`, and uses English as its primary README.
+Neither converter changes the `openclaw-weixin` plugin and channel id.
 
 Run the pinned ClawHub validator with its report directory outside the checkout,
 then preview the publish without credentials:

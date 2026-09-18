@@ -6,9 +6,9 @@ import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { createMarkdownRenderer, disposeMdItInstance } from "vitepress";
 import {
-  assertRegistryPromptOrder,
   assertRegistryReadmeInstallCommands,
   assertRegistryReadmeOrder,
+  inspectRegistryPrompt,
 } from "../../scripts/registry-readme.mjs";
 import { rewriteLinks } from "./.vitepress/links.mjs";
 import { syncContent, withoutRepositoryOnlySections, withUntranslatedNotice } from "./.vitepress/sync.mjs";
@@ -116,7 +116,11 @@ describe("syncContent", () => {
       "clawhub",
       "npm",
     ]);
-    const chinesePrompt = assertRegistryPromptOrder(overview, "clawhub", { fileName: "index.md" });
+    const chinesePrompt = inspectRegistryPrompt(overview, { fileName: "index.md" });
+    assert.equal(
+      chinesePrompt.value.match(/```text\n([\s\S]*?)\n```/)?.[1],
+      "用 OpenClaw 官方 CLI 后台非交互安装/更新微信社区插件到最新版：已装沿源更新，不沿用旧版本号；新装优先 clawhub:openclaw-wechat，源不可用再用 npm:openclaw-weixin。\n保留配置和登录态，确认在聊天中完成，最后核验版本",
+    );
     assert.doesNotThrow(() => assertRegistryReadmeInstallCommands(overview, { fileName: "index.md" }));
     assert.doesNotMatch(overview, /腾讯官方 npm 包|当前能力包括微信私聊|## 社区版与腾讯版/);
     assert.match(overview, /\[社区版与腾讯版\]\(https:\/\/openclaw-weixin\.newfuture\.cc\/distributions\.html\)/);
@@ -157,7 +161,11 @@ describe("syncContent", () => {
       "clawhub",
       "npm",
     ]);
-    const englishPrompt = assertRegistryPromptOrder(english, "clawhub", { fileName: "en/index.md" });
+    const englishPrompt = inspectRegistryPrompt(english, { fileName: "en/index.md" });
+    assert.equal(
+      englishPrompt.value.match(/```text\n([\s\S]*?)\n```/)?.[1],
+      "Use the official OpenClaw CLI to install/update the community-maintained WeChat plugin to the latest version in the background, non-interactively: update existing installations from their current source without reusing an old version number; for new installations, prefer clawhub:openclaw-wechat and use npm:openclaw-weixin only if that source is unavailable.\nPreserve configuration and login state, handle confirmations in chat, and verify the version at the end.",
+    );
     assert.doesNotThrow(() => assertRegistryReadmeInstallCommands(english, { fileName: "en/index.md" }));
     assert.match(english, /<a id="connect-wechat"><\/a>\n\n## Choose an installation method/);
     assert.doesNotMatch(english, /Copy the prompt, or run a command directly/);

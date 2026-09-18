@@ -4,16 +4,11 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { prepareStagedPackageVariant } from "./package-variant.mjs";
 import { extractPackageArchive, resolveSourceArchive } from "./prepare-clawhub-package.mjs";
-import {
-  assertSourceRegistryReadme,
-  preferRegistryPromptSource,
-  preferRegistryReadmeSource,
-  REGISTRY_README_FILES,
-} from "./registry-readme.mjs";
+import { assertSourceRegistryReadme, preferRegistryReadmeSource, REGISTRY_README_FILES } from "./registry-readme.mjs";
 
 export function createNpmReadmeVariant(markdown, fileName) {
   assertSourceRegistryReadme(markdown, { fileName });
-  return preferRegistryPromptSource(preferRegistryReadmeSource(markdown, "npm", { fileName }), "npm", { fileName });
+  return preferRegistryReadmeSource(markdown, "npm", { fileName });
 }
 
 export async function prepareNpmReadmes(packageDirectory) {

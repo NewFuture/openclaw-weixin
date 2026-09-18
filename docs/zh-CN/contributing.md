@@ -148,9 +148,11 @@ mkdir <clawpack-root>
 tar -xzf <clawhub-output>/openclaw-wechat-<version>.tgz -C <clawpack-root>
 ```
 
-源 README 为 ClawHub-first。npm 转换器只将来源优先级改为 npm-first。ClawHub 转换器
-保留该优先级，将暂存标题和包元数据改为 `openclaw-wechat`，并使用英文主 README。两个
-转换器都不改变 `openclaw-weixin` 插件和 channel ID。
+源 README 的直接命令先列 ClawHub。npm 转换器只将直接命令顺序改为 npm-first，
+所有 registry 均保留同一安装提示词：已装沿原来源更新到最新版，新装优先 ClawHub、
+npm 兜底。ClawHub 转换器保留直接命令顺序，将暂存标题和包元数据改为
+`openclaw-wechat`，并使用英文主 README。两个转换器都不改变 `openclaw-weixin`
+插件和 channel ID。
 
 使用固定版本的 ClawHub 验证器，并将其报告目录置于检出目录外；随后在不提供凭据的情况下预览发布：
 

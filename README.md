@@ -25,8 +25,8 @@ OpenClaw `2026.9.1` / `2026.9.2` 的固定版本及运行环境 CI 覆盖见
 把下面这段话粘贴到 OpenClaw 聊天框并发送：
 
 ```text
-请安装或更新当前 OpenClaw 的微信插件。优先使用 `clawhub:openclaw-wechat`；不可用时使用 `npm:openclaw-weixin`，二选一。npm 安装或替换安装时加 `--force`。
-不要先卸载，保留现有配置和登录状态。按提示确认插件能力；使用 OpenClaw 插件流程，不要直接运行 `npm install`。
+用 OpenClaw 官方 CLI 后台非交互安装/更新微信社区插件到最新版：已装沿源更新，不沿用旧版本号；新装优先 clawhub:openclaw-wechat，源不可用再用 npm:openclaw-weixin。
+保留配置和登录态，确认在聊天中完成，最后核验版本
 ```
 <!-- registry-prompt:end -->
 
