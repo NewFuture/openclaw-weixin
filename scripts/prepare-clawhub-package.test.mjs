@@ -548,14 +548,16 @@ describe("ClawHub package preparation", () => {
     expect(inspectRegistryPrompt(quoted).value).not.toContain("--force");
   });
 
-  it.each(["npm:openclaw-weixin-typo", "npm:openclaw-weixin.typo", "npm:openclaw-weixin@3.1.0"])(
-    "rejects a noncanonical bare prompt spec: %s",
-    (spec) => {
-      const readme = canonicalReadme("en").replace("npm:openclaw-weixin", spec);
+  it.each(["-typo", ".typo", "@3.1.0", "?typo", "#typo", "%typo", "=typo"])(
+    "rejects noncanonical prompt spec suffixes: %s",
+    (suffix) => {
+      for (const spec of ["npm:openclaw-weixin", "clawhub:openclaw-wechat"]) {
+        const readme = canonicalReadme("en").replace(spec, `${spec}${suffix}`);
 
-      expect(() => inspectRegistryPrompt(readme)).toThrow(
-        "shared prompt must include `npm:openclaw-weixin` exactly once (found 0)",
-      );
+        expect(() => inspectRegistryPrompt(readme)).toThrow(
+          `shared prompt must include \`${spec}\` exactly once (found 0)`,
+        );
+      }
     },
   );
 

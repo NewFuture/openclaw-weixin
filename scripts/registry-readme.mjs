@@ -137,8 +137,8 @@ export function inspectRegistryPrompt(markdown, { fileName = "README" } = {}) {
   if (/\bopenclaw\s+plugins\s+install\b/iu.test(prompt.value)) {
     throw readmeError(fileName, "shared prompt must describe installation in natural language, not embed a full CLI");
   }
-  const specs = [...prompt.value.matchAll(/(?<![\w:/@.-])(?:npm|clawhub):[\w@/.:+~-]+/g)].map(([spec]) =>
-    spec.replace(/\.$/u, ""),
+  const specs = [...prompt.value.matchAll(/(?<![\w:/@.-])(?:npm|clawhub):[^\s`\uFF0C\u3002\uFF1B]+/gu)].map(([spec]) =>
+    spec.replace(/[.,;]$/u, ""),
   );
   for (const source of REGISTRY_SOURCES) {
     const expectedSpec = REGISTRY_INSTALL_SPECS[source];
