@@ -6,9 +6,8 @@ import { describe, expect, it } from "vitest";
 
 import { createNpmReadmeVariant, prepareNpmPackage } from "./prepare-npm-package.mjs";
 import {
-  assertRegistryPromptOrder,
   assertRegistryReadmeOrder,
-  preferRegistryPromptSource,
+  inspectRegistryPrompt,
   preferRegistryReadmeSource,
   REGISTRY_README_FILES,
 } from "./registry-readme.mjs";
@@ -16,11 +15,14 @@ import {
 const readReadme = (fileName) => readFile(new URL(`../${fileName}`, import.meta.url), "utf8");
 
 describe("npm package README preparation", () => {
-  it("creates npm-first README variants from ClawHub-first sources", async () => {
+  it("preserves the shared prompt while listing npm commands first", async () => {
     for (const fileName of REGISTRY_README_FILES) {
-      const variant = createNpmReadmeVariant(await readReadme(fileName), fileName);
+      const source = await readReadme(fileName);
+      const variant = createNpmReadmeVariant(source, fileName);
       expect(assertRegistryReadmeOrder(variant, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
-      expect(assertRegistryPromptOrder(variant, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
+      expect(inspectRegistryPrompt(variant, { fileName }).value).toBe(
+        inspectRegistryPrompt(source, { fileName }).value,
+      );
     }
   });
 
@@ -32,7 +34,7 @@ describe("npm package README preparation", () => {
     },
     {
       label: "prompt",
-      transform: (markdown, fileName) => preferRegistryPromptSource(markdown, "npm", { fileName }),
+      transform: (markdown) => markdown.replace(/(clawhub:openclaw-wechat)(.*)(npm:openclaw-weixin)/u, "$3$2$1"),
       expected: "expected clawhub prompt source first, found npm",
     },
   ])("rejects npm-first source $label", async ({ transform, expected }) => {

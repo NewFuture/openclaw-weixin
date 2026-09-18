@@ -154,12 +154,13 @@ ClawHub distribution is intentionally separate from npm identity:
 | Plugin and channel id | `openclaw-weixin` |
 | ClawHub publisher | `newfuture` |
 
-The repository source package is ClawHub-first.
-`scripts/prepare-npm-package.mjs` creates the npm-first canonical package.
-`scripts/prepare-clawhub-package.mjs` keeps the source priority, changes the
-package name and README titles to `openclaw-wechat`, and uses English as the
-primary README. Both validate package identity, exact install commands, and
-absolute links without modifying the source tarball or runtime
+The repository source package lists ClawHub's direct command first.
+`scripts/prepare-npm-package.mjs` changes only the direct-command order to
+npm-first, preserving the shared installation prompt.
+`scripts/prepare-clawhub-package.mjs` keeps the prompt and direct-command order,
+changes the package name and README titles to `openclaw-wechat`, and uses English
+as the primary README. Both validate package identity, exact install commands,
+and absolute links without modifying the source tarball or runtime
 `openclaw-weixin` id.
 Release validation uploads both tarballs once; publishing jobs download those
 exact artifacts and retain their live tag and registry rechecks.
@@ -268,12 +269,15 @@ compatibility, and scan status. Validate the README variants:
 
 | Surface | Contract |
 | --- | --- |
-| Repository and website | Title `openclaw-weixin`; ClawHub-first |
-| npm and GitHub Packages | Title `openclaw-weixin`; npm-first |
-| ClawHub package | English primary README; title `openclaw-wechat`; ClawHub-first |
+| Repository and website | Title `openclaw-weixin`; direct commands list ClawHub first |
+| npm and GitHub Packages | Title `openclaw-weixin`; direct commands list npm first |
+| ClawHub package | English primary README; title `openclaw-wechat`; direct commands list ClawHub first |
 
-Source README prompts are ClawHub-first; npm variants are npm-first. Each names
-both specs once and describes only source priority and safety constraints.
-`--force` applies to Agent-run npm installs and any replacement install. Direct
-commands omit the flag for a first install; a replacement appends it to the
-selected install command. All links are absolute.
+All registries preserve the same prompt in each language. It asks the agent to
+use the official OpenClaw CLI in the background, non-interactively; update from
+the existing source without reusing an old version number; and prefer ClawHub
+with npm fallback for new installations. It requests preserved configuration
+and login state, confirmations in chat, and a final version check. Both source
+specs appear exactly once; the prompt does not prescribe CLI flags.
+Direct commands omit `--force` for a first install; a replacement appends it to
+the selected install command. All links are absolute.

@@ -122,8 +122,9 @@ ClawHub 分发刻意与 npm 身份分离：
 | 插件和 channel ID | `openclaw-weixin` |
 | ClawHub 发布者 | `newfuture` |
 
-仓库源包为 ClawHub-first。`scripts/prepare-npm-package.mjs` 生成 npm-first 的规范包。
-`scripts/prepare-clawhub-package.mjs` 保留源优先级，将包名和 README 标题改为
+仓库源包的直接命令先列 ClawHub。`scripts/prepare-npm-package.mjs` 只将直接命令顺序
+改为 npm-first，保留统一安装提示词。
+`scripts/prepare-clawhub-package.mjs` 保留提示词和直接命令顺序，将包名和 README 标题改为
 `openclaw-wechat`，并使用英文主 README。两者都会验证包身份、精确安装命令和绝对链接，
 且不修改源 tarball 或 `openclaw-weixin` 运行时 ID。
 发布验证只上传一次两个 tarball；发布 job 下载相同产物，并保留实时标签和 registry 复查。
@@ -213,10 +214,12 @@ artifact。
 
 | 表面 | 约束 |
 | --- | --- |
-| 仓库与官网 | 标题为 `openclaw-weixin`；ClawHub-first |
-| npm 与 GitHub Packages | 标题为 `openclaw-weixin`；npm-first |
-| ClawHub 包 | 英文主 README；标题为 `openclaw-wechat`；ClawHub-first |
+| 仓库与官网 | 标题为 `openclaw-weixin`；直接命令先列 ClawHub |
+| npm 与 GitHub Packages | 标题为 `openclaw-weixin`；直接命令先列 npm |
+| ClawHub 包 | 英文主 README；标题为 `openclaw-wechat`；直接命令先列 ClawHub |
 
-源 README prompt 为 ClawHub-first，npm 变体为 npm-first。每条 prompt 中两个来源 spec
-各出现一次；提示只说明来源优先级和安全约束。`--force` 用于 Agent 执行 npm 安装及任何替换安装。
-初次安装的直接命令省略该参数；替换时在所选安装命令末尾添加。所有链接使用绝对地址。
+所有 registry 均保留同一语言的统一提示词：要求 Agent 用 OpenClaw 官方 CLI 后台
+非交互安装或更新，已装沿原来源更新且不沿用旧版本号，新装优先 ClawHub、npm 兜底；
+保留配置和登录态，在聊天中完成确认，最后核验版本。两个来源 spec 各出现一次，
+提示词不指定 CLI 参数。初次安装的直接命令省略 `--force`；替换时在所选安装命令末尾
+添加。所有链接使用绝对地址。

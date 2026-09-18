@@ -26,8 +26,8 @@ for pinned OpenClaw `2026.9.1` / `2026.9.2` / `2026.9.4` coverage and runtime/pl
 Paste this prompt into an OpenClaw chat and send it:
 
 ```text
-Install or update the WeChat plugin for this OpenClaw instance. Prefer `clawhub:openclaw-wechat`; if it is unavailable, use `npm:openclaw-weixin`. Choose one source. For npm or replacement installations, add `--force`.
-Do not uninstall first; preserve existing configuration and login state. Confirm plugin capabilities when prompted, and use the OpenClaw plugin flow rather than plain `npm install`.
+Use the official OpenClaw CLI to install/update the community-maintained WeChat plugin to the latest version in the background, non-interactively: update existing installations from their current source without reusing an old version number; for new installations, prefer clawhub:openclaw-wechat and use npm:openclaw-weixin only if that source is unavailable.
+Preserve configuration and login state, handle confirmations in chat, and verify the version at the end.
 ```
 <!-- registry-prompt:end -->
 

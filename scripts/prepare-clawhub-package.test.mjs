@@ -16,7 +16,6 @@ import {
 import { prepareGitHubPackage } from "./prepare-github-package.mjs";
 import { prepareNpmPackage } from "./prepare-npm-package.mjs";
 import {
-  assertRegistryPromptOrder,
   assertRegistryReadmeLinksAbsolute,
   assertRegistryReadmeOrder,
   inspectRegistryPrompt,
@@ -139,9 +138,9 @@ function canonicalReadme(language) {
     registryPromptMarker("start"),
     isEnglish ? "## Let OpenClaw choose a source" : "## 让 OpenClaw 选择来源",
     "",
-    "`clawhub:openclaw-wechat`",
-    "`npm:openclaw-weixin`",
-    isEnglish ? "Use `--force` for npm or replacement installations." : "npm 安装或替换安装时使用 `--force`。",
+    isEnglish
+      ? "For new installations, prefer clawhub:openclaw-wechat; fall back to npm:openclaw-weixin."
+      : "新装优先 clawhub:openclaw-wechat，源不可用再用 npm:openclaw-weixin。",
     registryPromptMarker("end"),
     "",
     registrySourceMarker("clawhub", "start"),
@@ -337,15 +336,9 @@ describe("ClawHub package preparation", () => {
     expect(JSON.parse(readFileSync(join(source.packageDirectory, "package.json"), "utf8"))).toEqual(
       canonicalManifest(),
     );
-    const expectedVariants = Object.fromEntries(
-      REGISTRY_README_FILES.map((fileName) => [
-        fileName,
-        preferRegistryReadmeTitle(originalReadmes[fileName], "clawhub", { fileName }),
-      ]),
-    );
     for (const [targetFileName, sourceFileName] of Object.entries(CLAWHUB_README_LAYOUT)) {
       const stagedReadme = readFileSync(join(extractedPackage, targetFileName), "utf8");
-      expect(stagedReadme).toBe(expectedVariants[sourceFileName]);
+      expect(stagedReadme).toBe(originalReadmes[sourceFileName].replace(/^# openclaw-weixin/u, "# openclaw-wechat"));
     }
     expect(readFileSync(join(extractedPackage, "README.md"), "utf8")).toBe(
       readFileSync(join(extractedPackage, "README_EN.md"), "utf8"),
@@ -358,7 +351,7 @@ describe("ClawHub package preparation", () => {
     for (const fileName of REGISTRY_README_FILES) {
       const npmReadme = readFileSync(join(extractedNpmPackage, fileName), "utf8");
       expect(assertRegistryReadmeOrder(npmReadme, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
-      expect(assertRegistryPromptOrder(npmReadme, "npm", { fileName }).order).toEqual(["npm", "clawhub"]);
+      expect(inspectRegistryPrompt(npmReadme).value).toBe(inspectRegistryPrompt(originalReadmes[fileName]).value);
     }
     for (const fileName of REGISTRY_README_FILES) {
       const canonicalArchiveReadme = readFileSync(join(extractedCanonicalPackage, fileName), "utf8");
@@ -381,6 +374,10 @@ describe("ClawHub package preparation", () => {
       githubArchive,
       createTemporaryDirectory("openclaw-weixin-github-extract-"),
     );
+    for (const fileName of REGISTRY_README_FILES) {
+      const githubReadme = readFileSync(join(extractedGitHubPackage, fileName), "utf8");
+      expect(inspectRegistryPrompt(githubReadme).value).toBe(inspectRegistryPrompt(originalReadmes[fileName]).value);
+    }
     for (const directory of [
       extractedCanonicalPackage,
       extractedNpmPackage,
@@ -418,16 +415,6 @@ describe("ClawHub package preparation", () => {
       expected: "prompt markers must appear exactly once",
     },
     {
-      label: "missing noninteractive npm confirmation",
-      mutate: (readme) => readme.replace("`--force`", "noninteractive npm confirmation"),
-      expected: "shared prompt must describe `--force` exactly once (found 0)",
-    },
-    {
-      label: "force scoped to ClawHub",
-      mutate: (readme) => readme.replace("npm or replacement installations", "ClawHub or replacement installations"),
-      expected: "shared prompt must scope `--force` to npm and replacement installations",
-    },
-    {
       label: "full CLI inside the natural-language prompt",
       mutate: (readme) =>
         readme.replace(
@@ -438,7 +425,7 @@ describe("ClawHub package preparation", () => {
     },
     {
       label: "suffixed prompt spec",
-      mutate: (readme) => readme.replace("`npm:openclaw-weixin`", "`npm:openclaw-weixin-typo`"),
+      mutate: (readme) => readme.replace("npm:openclaw-weixin", "npm:openclaw-weixin-typo"),
       expected: "shared prompt must include `npm:openclaw-weixin` exactly once (found 0)",
     },
     {
@@ -551,27 +538,40 @@ describe("ClawHub package preparation", () => {
     ).rejects.toThrow(`README_EN.md: ${expected}`);
   });
 
-  it.each([
-    {
-      label: "an English npm-only force instruction",
-      language: "en",
-      forceSentence: "Use `--force` for npm installation.",
-    },
-    {
-      label: "a Chinese replacement-only force instruction",
-      language: "zh",
-      forceSentence: "替换安装时使用 `--force`。",
-    },
-  ])("rejects $label", ({ language, forceSentence }) => {
-    const isEnglish = language === "en";
-    const originalForceSentence = isEnglish
-      ? "Use `--force` for npm or replacement installations."
-      : "npm 安装或替换安装时使用 `--force`。";
-    const readme = canonicalReadme(language).replace(originalForceSentence, forceSentence);
-    const fileName = isEnglish ? "README_EN.md" : "README.md";
+  it.each(["en", "zh"])("accepts bare and backticked %s prompt specs without CLI flags", (language) => {
+    const readme = canonicalReadme(language);
+    const quoted = readme
+      .replace("clawhub:openclaw-wechat", "`clawhub:openclaw-wechat`")
+      .replace("npm:openclaw-weixin", "`npm:openclaw-weixin`");
 
-    expect(() => inspectRegistryPrompt(readme, { fileName })).toThrow(
-      `${fileName}: shared prompt must scope \`--force\` to npm and replacement installations`,
+    expect(inspectRegistryPrompt(readme).value).not.toContain("--force");
+    expect(inspectRegistryPrompt(quoted).value).not.toContain("--force");
+  });
+
+  it.each(["-typo", ".typo", "@3.1.0", "?typo", "#typo", "%typo", "=typo"])(
+    "rejects noncanonical prompt spec suffixes: %s",
+    (suffix) => {
+      for (const spec of ["npm:openclaw-weixin", "clawhub:openclaw-wechat"]) {
+        const readme = canonicalReadme("en").replace(spec, `${spec}${suffix}`);
+
+        expect(() => inspectRegistryPrompt(readme)).toThrow(
+          `shared prompt must include \`${spec}\` exactly once (found 0)`,
+        );
+      }
+    },
+  );
+
+  it.each(["npm:wrong", "clawhub:wrong"])("rejects an extra noncanonical prompt spec: %s", (spec) => {
+    const readme = canonicalReadme("en").replace("clawhub:openclaw-wechat", `${spec} clawhub:openclaw-wechat`);
+
+    expect(() => inspectRegistryPrompt(readme)).toThrow("shared prompt must not include noncanonical registry specs");
+  });
+
+  it("rejects duplicate specs even when only one is backticked", () => {
+    const readme = canonicalReadme("en").replace("npm:openclaw-weixin", "npm:openclaw-weixin or `npm:openclaw-weixin`");
+
+    expect(() => inspectRegistryPrompt(readme)).toThrow(
+      "shared prompt must include `npm:openclaw-weixin` exactly once (found 2)",
     );
   });
 
@@ -652,7 +652,7 @@ describe("ClawHub package preparation", () => {
   it("rejects a shared prompt that omits one package source", async () => {
     const source = await createCanonicalArchive(undefined, (readmes) => ({
       ...readmes,
-      "README_EN.md": readmes["README_EN.md"].replace("`clawhub:openclaw-wechat`", "`npm:openclaw-weixin`"),
+      "README_EN.md": readmes["README_EN.md"].replace("clawhub:openclaw-wechat", "npm:openclaw-weixin"),
     }));
 
     await expect(
