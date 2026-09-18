@@ -6,6 +6,13 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- **OpenClaw development SDK:** Pin `2026.9.4` with matching build metadata and
+  update the recommended development environment to Node.js `24.16.0`. CI retains
+  older hosts and Node.js `22.22.3` coverage; the plugin's minimum host and Node.js
+  runtime requirements are unchanged.
+
 ## [3.2.0] - 2026-09-16
 
 ### Added
