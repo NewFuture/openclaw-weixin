@@ -1,4 +1,4 @@
-import type { ReplyPayload } from "openclaw/plugin-sdk/reply-runtime";
+import type { ReplyPayload } from "openclaw/plugin-sdk/reply-payload";
 import { describe, expect, it } from "vitest";
 import { appendWeixinExecApprovalQuickReplies, splitWeixinExecApprovalOtherOptions } from "./approval-quick-replies.js";
 

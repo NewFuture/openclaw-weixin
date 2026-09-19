@@ -6,8 +6,8 @@ import {
   resolveSenderCommandAuthorizationWithRuntime,
 } from "openclaw/plugin-sdk/command-auth";
 import type { PluginRuntime } from "openclaw/plugin-sdk/core";
-import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/infra-runtime";
 import { normalizeAgentId } from "openclaw/plugin-sdk/routing";
+import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/temp-path";
 
 import { sendTyping } from "../api/api.js";
 import type { WeixinMessage } from "../api/types.js";

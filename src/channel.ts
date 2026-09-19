@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ChannelPlugin, OpenClawConfig, PluginRuntime } from "openclaw/plugin-sdk/core";
-import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/infra-runtime";
+import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/temp-path";
 import { notifyStart, notifyStop } from "./api/api.js";
 import { assertSessionActive } from "./api/session-guard.js";
 import type { ResolvedWeixinAccount } from "./auth/accounts.js";

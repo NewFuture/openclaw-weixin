@@ -50,7 +50,7 @@ vi.mock("openclaw/plugin-sdk/command-auth", () => ({
   resolveSenderCommandAuthorizationWithRuntime: mocks.resolveSenderAuthorization,
 }));
 
-vi.mock("openclaw/plugin-sdk/infra-runtime", () => ({
+vi.mock("openclaw/plugin-sdk/temp-path", () => ({
   resolvePreferredOpenClawTmpDir: vi.fn(() => "C:\\synthetic\\tmp"),
 }));
 

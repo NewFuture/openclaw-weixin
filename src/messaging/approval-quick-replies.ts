@@ -1,4 +1,4 @@
-import type { ReplyPayload } from "openclaw/plugin-sdk/reply-runtime";
+import type { ReplyPayload } from "openclaw/plugin-sdk/reply-payload";
 
 const APPROVAL_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 const FORWARDED_EXEC_APPROVAL_HEADING = "🔒 Exec approval required";

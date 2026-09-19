@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const tempDirs: string[] = [];
 
 afterEach(() => {
-  vi.doUnmock("openclaw/plugin-sdk/infra-runtime");
+  vi.doUnmock("openclaw/plugin-sdk/temp-path");
   vi.resetModules();
   for (const dir of tempDirs.splice(0)) {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -17,7 +17,7 @@ describe("logger account scope", () => {
   it("masks the account identifier in persisted logger names and messages", async () => {
     const logDir = fs.mkdtempSync(path.join(os.tmpdir(), "weixin-logger-"));
     tempDirs.push(logDir);
-    vi.doMock("openclaw/plugin-sdk/infra-runtime", () => ({
+    vi.doMock("openclaw/plugin-sdk/temp-path", () => ({
       resolvePreferredOpenClawTmpDir: () => logDir,
     }));
 

@@ -6,6 +6,13 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- **Public SDK imports:** Resolve temporary directories from
+  `openclaw/plugin-sdk/temp-path` and import `ReplyPayload` from
+  `openclaw/plugin-sdk/reply-payload`. Pairing writes still use
+  `infra-runtime.withFileLock`; the minimum host remains OpenClaw `2026.6.1`.
+
 ## [3.2.1] - 2026-09-18
 
 ### Changed

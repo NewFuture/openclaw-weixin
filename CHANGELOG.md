@@ -6,6 +6,12 @@
 
 ## [未发布]
 
+### 变更
+
+- **公开 SDK 导入：** 临时目录改为 `openclaw/plugin-sdk/temp-path`，`ReplyPayload`
+  改为 `openclaw/plugin-sdk/reply-payload`。配对写入仍使用 `infra-runtime.withFileLock`；
+  最低宿主保持 OpenClaw `2026.6.1`。
+
 ## [3.2.1] - 2026-09-18
 
 ### 变更
