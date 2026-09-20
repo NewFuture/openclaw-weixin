@@ -123,6 +123,16 @@ export function assertReloadConfigPreserved(persisted, source) {
   }
 }
 
+export function assertConfigMutationResultPreserved(result, persisted, source) {
+  if (
+    !isDeepStrictEqual(result.afterWrite, { mode: "auto" }) ||
+    !isDeepStrictEqual(result.followUp, { mode: "auto", requiresRestart: false })
+  ) {
+    throw new PluginLifecycleCheckFailure("host did not retain automatic config follow-up intent");
+  }
+  assertReloadConfigPreserved(persisted, source);
+}
+
 async function exerciseConfigMutation(rootDirectory) {
   const { mutateConfigFile, readConfigFileSnapshotForWrite } = await import("openclaw/plugin-sdk/config-mutation");
   const { setRuntimeConfigSnapshot, clearRuntimeConfigSnapshot } = await import("openclaw/plugin-sdk/config-runtime");
@@ -161,14 +171,7 @@ async function exerciseConfigMutation(rootDirectory) {
         draft.channels[CANONICAL_ID].channelConfigUpdatedAt = "2001-01-01T00:00:00.000Z";
       },
     });
-    if (
-      !isDeepStrictEqual(result.afterWrite, { mode: "auto" }) ||
-      !isDeepStrictEqual(result.followUp, { mode: "auto", requiresRestart: false })
-    ) {
-      throw new PluginLifecycleCheckFailure("host did not retain automatic config follow-up intent");
-    }
-    assertReloadConfigPreserved(result.nextConfig, persisted);
-    assertReloadConfigPreserved(JSON.parse(await readFile(configPath, "utf8")), persisted);
+    assertConfigMutationResultPreserved(result, JSON.parse(await readFile(configPath, "utf8")), persisted);
   } finally {
     clearRuntimeConfigSnapshot();
   }

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { assertReloadConfigPreserved, hostSupportsChannelAliases } from "./check-host-compatibility.mjs";
+import {
+  assertConfigMutationResultPreserved,
+  assertReloadConfigPreserved,
+  hostSupportsChannelAliases,
+} from "./check-host-compatibility.mjs";
 
 describe("hostSupportsChannelAliases", () => {
   it.each([
@@ -60,6 +64,53 @@ describe("hostSupportsChannelAliases", () => {
       change(config);
 
       expect(() => assertReloadConfigPreserved(config, source)).toThrow("changed unrelated source configuration");
+    });
+
+    describe("assertConfigMutationResultPreserved", () => {
+      function mutationResult() {
+        return {
+          nextConfig: updatedConfig(),
+          afterWrite: { mode: "auto" },
+          followUp: { mode: "auto", requiresRestart: false },
+        };
+      }
+
+      it("accepts runtime defaults when the persisted source is preserved", () => {
+        const result = {
+          ...mutationResult(),
+          nextConfig: { ...updatedConfig(), agents: { list: [{ id: "main" }] } },
+        };
+
+        expect(() => assertConfigMutationResultPreserved(result, updatedConfig(), source)).not.toThrow();
+      });
+
+      it("accepts legacy results without a separate persisted source", () => {
+        expect(() => assertConfigMutationResultPreserved(mutationResult(), updatedConfig(), source)).not.toThrow();
+      });
+
+      it.each(["nextConfig", "persistedSourceConfig"])("rejects disk changes even when %s is correct", (field) => {
+        const result = { ...mutationResult(), [field]: updatedConfig() };
+        const persisted = updatedConfig();
+        persisted.gateway.port = 18789;
+
+        expect(() => assertConfigMutationResultPreserved(result, persisted, source)).toThrow(
+          "changed unrelated source configuration",
+        );
+      });
+
+      it("rejects an unwritten timestamp even when the result reports success", () => {
+        expect(() => assertConfigMutationResultPreserved(mutationResult(), source, source)).toThrow(
+          "did not update the channel timestamp",
+        );
+      });
+
+      it.each(["afterWrite", "followUp"])("rejects changed %s intent", (field) => {
+        const result = { ...mutationResult(), [field]: { mode: "none" } };
+
+        expect(() => assertConfigMutationResultPreserved(result, updatedConfig(), source)).toThrow(
+          "did not retain automatic config follow-up intent",
+        );
+      });
     });
   });
 
