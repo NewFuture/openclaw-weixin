@@ -47,7 +47,7 @@ describe("compatibility metadata", () => {
   it("provides stable ClawHub display metadata", () => {
     expect(pluginManifest).toMatchObject({
       name: "WeChat",
-      description: "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.",
+      description: "Community-maintained WeChat (微信 / Weixin) channel plugin for OpenClaw using the iLink bot API.",
     });
     expect(pluginManifest).not.toHaveProperty("icon");
   });

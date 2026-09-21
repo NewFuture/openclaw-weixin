@@ -20,7 +20,7 @@ const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const pluginManifest = JSON.parse(readFileSync("openclaw.plugin.json", "utf8"));
 const canonicalPackageName = "openclaw-weixin";
 const displayName = "WeChat";
-const description = "Community-maintained WeChat (Weixin) channel plugin for OpenClaw using the iLink bot API.";
+const description = "Community-maintained WeChat (微信 / Weixin) channel plugin for OpenClaw using the iLink bot API.";
 const docsUrl = "https://openclaw-weixin.newfuture.cc/";
 const HOST_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
