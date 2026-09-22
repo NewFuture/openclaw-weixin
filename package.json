@@ -75,7 +75,7 @@
     "openclaw": ">=2026.6.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.13",
+    "@biomejs/biome": "2.5.14",
     "@types/node": "^26.4.1",
     "@vitest/coverage-v8": "^5.0.0",
     "openclaw": "2026.9.4",
