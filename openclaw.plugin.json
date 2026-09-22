@@ -3,9 +3,7 @@
   "name": "WeChat",
   "description": "Community-maintained WeChat (微信 / Weixin) channel plugin for OpenClaw using the iLink bot API.",
   "version": "3.2.2",
-  "channels": [
-    "openclaw-weixin"
-  ],
+  "channels": ["openclaw-weixin"],
   "channelConfigs": {
     "openclaw-weixin": {
       "schema": {
