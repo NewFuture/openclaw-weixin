@@ -141,11 +141,21 @@ contract.
 1. Install exactly what the lockfile records: `npm ci`.
 2. Iterate with one affected suite:
    `npm run test:unit -- src/path/to/file.test.ts`.
-3. Run the fast local gate when useful: `npm run check:fast`.
-4. Run the full CI-equivalent gate before finishing: `npm run check`.
-5. Also run `npm run pack:check` when entry points, build output, package metadata,
+3. Use `npm run lint` for lint-only checks, `npm run format:check` to verify
+   formatting, and `npm run format` to apply formatting. The configured style gate
+   is `npm run check:style`.
+4. Run the fast local gate when useful: `npm run check:fast`.
+5. Run the full CI-equivalent gate before finishing: `npm run check` (or
+   `npm test` for the coverage test suite alone). Use `npm run build` for a
+   standalone production compile.
+6. Also run `npm run pack:check` when entry points, build output, package metadata,
    or dependencies change.
-6. For Markdown or documentation-site changes, run:
+7. The current Biome CLI emits an informational schema-version notice because
+   `biome.json` names schema `2.5.12` while the lockfile installs Biome `2.5.13`;
+   the checks still pass.
+8. There is no root development-server or standalone run script; load the built
+   plugin through an OpenClaw host for runtime testing. For Markdown or
+   documentation-site changes, run:
 
    ```shell
    npm ci --prefix docs/site
