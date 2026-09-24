@@ -300,16 +300,14 @@ jobs:
             --source-repo "$GITHUB_REPOSITORY" \
             --source-commit "$GITHUB_SHA" \
             --source-ref "$GITHUB_REF" \
-            --wait \
-            --wait-timeout 2400 \
             --json |
             tee "$PUBLISH_RESULT"
           node --input-type=module -e '
             import { readFileSync } from "node:fs";
             const result = JSON.parse(readFileSync(process.env.PUBLISH_RESULT, "utf8"));
-            if (result.publicationStatus !== "published") {
+            if (!["submitted", "pending-publication", "published"].includes(result.status)) {
               throw new Error(
-                `ClawHub publication did not complete: ${result.publicationStatus ?? "unknown"}`,
+                `ClawHub publication was not accepted: ${result.status ?? "unknown"}`,
               );
             }
           '
