@@ -66,8 +66,9 @@ contract.
 
 - The npm package, plugin, and channel ID is `openclaw-weixin`. Do not change the
   ID or `~/.openclaw/openclaw-weixin/` state paths without an approved migration.
-- Keep the published package compatible with Node.js 22. CI also validates the
-  recommended Node.js 24 development environment.
+- Keep the published package compatible with Node.js >=22.22.3. CI validates
+  Node.js 22.22.3, Node.js 24 (the `.nvmrc` development version is 24.16.0), and
+  Node.js 26 compatibility.
 - This is a NodeNext ESM project. TypeScript imports use `.js` specifiers.
 
 ### Privacy, state, and lifecycle
@@ -151,7 +152,7 @@ contract.
 6. Also run `npm run pack:check` when entry points, build output, package metadata,
    or dependencies change.
 7. The current Biome CLI emits an informational schema-version notice because
-   `biome.json` names schema `2.5.12` while the lockfile installs Biome `2.5.13`;
+   `biome.json` names schema `2.5.12` while the lockfile installs Biome `2.5.14`;
    the checks still pass.
 8. There is no root development-server or standalone run script; load the built
    plugin through an OpenClaw host for runtime testing. For Markdown or
