@@ -2,6 +2,7 @@ import { type AssembledInboundReply, buildChannelInboundEventContext } from "ope
 import { vi } from "vitest";
 
 import type { WeixinChannelRuntime } from "../../src/messaging/process-message.js";
+import type { WeixinCommandRuntime } from "../../src/messaging/sender-access.js";
 
 type ChannelRuntime = WeixinChannelRuntime;
 
@@ -43,9 +44,9 @@ export function createChannelRuntimeHarness(mode: "legacy" | "routed" = "legacy"
   const channelRuntime = {
     commands: {
       resolveCommandAuthorizedFromAuthorizers: vi.fn<
-        ChannelRuntime["commands"]["resolveCommandAuthorizedFromAuthorizers"]
+        NonNullable<WeixinCommandRuntime["resolveCommandAuthorizedFromAuthorizers"]>
       >(() => false),
-      shouldComputeCommandAuthorized: vi.fn<ChannelRuntime["commands"]["shouldComputeCommandAuthorized"]>(),
+      shouldComputeCommandAuthorized: vi.fn<WeixinCommandRuntime["shouldComputeCommandAuthorized"]>(),
     },
     routing: { resolveAgentRoute },
     inbound: {

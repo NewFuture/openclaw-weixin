@@ -135,7 +135,9 @@ export function assertConfigMutationResultPreserved(result, persisted, source) {
 
 async function exerciseConfigMutation(rootDirectory) {
   const { mutateConfigFile, readConfigFileSnapshotForWrite } = await import("openclaw/plugin-sdk/config-mutation");
-  const { setRuntimeConfigSnapshot, clearRuntimeConfigSnapshot } = await import("openclaw/plugin-sdk/config-runtime");
+  const { setRuntimeConfigSnapshot, clearRuntimeConfigSnapshot } = await import(
+    "openclaw/plugin-sdk/runtime-config-snapshot"
+  );
   const { triggerWeixinChannelReload } = await import(
     pathToFileURL(path.join(rootDirectory, "dist", "src", "auth", "accounts.js")).href
   );
@@ -289,12 +291,17 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
     throw new Error(`expected OpenClaw ${expectedVersion}, found ${hostPackage.version}`);
   }
 
-  const channelMessageExport = hostPackage.exports?.["./plugin-sdk/channel-message"];
-  if (!channelMessageExport) {
-    throw new Error(`OpenClaw ${hostPackage.version} does not export plugin-sdk/channel-message`);
-  }
-  if (!hostPackage.exports?.["./plugin-sdk/config-mutation"]) {
-    throw new PluginLifecycleCheckFailure("host does not export plugin-sdk/config-mutation");
+  for (const subpath of [
+    "./plugin-sdk/channel-outbound",
+    "./plugin-sdk/temp-path",
+    "./plugin-sdk/file-lock",
+    "./plugin-sdk/channel-ingress-runtime",
+    "./plugin-sdk/runtime-config-snapshot",
+    "./plugin-sdk/config-mutation",
+  ]) {
+    if (!hostPackage.exports?.[subpath]) {
+      throw new Error(`OpenClaw ${hostPackage.version} does not export ${subpath}`);
+    }
   }
   if (
     process.env.OPENCLAW_COMPATIBILITY_PROFILE === "channel-message-only" &&
@@ -303,7 +310,11 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
     throw new Error(`OpenClaw ${hostPackage.version} still exports plugin-sdk/channel-runtime`);
   }
 
-  const { createTypingCallbacks } = await import("openclaw/plugin-sdk/channel-message");
+  const { createTypingCallbacks } = await import("openclaw/plugin-sdk/channel-outbound");
+  const { resolvePreferredOpenClawTmpDir } = await import("openclaw/plugin-sdk/temp-path");
+  if (typeof resolvePreferredOpenClawTmpDir() !== "string") {
+    throw new Error(`OpenClaw ${hostPackage.version} did not resolve a temp directory`);
+  }
   if (typeof createTypingCallbacks !== "function") {
     throw new Error(`OpenClaw ${hostPackage.version} does not export createTypingCallbacks`);
   }
@@ -327,6 +338,54 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
   }
   await typingCallbacks.onReplyStart();
   typingCallbacks.onCleanup();
+
+  const lockDirectory = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-file-lock-"));
+  try {
+    const lockFile = path.join(lockDirectory, "allowFrom.json");
+    await writeFile(lockFile, "{}\n", "utf8");
+    const { withFileLock } = await import(
+      pathToFileURL(path.join(rootDirectory, "dist", "src", "compat", "file-lock.js")).href
+    );
+    let locked = false;
+    await withFileLock(
+      lockFile,
+      { retries: { retries: 1, factor: 1, minTimeout: 1, maxTimeout: 5 }, stale: 1_000 },
+      async () => {
+        locked = true;
+      },
+    );
+    if (!locked) {
+      throw new Error(`OpenClaw ${hostPackage.version} file lock did not run the callback`);
+    }
+  } finally {
+    await rm(lockDirectory, { recursive: true, force: true });
+  }
+
+  const { resolveWeixinSenderAccess, loadLegacyCommandAuth } = await import(
+    pathToFileURL(path.join(rootDirectory, "dist", "src", "messaging", "sender-access.js")).href
+  );
+  const legacyCommandAuth = await loadLegacyCommandAuth();
+  const legacySubpath = hostPackage.exports?.["./plugin-sdk/command-auth"];
+  if (Boolean(legacySubpath) !== Boolean(legacyCommandAuth)) {
+    throw new Error(`OpenClaw ${hostPackage.version} command-auth export did not match the legacy loader`);
+  }
+  const accessParams = {
+    accountId: "account-test",
+    rawBody: "hello",
+    config: {},
+    commands: {
+      shouldComputeCommandAuthorized: () => false,
+      resolveCommandAuthorizedFromAuthorizers: () => false,
+    },
+    readAllowFromStore: async () => ["user-allowed"],
+  };
+  const allowed = await resolveWeixinSenderAccess({ ...accessParams, senderId: "user-allowed" });
+  const blocked = await resolveWeixinSenderAccess({ ...accessParams, senderId: "user-blocked" });
+  if (allowed.dropped || !blocked.dropped) {
+    throw new Error(
+      `OpenClaw ${hostPackage.version} sender access did not distinguish an allowlisted sender from a blocked sender`,
+    );
+  }
 
   const changedModule =
     process.env.OPENCLAW_CHANGED_MODULE?.trim() || path.join("dist", "src", "messaging", "process-message.js");

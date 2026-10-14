@@ -6,6 +6,11 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- **OpenClaw 2026.10:** Replace removed SDK subpaths with public imports that still
+  exist on 2026.6.1 and the current beta. The minimum host is unchanged.
+
 ## [3.2.3] - 2026-09-27
 
 ### Changed

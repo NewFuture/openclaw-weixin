@@ -115,7 +115,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
       setStatus?.({ accountId, lastEventAt: now, lastInboundAt: now });
 
       // allowFrom filtering is delegated to processOneMessage via the framework
-      // authorization pipeline (resolveSenderCommandAuthorizationWithRuntime).
+      // authorization pipeline (legacy command-auth or channel ingress).
 
       const fromUserId = full.from_user_id ?? "";
       const cachedConfig = await configManager.getForUser(fromUserId, full.context_token);

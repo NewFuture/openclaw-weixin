@@ -1,4 +1,4 @@
-import type { createTypingCallbacks } from "openclaw/plugin-sdk/channel-message";
+import type { createTypingCallbacks } from "openclaw/plugin-sdk/channel-outbound";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { REFERENCED_IMAGE_MESSAGE } from "../../test/fixtures/inbound-messages.js";
 import { createChannelRuntimeHarness, deliverInboundReply } from "../../test/helpers/channel-runtime.js";
@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
     onIdle: vi.fn(),
     onCleanup: vi.fn(),
   })),
-  directDmOutcome: vi.fn(),
+  resolveSenderAccess: vi.fn(),
   downloadMedia: vi.fn(),
   downloadRemote: vi.fn(),
   emitMessageSent: vi.fn(),
@@ -32,7 +32,6 @@ const mocks = vi.hoisted(() => ({
     info: vi.fn(),
     warn: vi.fn(),
   },
-  resolveSenderAuthorization: vi.fn(),
   replyProgressEnabled: vi.fn(),
   sendErrorNotice: vi.fn(),
   sendMedia: vi.fn(),
@@ -41,17 +40,16 @@ const mocks = vi.hoisted(() => ({
   sendTyping: vi.fn(),
 }));
 
-vi.mock("openclaw/plugin-sdk/channel-message", () => ({
+vi.mock("openclaw/plugin-sdk/channel-outbound", () => ({
   createTypingCallbacks: mocks.createTypingCallbacks,
 }));
 
-vi.mock("openclaw/plugin-sdk/command-auth", () => ({
-  resolveDirectDmAuthorizationOutcome: mocks.directDmOutcome,
-  resolveSenderCommandAuthorizationWithRuntime: mocks.resolveSenderAuthorization,
+vi.mock("openclaw/plugin-sdk/temp-path", () => ({
+  resolvePreferredOpenClawTmpDir: vi.fn(() => "C:\\synthetic\\tmp"),
 }));
 
-vi.mock("openclaw/plugin-sdk/infra-runtime", () => ({
-  resolvePreferredOpenClawTmpDir: vi.fn(() => "C:\\synthetic\\tmp"),
+vi.mock("./sender-access.js", () => ({
+  resolveWeixinSenderAccess: mocks.resolveSenderAccess,
 }));
 
 vi.mock("../api/api.js", () => ({
@@ -132,19 +130,12 @@ describe("processOneMessage", () => {
     vi.clearAllMocks();
     mocks.applySendingHook.mockImplementation(async ({ content }: { content: string }) => ({ content }));
     mocks.emitMessageSent.mockResolvedValue(undefined);
-    mocks.directDmOutcome.mockReturnValue("allowed");
     mocks.downloadMedia.mockResolvedValue({});
     mocks.downloadRemote.mockResolvedValue("C:\\synthetic\\remote.png");
     mocks.handleSlashCommand.mockResolvedValue({ handled: false });
     mocks.isDebugMode.mockReturnValue(false);
     mocks.replyProgressEnabled.mockReturnValue(false);
-    mocks.resolveSenderAuthorization.mockResolvedValue({
-      shouldComputeAuth: true,
-      effectiveAllowFrom: [SYNTHETIC_USER_ID],
-      effectiveGroupAllowFrom: [],
-      senderAllowedForCommands: true,
-      commandAuthorized: true,
-    });
+    mocks.resolveSenderAccess.mockResolvedValue({ dropped: false, commandAuthorized: true });
     mocks.sendMessage.mockResolvedValue({ messageId: "message-test" });
     mocks.sendMessageItem.mockResolvedValue({ messageId: "progress-test" });
     mocks.sendMedia.mockResolvedValue({ messageId: "media-message-test" });
@@ -157,7 +148,7 @@ describe("processOneMessage", () => {
 
     await processOneMessage(makeTextMessage("/echo hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
 
-    expect(mocks.resolveSenderAuthorization).not.toHaveBeenCalled();
+    expect(mocks.resolveSenderAccess).not.toHaveBeenCalled();
     expect(harness.mocks.resolveAgentRoute).not.toHaveBeenCalled();
     expect(onReplyAdmitted).not.toHaveBeenCalled();
   });
@@ -165,11 +156,11 @@ describe("processOneMessage", () => {
   it("drops unauthorized direct messages before dispatch", async () => {
     const harness = createChannelRuntimeHarness();
     const onReplyAdmitted = vi.fn();
-    mocks.directDmOutcome.mockReturnValue("unauthorized");
+    mocks.resolveSenderAccess.mockResolvedValue({ dropped: true, commandAuthorized: false });
 
     await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime, onReplyAdmitted));
 
-    expect(mocks.resolveSenderAuthorization).toHaveBeenCalledOnce();
+    expect(mocks.resolveSenderAccess).toHaveBeenCalledOnce();
     // Route is resolved early for per-agent media subdir scoping (see process-message.ts),
     // but the message is still dropped before session recording / dispatch.
     expect(harness.mocks.resolveAgentRoute).toHaveBeenCalledOnce();
@@ -692,7 +683,7 @@ describe("processOneMessage", () => {
       // agentId is needed to scope the storage path). When auth rejects the
       // message, the download already happened; dispatch is gated cleanly.
       const harness = createChannelRuntimeHarness();
-      mocks.directDmOutcome.mockReturnValue("unauthorized");
+      mocks.resolveSenderAccess.mockResolvedValue({ dropped: true, commandAuthorized: false });
 
       await processOneMessage(makeDirectImageMessage(), makeDeps(harness.channelRuntime));
 
@@ -702,7 +693,7 @@ describe("processOneMessage", () => {
       );
       expect(harness.mocks.recordInboundSession).not.toHaveBeenCalled();
       expect(harness.mocks.dispatchReply).not.toHaveBeenCalled();
-      expect(mocks.resolveSenderAuthorization).toHaveBeenCalledOnce();
+      expect(mocks.resolveSenderAccess).toHaveBeenCalledOnce();
     });
 
     it("falls back to the legacy 'inbound' subdir when no agentId resolves", async () => {
