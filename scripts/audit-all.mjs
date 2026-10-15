@@ -38,9 +38,21 @@ export function blockingAuditFindings(report) {
   return blocking;
 }
 
+export function npmAuditLaunch(env = process.env, platform = process.platform, execPath = process.execPath) {
+  const npmArgs = ["audit", "--json", "--registry", "https://registry.npmjs.org"];
+  const npmExecPath = env.npm_execpath;
+  if (npmExecPath) {
+    return { command: execPath, args: [npmExecPath, ...npmArgs] };
+  }
+  if (platform === "win32") {
+    return { command: env.ComSpec, args: ["/d", "/s", "/c", `npm ${npmArgs.join(" ")}`] };
+  }
+  return { command: "npm", args: npmArgs };
+}
+
 function readAuditReport() {
-  const npmExec = process.platform === "win32" ? "npm.cmd" : "npm";
-  const result = spawnSync(npmExec, ["audit", "--json", "--registry", "https://registry.npmjs.org"], {
+  const launch = npmAuditLaunch();
+  const result = spawnSync(launch.command, launch.args, {
     encoding: "utf8",
   });
   if (result.error) {
