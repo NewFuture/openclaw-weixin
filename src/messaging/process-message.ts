@@ -1,19 +1,13 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { createTypingCallbacks } from "openclaw/plugin-sdk/channel-message";
-import {
-  resolveDirectDmAuthorizationOutcome,
-  resolveSenderCommandAuthorizationWithRuntime,
-} from "openclaw/plugin-sdk/command-auth";
+import { createTypingCallbacks } from "openclaw/plugin-sdk/channel-outbound";
 import type { PluginRuntime } from "openclaw/plugin-sdk/core";
-import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/infra-runtime";
 import { normalizeAgentId } from "openclaw/plugin-sdk/routing";
+import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/temp-path";
 
 import { sendTyping } from "../api/api.js";
 import type { WeixinMessage } from "../api/types.js";
 import { MessageItemType, TypingStatus } from "../api/types.js";
-import { loadWeixinAccount } from "../auth/accounts.js";
-import { readFrameworkAllowFromList } from "../auth/pairing.js";
 import { downloadRemoteImageToTemp } from "../cdn/upload.js";
 import { resolveWeixinBlockStreamingEnabled } from "../config/block-streaming.js";
 import { resolveReplyProgressMessagesEnabled } from "../config/reply-progress.js";
@@ -31,12 +25,13 @@ import { sendWeixinWithHooks } from "./outbound-hooks.js";
 import { WeixinReplyProgressSender } from "./reply-progress-sender.js";
 import { sendMessageWeixin } from "./send.js";
 import { sendWeixinMediaFile } from "./send-media.js";
+import { resolveWeixinSenderAccess, type WeixinCommandRuntime } from "./sender-access.js";
 import { handleSlashCommand } from "./slash-commands.js";
 
 const MEDIA_OUTBOUND_TEMP_DIR = path.join(resolvePreferredOpenClawTmpDir(), "weixin/media/outbound-temp");
 
 export type WeixinChannelRuntime = WeixinInboundRuntime & {
-  commands: Parameters<typeof resolveSenderCommandAuthorizationWithRuntime>[0]["runtime"];
+  commands?: WeixinCommandRuntime;
   media: Pick<PluginRuntime["channel"]["media"], "saveMediaBuffer">;
   reply: WeixinInboundRuntime["reply"] & Pick<PluginRuntime["channel"]["reply"], "resolveHumanDelayConfig">;
   routing: Pick<PluginRuntime["channel"]["routing"], "resolveAgentRoute">;
@@ -216,45 +211,26 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   // --- Framework command authorization ---
   const rawBody = textBody.trim() || (ctx.Body?.trim() ?? "");
 
-  const { senderAllowedForCommands, commandAuthorized } = await resolveSenderCommandAuthorizationWithRuntime({
-    cfg: deps.config,
-    rawBody,
-    isGroup: false,
-    dmPolicy: "pairing",
-    configuredAllowFrom: [],
-    configuredGroupAllowFrom: [],
+  const senderAccess = await resolveWeixinSenderAccess({
+    accountId: deps.accountId,
     senderId,
-    isSenderAllowed: (id: string, list: string[]) => list.length === 0 || list.includes(id),
-    /** Pairing: framework credentials `*-allowFrom.json`, with account `userId` fallback for legacy installs. */
-    readAllowFromStore: async () => {
-      const fromStore = readFrameworkAllowFromList(deps.accountId);
-      if (fromStore.length > 0) return fromStore;
-      const uid = loadWeixinAccount(deps.accountId)?.userId?.trim();
-      return uid ? [uid] : [];
-    },
-    runtime: deps.channelRuntime.commands,
+    rawBody,
+    config: deps.config,
+    commands: deps.channelRuntime.commands,
   });
+  const { commandAuthorized } = senderAccess;
 
-  const directDmOutcome = resolveDirectDmAuthorizationOutcome({
-    isGroup: false,
-    dmPolicy: "pairing",
-    senderAllowedForCommands,
-  });
-
-  if (directDmOutcome === "disabled" || directDmOutcome === "unauthorized") {
-    logger.info(`authorization: dropping message from=${redactToken(senderId)} outcome=${directDmOutcome}`);
+  if (senderAccess.dropped) {
+    logger.info(`authorization: dropping message from=${redactToken(senderId)} outcome=denied`);
     return;
   }
 
   logger.debug(
-    `authorization: senderId=${redactToken(senderId, 6)} commandAuthorized=${String(commandAuthorized)} senderAllowed=${String(senderAllowedForCommands)}`,
+    `authorization: senderId=${redactToken(senderId, 6)} commandAuthorized=${String(commandAuthorized)} senderAllowed=true`,
   );
 
   if (debug) {
-    debugTrace.push(
-      "── 鉴权 ──",
-      `│ auth: cmdAuthorized=${String(commandAuthorized)} senderAllowed=${String(senderAllowedForCommands)}`,
-    );
+    debugTrace.push("── 鉴权 ──", `│ auth: cmdAuthorized=${String(commandAuthorized)} senderAllowed=true`);
     debugTs.preDispatch = Date.now();
   }
   if (typeof deps.channelRuntime.inbound?.buildContext !== "function") {

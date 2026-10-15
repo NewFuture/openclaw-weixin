@@ -56,7 +56,7 @@
     "check:versions": "node scripts/check-versions.mjs",
     "check:static": "npm run check:versions && npm run check:style && npm run typecheck && npm run typecheck:tests",
     "check:fast": "npm run check:static && npm run test:unit",
-    "audit:all": "npm audit --audit-level=moderate",
+    "audit:all": "node scripts/audit-all.mjs",
     "audit:deps": "npm audit --omit=dev --omit=peer --audit-level=moderate",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
@@ -78,7 +78,7 @@
     "@biomejs/biome": "2.5.14",
     "@types/node": "^26.4.1",
     "@vitest/coverage-v8": "^5.0.0",
-    "openclaw": "2026.9.4",
+    "openclaw": "2026.10.3",
     "silk-wasm": "^3.7.1",
     "tar": "7.5.22",
     "typescript": "^7.0.2",
@@ -89,7 +89,7 @@
       "pluginApi": ">=2026.6.1"
     },
     "build": {
-      "openclawVersion": "2026.9.4"
+      "openclawVersion": "2026.10.3"
     },
     "extensions": [
       "./index.ts"

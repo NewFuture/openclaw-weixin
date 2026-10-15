@@ -17,7 +17,7 @@ vi.mock("../util/logger.js", () => ({
   logger: loggerMocks,
 }));
 
-vi.mock("openclaw/plugin-sdk/infra-runtime", () => ({
+vi.mock("../compat/file-lock.js", () => ({
   withFileLock: mockWithFileLock,
 }));
 

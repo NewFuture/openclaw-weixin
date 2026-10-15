@@ -1,10 +1,46 @@
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
   assertConfigMutationResultPreserved,
   assertReloadConfigPreserved,
   hostSupportsChannelAliases,
+  stageCliPluginRoot,
 } from "./check-host-compatibility.mjs";
+
+describe("stageCliPluginRoot", () => {
+  it("copies the built plugin and production dependencies without the host SDK tree", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-stage-root-"));
+    const stage = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-stage-"));
+    try {
+      await writeFile(
+        path.join(root, "package.json"),
+        `${JSON.stringify({ dependencies: { "qrcode-terminal": "0.0.0" } })}\n`,
+      );
+      await writeFile(path.join(root, "openclaw.plugin.json"), "{}\n");
+      await mkdir(path.join(root, "dist"), { recursive: true });
+      await writeFile(path.join(root, "dist", "index.js"), "export {}\n");
+      await mkdir(path.join(root, "node_modules", "qrcode-terminal"), { recursive: true });
+      await writeFile(path.join(root, "node_modules", "qrcode-terminal", "package.json"), "{}\n");
+      await mkdir(path.join(root, "node_modules", "openclaw"), { recursive: true });
+      await writeFile(path.join(root, "node_modules", "openclaw", "package.json"), "{}\n");
+
+      await stageCliPluginRoot(root, stage);
+
+      await expect(readFile(path.join(stage, "dist", "index.js"), "utf8")).resolves.toBe("export {}\n");
+      await expect(readFile(path.join(stage, "node_modules", "qrcode-terminal", "package.json"), "utf8")).resolves.toBe(
+        "{}\n",
+      );
+      await expect(readFile(path.join(stage, "node_modules", "openclaw", "package.json"), "utf8")).rejects.toThrow();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+      await rm(stage, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("hostSupportsChannelAliases", () => {
   it.each([

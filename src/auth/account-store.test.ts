@@ -8,10 +8,6 @@ const configMutationMocks = vi.hoisted(() => ({
   mutateConfigFile:
     vi.fn<(params: { base?: "runtime" | "source"; mutate: (draft: OpenClawConfig) => void }) => Promise<void>>(),
 }));
-const configRuntimeMocks = vi.hoisted(() => ({
-  loadConfig: vi.fn(),
-  writeConfigFile: vi.fn(),
-}));
 const loggerMocks = vi.hoisted(() => ({
   info: vi.fn(),
   debug: vi.fn(),
@@ -41,7 +37,6 @@ import {
 import { resolveFrameworkAllowFromPath } from "./pairing.js";
 
 vi.mock("openclaw/plugin-sdk/config-mutation", () => configMutationMocks);
-vi.mock("openclaw/plugin-sdk/config-runtime", () => configRuntimeMocks);
 
 // Mock dependencies before importing module under test
 vi.mock("../util/logger.js", () => ({
@@ -58,8 +53,6 @@ beforeEach(() => {
   vi.stubEnv("OPENCLAW_CONFIG", path.join(tmpDir, "openclaw.json"));
   vi.stubEnv("OPENCLAW_CONFIG_PATH", path.join(tmpDir, "openclaw.json"));
   configMutationMocks.mutateConfigFile.mockReset();
-  configRuntimeMocks.loadConfig.mockReset();
-  configRuntimeMocks.writeConfigFile.mockReset();
   vi.clearAllMocks();
 });
 
@@ -111,10 +104,6 @@ describe("triggerWeixinChannelReload", () => {
     sourceConfig = {};
     runtimeConfig = {};
     persistedConfig = undefined;
-    configRuntimeMocks.loadConfig.mockImplementation(() => structuredClone(runtimeConfig));
-    configRuntimeMocks.writeConfigFile.mockImplementation(async (config: OpenClawConfig) => {
-      persistedConfig = config;
-    });
     configMutationMocks.mutateConfigFile.mockImplementation(async ({ base, mutate }) => {
       const draft = structuredClone(base === "runtime" ? runtimeConfig : sourceConfig);
       mutate(draft);
@@ -165,8 +154,6 @@ describe("triggerWeixinChannelReload", () => {
       afterWrite: { mode: "auto" },
       mutate: expect.any(Function),
     });
-    expect(configRuntimeMocks.loadConfig).not.toHaveBeenCalled();
-    expect(configRuntimeMocks.writeConfigFile).not.toHaveBeenCalled();
     expect(loggerMocks.info).toHaveBeenCalledOnce();
     expect(loggerMocks.warn).not.toHaveBeenCalled();
   });
@@ -216,8 +203,6 @@ describe("triggerWeixinChannelReload", () => {
     expect(loggerMocks.warn.mock.calls.flat().join(" ")).not.toContain(secret);
     expect(loggerMocks.info).not.toHaveBeenCalled();
     expect(persistedConfig).toBeUndefined();
-    expect(configRuntimeMocks.loadConfig).not.toHaveBeenCalled();
-    expect(configRuntimeMocks.writeConfigFile).not.toHaveBeenCalled();
   });
 
   it("keeps saved login credentials, aliases, and other accounts when mutation fails", async () => {
@@ -246,7 +231,6 @@ describe("triggerWeixinChannelReload", () => {
     expect(listIndexedWeixinAccountIds()).toEqual(index);
     expect(resolvePrimaryAccountId("account-alias")).toBe("bot-im-bot");
     expect(loggerMocks.warn).toHaveBeenCalledOnce();
-    expect(configRuntimeMocks.writeConfigFile).not.toHaveBeenCalled();
   });
 });
 

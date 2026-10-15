@@ -123,6 +123,15 @@ function resolveNpmCommand(args) {
   return { command: "npm", args };
 }
 
+export function readNpmPackFilename(stdout) {
+  const report = JSON.parse(stdout);
+  const entries = Array.isArray(report) ? report : Object.values(report);
+  if (entries.length !== 1 || typeof entries[0]?.filename !== "string") {
+    throw new Error("npm pack did not report exactly one package archive");
+  }
+  return entries[0].filename;
+}
+
 export async function packPackageDirectory(packageDirectory, outputDirectory) {
   await mkdir(outputDirectory, { recursive: true });
   const npmArgs = ["pack", "--ignore-scripts", "--json", "--pack-destination", outputDirectory];
@@ -141,16 +150,16 @@ export async function packPackageDirectory(packageDirectory, outputDirectory) {
     );
   }
 
-  let report;
+  let filename;
   try {
-    report = JSON.parse(packed.stdout);
-  } catch {
-    throw new Error("npm pack did not return valid JSON");
+    filename = readNpmPackFilename(packed.stdout);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error("npm pack did not return valid JSON");
+    }
+    throw error;
   }
-  if (!Array.isArray(report) || report.length !== 1 || typeof report[0]?.filename !== "string") {
-    throw new Error("npm pack did not report exactly one package archive");
-  }
-  return path.resolve(outputDirectory, report[0].filename);
+  return path.resolve(outputDirectory, filename);
 }
 
 export async function prepareStagedPackageVariant(packageDirectory, outputDirectory, options) {

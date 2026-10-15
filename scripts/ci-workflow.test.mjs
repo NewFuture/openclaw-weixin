@@ -15,9 +15,10 @@ describe("OpenClaw CI compatibility matrix", () => {
     ["windows-latest", "24.15.0", "2026.8.2", "compatibility"],
     ["ubuntu-latest", "24.15.0", "2026.9.1", "compatibility"],
     ["ubuntu-latest", "22.22.3", "2026.9.2", "compatibility"],
-    ["ubuntu-latest", "24.16.0", "2026.9.4", "strict"],
-    ["ubuntu-latest", "26", "2026.9.4", "compatibility"],
-    ["windows-latest", "24.16.0", "2026.9.4", "strict"],
+    ["ubuntu-latest", "24.16.0", "2026.9.4", "compatibility"],
+    ["ubuntu-latest", "24.16.0", "2026.10.3", "strict"],
+    ["ubuntu-latest", "26", "2026.10.3", "compatibility"],
+    ["windows-latest", "24.16.0", "2026.10.3", "strict"],
     ["ubuntu-latest", "24", "beta", "compatibility"],
   ])("covers %s / Node.js %s / OpenClaw %s with %s validation", (os, node, host, validation) => {
     const hostValue = host === "beta" ? host : JSON.stringify(host);
@@ -36,10 +37,10 @@ describe("OpenClaw CI compatibility matrix", () => {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
     const lockfile = JSON.parse(readFileSync(new URL("../package-lock.json", import.meta.url), "utf8"));
 
-    expect(packageJson.devDependencies.openclaw).toBe("2026.9.4");
-    expect(packageJson.openclaw.build.openclawVersion).toBe("2026.9.4");
-    expect(lockfile.packages[""].devDependencies.openclaw).toBe("2026.9.4");
-    expect(lockfile.packages["node_modules/openclaw"].version).toBe("2026.9.4");
+    expect(packageJson.devDependencies.openclaw).toBe("2026.10.3");
+    expect(packageJson.openclaw.build.openclawVersion).toBe("2026.10.3");
+    expect(lockfile.packages[""].devDependencies.openclaw).toBe("2026.10.3");
+    expect(lockfile.packages["node_modules/openclaw"].version).toBe("2026.10.3");
     expect(packageJson.peerDependencies.openclaw).toBe(">=2026.6.1");
     expect(packageJson.openclaw.install.minHostVersion).toBe(">=2026.6.1");
     expect(packageJson.engines.node).toBe(">=22.22.3");
