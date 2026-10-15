@@ -213,6 +213,9 @@ describe("release preparation", () => {
     expect(body).toContain(`Prepare release ${version}`);
     expect(body).toContain(`node scripts/prepare-release.mjs ${version}`);
     expect(body).toContain("Not run");
+    expect(body).toContain("After creation and every automated update");
+    expect(body).toContain("latest commit");
+    expect(body).toContain("manually close and reopen this PR");
     expect(body).not.toContain("[x]");
     for (const pattern of [/^#{2,3} .+$/gm, /<!--[\s\S]*?-->/g, /^- \[ \] .+$/gm]) {
       expect(body.match(pattern)).toEqual(template.match(pattern));

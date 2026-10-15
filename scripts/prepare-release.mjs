@@ -77,7 +77,7 @@ export function renderReleasePullRequest(template, version) {
     兼容性验证: "Not applicable: no host APIs, dependency versions, or compatibility claims change.",
     整机实测结果: "Not applicable: release metadata only; no plugin runtime behavior changes.",
     其他验证命令:
-      "`npm run check` — Not run by the preparation workflow; required PR CI must pass before merge. Approve workflows to run if GitHub requests it.",
+      "`npm run check` - Not run by the preparation workflow. After creation and every automated update, required PR checks must pass on the latest commit before merge. If GitHub requests approval, approve workflows to run; if no PR workflow runs appear, manually close and reopen this PR to trigger them.",
     检查清单:
       "Unchecked items remain for maintainer review; this automated PR does not assert human validation or full CI success.",
   };
