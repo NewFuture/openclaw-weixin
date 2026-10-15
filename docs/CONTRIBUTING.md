@@ -21,7 +21,7 @@ Node.js 24.16.0 environment, and a current Node.js 26 runtime.
 ### OpenClaw compatibility matrix
 
 The minimum supported host remains `2026.6.1`; the lockfile SDK and build metadata
-are pinned to `2026.9.4`. CI covers the following explicit combinations rather
+are pinned to `2026.10.3`. CI covers the following explicit combinations rather
 than every host, Node.js version, and operating system combination:
 
 | OpenClaw target | Node.js | Runner | Validation |
@@ -31,8 +31,9 @@ than every host, Node.js version, and operating system combination:
 | `2026.8.2` (previous SDK) | `24.15.0` | Ubuntu, Windows | Compatibility |
 | `2026.9.1` (first September stable) | `24.15.0` | Ubuntu | Compatibility |
 | `2026.9.2` (previous SDK / Node.js 22 floor) | `22.22.3` | Ubuntu | Compatibility |
-| `2026.9.4` (lockfile SDK) | `24.16.0` | Ubuntu, Windows | Full |
-| `2026.9.4` (current runtime) | `26` | Ubuntu | Compatibility |
+| `2026.9.4` (previous SDK) | `24.16.0` | Ubuntu | Compatibility |
+| `2026.10.3` (lockfile SDK) | `24.16.0` | Ubuntu, Windows | Full |
+| `2026.10.3` (current runtime) | `26` | Ubuntu | Compatibility |
 | `beta` (moving npm dist-tag) | `24` (current patch) | Ubuntu | Compatibility |
 
 **Full** runs `npm run check`; the Ubuntu job also runs `npm run pack:check`
@@ -42,7 +43,7 @@ then runs `npm run typecheck` and `npm run build` against that host.
 
 Dependency installation uses Node.js `24.16.0` (the current 24.x patch for
 `beta`) before switching to the runtime listed in the matrix. OpenClaw
-`2026.9.4` requires Node.js `>=24.16.0 <25 || >=26.1.0`, so Node.js 22 jobs
+`2026.9.4` and `2026.10.3` require Node.js `>=24.16.0 <25 || >=26.1.0`, so Node.js 22 jobs
 retain older hosts. The plugin's own Node.js `22.22.3` floor is unchanged.
 
 Both modes run `node scripts/check-host-compatibility.mjs` in a fresh process
@@ -58,7 +59,7 @@ explicit Node.js versions.
 
 CI records the exact version resolved by `beta`. That tag can point to a stable
 release or an older version than the latest stable, so it does not replace the
-fixed `2026.9.1`, `2026.9.2`, and `2026.9.4` jobs. This matrix describes CI coverage, not a
+fixed `2026.9.1`, `2026.9.2`, `2026.9.4`, and `2026.10.3` jobs. This matrix describes CI coverage, not a
 claim that every future `2026.9.x` release or unlisted platform combination has
 been validated. It does not replace human-run whole-system validation.
 
@@ -193,7 +194,7 @@ then preview the publish without credentials:
 
 ```shell
 npx --yes clawhub@0.23.3 package validate <clawpack-root>/package \
-  --out <report-output> --openclaw-version 2026.9.4 --json
+  --out <report-output> --openclaw-version 2026.10.3 --json
 npx --yes clawhub@0.23.3 package publish \
   <clawhub-output>/openclaw-wechat-<version>.tgz \
   --family code-plugin --owner newfuture --display-name WeChat \
