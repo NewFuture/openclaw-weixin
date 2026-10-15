@@ -1,0 +1,62 @@
+name: Create release PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable release version (MAJOR.MINOR.PATCH, without v)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-pr
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare release pull request
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.16.0"
+
+      - name: Prepare and validate release
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: node scripts/prepare-release.mjs "$RELEASE_VERSION" > "$RUNNER_TEMP/release-pr.md"
+
+      - name: Create or update release PR
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: release/v${{ inputs.version }}
+          base: main
+          title: "chore: release v${{ inputs.version }}"
+          body-path: ${{ runner.temp }}/release-pr.md
+          commit-message: |
+            chore: release v${{ inputs.version }}
+
+            Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>
+          labels: risk:privileged
+          add-paths: |
+            package.json
+            package-lock.json
+            openclaw.plugin.json
+            CHANGELOG.md
+            CHANGELOG_EN.md
