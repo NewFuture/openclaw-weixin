@@ -455,8 +455,43 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
     rawBody: "hello",
     readAllowFromStore: async () => [],
   });
-  if (emptyStore.dropped) {
-    throw new Error(`OpenClaw ${hostPackage.version} dropped a token-only account with an empty pairing store`);
+  if (emptyStore.dropped || emptyStore.commandAuthorized) {
+    throw new Error(
+      `OpenClaw ${hostPackage.version} empty pairing store ordinary text returned ${JSON.stringify(emptyStore)}`,
+    );
+  }
+  const emptyStoreCommand = await resolveWeixinSenderAccess({
+    ...accessParams,
+    senderId: "user-token-only",
+    rawBody: "/help",
+    readAllowFromStore: async () => [],
+  });
+  const emptyStoreRestricted = await resolveWeixinSenderAccess({
+    ...accessParams,
+    senderId: "user-token-only",
+    rawBody: "/help",
+    config: { commands: { ownerAllowFrom: ["user-owner"] } },
+    readAllowFromStore: async () => [],
+  });
+  if (legacyCommandAuth) {
+    // Legacy command-auth admits an empty store but does not treat that as a configured
+    // command allowlist, and it ignores commands.ownerAllowFrom.
+    if (
+      emptyStoreCommand.dropped ||
+      emptyStoreCommand.commandAuthorized ||
+      !isDeepStrictEqual(emptyStoreRestricted, emptyStoreCommand)
+    ) {
+      throw new Error(
+        `OpenClaw ${hostPackage.version} legacy empty-store command authorization returned ${JSON.stringify({ emptyStoreCommand, emptyStoreRestricted })}`,
+      );
+    }
+  } else if (
+    !isDeepStrictEqual(emptyStoreCommand, { dropped: false, commandAuthorized: true }) ||
+    !isDeepStrictEqual(emptyStoreRestricted, { dropped: true, commandAuthorized: false })
+  ) {
+    throw new Error(
+      `OpenClaw ${hostPackage.version} ingress empty-store command authorization returned ${JSON.stringify({ emptyStoreCommand, emptyStoreRestricted })}`,
+    );
   }
   if (!legacyCommandAuth) {
     const restricted = await resolveWeixinSenderAccess({

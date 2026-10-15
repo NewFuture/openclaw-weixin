@@ -133,10 +133,13 @@ describe("sender access host boundary", () => {
   });
 
   it("uses host command detection for inline commands and abort triggers, not only a leading slash", async () => {
-    const resolveIngress = vi.fn(async () => ({
-      ingress: { decision: "allow" },
-      commandAccess: { authorized: true },
-    }));
+    const resolveIngress = vi.fn(async (input: { command?: unknown }) => {
+      void input;
+      return {
+        ingress: { decision: "allow" as const },
+        commandAccess: { authorized: true },
+      };
+    });
     const detection = {
       shouldComputeCommandAuthorized: (text: string) => text !== "hello",
       isControlCommandMessage: (text: string) => text === "stop",
@@ -350,6 +353,26 @@ describe("sender access host boundary", () => {
       },
       { loadLegacy: async () => null },
     );
+    const emptyStoreCommand = await resolveWeixinSenderAccess(
+      {
+        accountId: "account-test",
+        senderId: "user-token-only",
+        rawBody: "/help",
+        config: {},
+        readAllowFromStore: async () => [],
+      },
+      { loadLegacy: async () => null },
+    );
+    const emptyStoreRestricted = await resolveWeixinSenderAccess(
+      {
+        accountId: "account-test",
+        senderId: "user-token-only",
+        rawBody: "/help",
+        config: { commands: { ownerAllowFrom: ["user-owner"] } },
+        readAllowFromStore: async () => [],
+      },
+      { loadLegacy: async () => null },
+    );
     const restricted = await resolveWeixinSenderAccess(
       {
         ...base,
@@ -366,6 +389,8 @@ describe("sender access host boundary", () => {
     await expect(listed("stop")).resolves.toEqual({ dropped: false, commandAuthorized: true });
     expect(unlisted).toEqual({ dropped: true, commandAuthorized: false });
     expect(emptyStore).toEqual({ dropped: false, commandAuthorized: false });
+    expect(emptyStoreCommand).toEqual({ dropped: false, commandAuthorized: true });
+    expect(emptyStoreRestricted).toEqual({ dropped: true, commandAuthorized: false });
     expect(restricted).toEqual({ dropped: true, commandAuthorized: false });
   });
 
