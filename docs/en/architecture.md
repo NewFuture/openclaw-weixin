@@ -78,7 +78,9 @@ trigger a retry through the other contract. The OpenClaw 2026.6.1 minimum and
 account-scoped state remain unchanged. Hosts before 2026.10.1 still authorize
 direct messages through the legacy command-auth helpers. OpenClaw 2026.10.1 and
 later removed that subpath, so those hosts use `resolveChannelMessageIngress`
-and the same drop decision. Deferred replies retain their progress
+and the same drop decision. Command detection uses the host helpers, including
+inline commands and abort triggers. An empty pairing store still admits the
+sender, matching the previous command-auth callback. Deferred replies retain their progress
 sender until the host's completion callback, not merely the initial dispatch
 return.
 

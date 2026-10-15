@@ -71,7 +71,7 @@ sequenceDiagram
 不存在时使用公开的旧版 `inbound.dispatchReply`。两条路径均将会话记录和 dispatcher
 清理交给宿主，失败不会改走另一契约重试。OpenClaw 2026.6.1 下限和账号级状态不变。2026.10.1 之前的宿主仍通过旧版
 command-auth 助手做私聊鉴权；2026.10.1 及之后移除了该子路径，因此改用
-`resolveChannelMessageIngress`，丢弃决定保持一致。延后回复的进度发送器保留到宿主完成回调触发，而非初次分派返回时关闭。
+`resolveChannelMessageIngress`，丢弃决定保持一致。命令识别使用宿主助手，包括行内命令和中止触发词。空的配对存储仍放行发送者，与之前的 command-auth 回调一致。延后回复的进度发送器保留到宿主完成回调触发，而非初次分派返回时关闭。
 
 ## 出站流程
 

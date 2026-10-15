@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  commandOwnerAllowFromForHost,
   droppedFromLegacyOutcome,
   isMissingSdkSubpath,
   resolveWeixinSenderAccess,
@@ -125,9 +126,164 @@ describe("sender access host boundary", () => {
         channelId: "openclaw-weixin",
         accountId: "account-test",
         subject: { stableId: "user-allowed" },
+        allowFrom: [],
         command: { allowTextCommands: true, hasControlCommand: true },
       }),
     );
+  });
+
+  it("uses host command detection for inline commands and abort triggers, not only a leading slash", async () => {
+    const resolveIngress = vi.fn(async () => ({
+      ingress: { decision: "allow" },
+      commandAccess: { authorized: true },
+    }));
+    const detection = {
+      shouldComputeCommandAuthorized: (text: string) => text !== "hello",
+      isControlCommandMessage: (text: string) => text === "stop",
+    };
+
+    await resolveWeixinSenderAccess(
+      {
+        accountId: "account-test",
+        senderId: "user-allowed",
+        rawBody: "hello /status",
+        config: {},
+        readAllowFromStore: async () => ["user-allowed"],
+      },
+      {
+        loadLegacy: async () => null,
+        loadCommandDetection: async () => detection,
+        resolveIngress: resolveIngress as never,
+      },
+    );
+    await resolveWeixinSenderAccess(
+      {
+        accountId: "account-test",
+        senderId: "user-allowed",
+        rawBody: "stop",
+        config: {},
+        readAllowFromStore: async () => ["user-allowed"],
+      },
+      {
+        loadLegacy: async () => null,
+        loadCommandDetection: async () => detection,
+        resolveIngress: resolveIngress as never,
+      },
+    );
+    await resolveWeixinSenderAccess(
+      {
+        accountId: "account-test",
+        senderId: "user-allowed",
+        rawBody: "hello",
+        config: {},
+        readAllowFromStore: async () => ["user-allowed"],
+      },
+      {
+        loadLegacy: async () => null,
+        loadCommandDetection: async () => detection,
+        resolveIngress: resolveIngress as never,
+      },
+    );
+
+    expect(resolveIngress).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        command: { allowTextCommands: true, hasControlCommand: false },
+      }),
+    );
+    expect(resolveIngress).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        command: { allowTextCommands: true, hasControlCommand: true },
+      }),
+    );
+    expect(resolveIngress.mock.calls[2]?.[0]).not.toHaveProperty("command");
+  });
+
+  it("admits an empty pairing store and still rejects an unlisted sender when the store is populated", async () => {
+    const resolveIngress = vi.fn(async () => ({
+      ingress: { decision: "allow" },
+      commandAccess: { authorized: false },
+    }));
+    const detection = {
+      shouldComputeCommandAuthorized: () => false,
+      isControlCommandMessage: () => false,
+    };
+
+    await resolveWeixinSenderAccess(
+      {
+        accountId: "account-test",
+        senderId: "user-token-only",
+        rawBody: "hello",
+        config: {},
+        readAllowFromStore: async () => [],
+      },
+      {
+        loadLegacy: async () => null,
+        loadCommandDetection: async () => detection,
+        resolveIngress: resolveIngress as never,
+      },
+    );
+    await resolveWeixinSenderAccess(
+      {
+        accountId: "account-test",
+        senderId: "user-blocked",
+        rawBody: "hello",
+        config: {},
+        readAllowFromStore: async () => ["user-allowed"],
+      },
+      {
+        loadLegacy: async () => null,
+        loadCommandDetection: async () => detection,
+        resolveIngress: resolveIngress as never,
+      },
+    );
+
+    expect(resolveIngress).toHaveBeenNthCalledWith(1, expect.objectContaining({ allowFrom: ["user-token-only"] }));
+    expect(resolveIngress).toHaveBeenNthCalledWith(2, expect.objectContaining({ allowFrom: [] }));
+  });
+
+  it("passes a restrictive command owner list only for messages the host treats as commands", async () => {
+    const resolveIngress = vi.fn(async () => ({
+      ingress: { decision: "block" },
+      commandAccess: { authorized: false },
+    }));
+    const detection = {
+      shouldComputeCommandAuthorized: (text: string) => text.startsWith("/"),
+      isControlCommandMessage: (text: string) => text.startsWith("/"),
+    };
+    const config = { commands: { ownerAllowFrom: ["user-owner"] } };
+
+    await resolveWeixinSenderAccess(
+      {
+        accountId: "account-test",
+        senderId: "user-allowed",
+        rawBody: "/help",
+        config,
+        readAllowFromStore: async () => ["user-allowed"],
+      },
+      {
+        loadLegacy: async () => null,
+        loadCommandDetection: async () => detection,
+        resolveIngress: resolveIngress as never,
+      },
+    );
+
+    expect(resolveIngress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: {
+          allowTextCommands: true,
+          hasControlCommand: true,
+          commandOwnerAllowFrom: ["user-owner"],
+        },
+      }),
+    );
+    expect(
+      commandOwnerAllowFromForHost({
+        commands: { allowFrom: { "*": ["user-a"], "openclaw-weixin": ["user-b"] }, ownerAllowFrom: ["user-a"] },
+      }),
+    ).toEqual([]);
+    expect(commandOwnerAllowFromForHost({})).toBeUndefined();
   });
 
   it("drops an ingress block without calling a missing legacy helper", async () => {
@@ -170,6 +326,47 @@ describe("sender access host boundary", () => {
       ),
     ).rejects.toThrow("sdk import failed");
     expect(resolveIngress).not.toHaveBeenCalled();
+  });
+
+  it("keeps command authorization distinct from direct-message admission on the installed host", async () => {
+    const base = {
+      accountId: "account-test",
+      config: {},
+      readAllowFromStore: async () => ["user-allowed"],
+    };
+    const listed = (rawBody: string) =>
+      resolveWeixinSenderAccess({ ...base, senderId: "user-allowed", rawBody }, { loadLegacy: async () => null });
+    const unlisted = await resolveWeixinSenderAccess(
+      { ...base, senderId: "user-blocked", rawBody: "/help" },
+      { loadLegacy: async () => null },
+    );
+    const emptyStore = await resolveWeixinSenderAccess(
+      {
+        accountId: "account-test",
+        senderId: "user-token-only",
+        rawBody: "hello",
+        config: {},
+        readAllowFromStore: async () => [],
+      },
+      { loadLegacy: async () => null },
+    );
+    const restricted = await resolveWeixinSenderAccess(
+      {
+        ...base,
+        senderId: "user-allowed",
+        rawBody: "/help",
+        config: { commands: { ownerAllowFrom: ["user-owner"] } },
+      },
+      { loadLegacy: async () => null },
+    );
+
+    await expect(listed("hello")).resolves.toEqual({ dropped: false, commandAuthorized: false });
+    await expect(listed("/help")).resolves.toEqual({ dropped: false, commandAuthorized: true });
+    await expect(listed("hello /status")).resolves.toEqual({ dropped: false, commandAuthorized: true });
+    await expect(listed("stop")).resolves.toEqual({ dropped: false, commandAuthorized: true });
+    expect(unlisted).toEqual({ dropped: true, commandAuthorized: false });
+    expect(emptyStore).toEqual({ dropped: false, commandAuthorized: false });
+    expect(restricted).toEqual({ dropped: true, commandAuthorized: false });
   });
 
   it("fails closed when a legacy host does not provide the command runtime", async () => {

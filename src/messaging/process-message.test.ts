@@ -169,6 +169,22 @@ describe("processOneMessage", () => {
     expect(onReplyAdmitted).not.toHaveBeenCalled();
   });
 
+  it("forwards a denied command authorization without dropping an admitted sender", async () => {
+    const harness = createChannelRuntimeHarness();
+    mocks.resolveSenderAccess.mockResolvedValue({ dropped: false, commandAuthorized: false });
+
+    await processOneMessage(makeTextMessage("hello"), makeDeps(harness.channelRuntime));
+
+    expect(harness.mocks.buildContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        access: { commands: { authorized: false } },
+      }),
+    );
+    expect(harness.mocks.dispatchReply.mock.calls[0]?.[0]?.ctxPayload).toMatchObject({
+      CommandAuthorized: false,
+    });
+  });
+
   it.each(["legacy", "routed"] as const)("routes through public %s dispatch and reports admission", async (mode) => {
     const harness = createChannelRuntimeHarness(mode);
     const onReplyAdmitted = vi.fn();

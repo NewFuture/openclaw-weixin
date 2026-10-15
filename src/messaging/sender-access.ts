@@ -10,6 +10,7 @@ import { readFrameworkAllowFromList } from "../auth/pairing.js";
 
 const CHANNEL_ID = "openclaw-weixin";
 const LEGACY_COMMAND_AUTH_SPECIFIER = "openclaw/plugin-sdk/command-auth";
+const COMMAND_DETECTION_SPECIFIER = "openclaw/plugin-sdk/command-detection";
 
 export type WeixinCommandRuntime = {
   shouldComputeCommandAuthorized: (rawBody: string, cfg: OpenClawConfig) => boolean;
@@ -22,6 +23,16 @@ export type WeixinCommandRuntime = {
 export type WeixinSenderAccess = {
   commandAuthorized: boolean;
   dropped: boolean;
+};
+
+type CommandDetection = {
+  shouldComputeCommandAuthorized: (text: string, cfg: OpenClawConfig) => boolean;
+  isControlCommandMessage: (text: string, cfg: OpenClawConfig) => boolean;
+};
+
+type CommandOwnerConfig = {
+  ownerAllowFrom?: Array<string | number>;
+  allowFrom?: Record<string, Array<string | number> | undefined>;
 };
 
 type LegacyCommandAuth = {
@@ -67,6 +78,38 @@ export function senderAccessFromIngress(result: ResolvedChannelMessageIngress): 
   };
 }
 
+export function commandOwnerAllowFromForHost(config: OpenClawConfig): Array<string | number> | undefined {
+  const commands = (config as { commands?: unknown }).commands;
+  if (!commands || typeof commands !== "object") return undefined;
+  const commandConfig = commands as CommandOwnerConfig;
+  const lists: Array<Array<string | number>> = [];
+  const allowFrom = commandConfig.allowFrom;
+  if (allowFrom && typeof allowFrom === "object" && !Array.isArray(allowFrom)) {
+    const channelList = allowFrom[CHANNEL_ID] ?? allowFrom["*"];
+    if (Array.isArray(channelList)) lists.push(channelList);
+  }
+  if (Array.isArray(commandConfig.ownerAllowFrom) && commandConfig.ownerAllowFrom.length > 0) {
+    lists.push(commandConfig.ownerAllowFrom);
+  }
+  if (lists.length === 0) return undefined;
+  return lists.reduce((current, next) => {
+    const allowed = new Set(next.map(String));
+    return current.filter((entry) => allowed.has(String(entry)));
+  });
+}
+
+export async function loadCommandDetection(): Promise<CommandDetection> {
+  const specifier: string = COMMAND_DETECTION_SPECIFIER;
+  const loaded = (await import(specifier)) as Partial<CommandDetection>;
+  if (
+    typeof loaded.shouldComputeCommandAuthorized !== "function" ||
+    typeof loaded.isControlCommandMessage !== "function"
+  ) {
+    throw new Error("weixin: host command detection is missing");
+  }
+  return loaded as CommandDetection;
+}
+
 export async function loadLegacyCommandAuth(): Promise<LegacyCommandAuth | null> {
   try {
     const specifier: string = LEGACY_COMMAND_AUTH_SPECIFIER;
@@ -86,6 +129,7 @@ export async function loadLegacyCommandAuth(): Promise<LegacyCommandAuth | null>
 
 type SenderAccessDeps = {
   loadLegacy?: () => Promise<LegacyCommandAuth | null>;
+  loadCommandDetection?: () => Promise<CommandDetection>;
   resolveIngress?: typeof resolveChannelMessageIngress;
 };
 
@@ -132,6 +176,11 @@ export async function resolveWeixinSenderAccess(
   }
 
   const resolveIngress = deps.resolveIngress ?? resolveChannelMessageIngress;
+  const loadDetection = deps.loadCommandDetection ?? loadCommandDetection;
+  const detection = await loadDetection();
+  const storeAllowFrom = await readAllowFromStore();
+  const commandOwners = commandOwnerAllowFromForHost(params.config);
+  const mayAuthorizeCommand = detection.shouldComputeCommandAuthorized(params.rawBody, params.config);
   const result = await resolveIngress({
     channelId: CHANNEL_ID,
     accountId: params.accountId,
@@ -140,9 +189,19 @@ export async function resolveWeixinSenderAccess(
     conversation: { kind: "direct", id: params.senderId },
     event: { kind: "message", authMode: "inbound", mayPair: true },
     policy: { dmPolicy: "pairing", groupPolicy: "allowlist" },
-    allowFrom: [],
-    readStoreAllowFrom: async () => readAllowFromStore(),
-    ...(params.rawBody.startsWith("/") ? { command: { allowTextCommands: true, hasControlCommand: true } } : {}),
+    // Legacy command-auth treated an empty pairing store as allowed. Keep that
+    // admission for token-only accounts that have no saved user id.
+    allowFrom: storeAllowFrom.length === 0 ? [params.senderId] : [],
+    readStoreAllowFrom: async () => storeAllowFrom,
+    ...(mayAuthorizeCommand
+      ? {
+          command: {
+            allowTextCommands: true,
+            hasControlCommand: detection.isControlCommandMessage(params.rawBody, params.config),
+            ...(commandOwners ? { commandOwnerAllowFrom: commandOwners } : {}),
+          },
+        }
+      : {}),
   });
   return senderAccessFromIngress(result);
 }

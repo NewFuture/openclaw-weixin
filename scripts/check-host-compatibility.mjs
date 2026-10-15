@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -222,8 +222,37 @@ async function checkHostConfigMutation(rootDirectory) {
   }
 }
 
+export async function stageCliPluginRoot(rootDirectory, stageDirectory) {
+  await cp(path.join(rootDirectory, "package.json"), path.join(stageDirectory, "package.json"));
+  await cp(path.join(rootDirectory, "openclaw.plugin.json"), path.join(stageDirectory, "openclaw.plugin.json"));
+  await cp(path.join(rootDirectory, "dist"), path.join(stageDirectory, "dist"), { recursive: true });
+  const manifest = JSON.parse(await readFile(path.join(rootDirectory, "package.json"), "utf8"));
+  const dependencyNames = Object.keys(manifest.dependencies ?? {});
+  if (dependencyNames.length === 0) return stageDirectory;
+  await mkdir(path.join(stageDirectory, "node_modules"), { recursive: true });
+  for (const name of dependencyNames) {
+    const segments = name.split("/");
+    await cp(
+      path.join(rootDirectory, "node_modules", ...segments),
+      path.join(stageDirectory, "node_modules", ...segments),
+      {
+        recursive: true,
+        dereference: true,
+      },
+    );
+  }
+  return stageDirectory;
+}
+
+async function stableTempDirectory(prefix) {
+  // Windows tmpdir() can be an 8.3 path. OpenClaw's fs-safe copy rejects that
+  // as a path change, so stage CLI state from the native real path.
+  return mkdtemp(path.join(await realpath(tmpdir()), prefix));
+}
+
 async function checkHostChannelAliasResolution(rootDirectory, hostVersion) {
-  const stateDirectory = await mkdtemp(path.join(tmpdir(), "openclaw-weixin-compat-"));
+  const stateDirectory = await stableTempDirectory("openclaw-weixin-compat-");
+  const pluginDirectory = await stableTempDirectory("openclaw-weixin-plugin-");
   const configPath = path.join(stateDirectory, "openclaw.json");
   const env = {
     ...process.env,
@@ -235,13 +264,14 @@ async function checkHostChannelAliasResolution(rootDirectory, hostVersion) {
   };
 
   try {
+    await stageCliPluginRoot(rootDirectory, pluginDirectory);
     await writeFile(
       configPath,
       `${JSON.stringify(
         {
           plugins: {
             entries: { [CANONICAL_ID]: { enabled: true } },
-            load: { paths: [rootDirectory] },
+            load: { paths: [pluginDirectory] },
           },
         },
         null,
@@ -279,6 +309,7 @@ async function checkHostChannelAliasResolution(rootDirectory, hostVersion) {
     assertUnknownChannel(unrelatedChannel, UNRELATED_ID);
   } finally {
     await rm(stateDirectory, { recursive: true, force: true });
+    await rm(pluginDirectory, { recursive: true, force: true });
   }
 }
 
@@ -369,22 +400,76 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
   if (Boolean(legacySubpath) !== Boolean(legacyCommandAuth)) {
     throw new Error(`OpenClaw ${hostPackage.version} command-auth export did not match the legacy loader`);
   }
+  const { shouldComputeCommandAuthorized, isControlCommandMessage } = await import(
+    "openclaw/plugin-sdk/command-detection"
+  );
+  const { resolveCommandAuthorizedFromAuthorizers } = await import("openclaw/plugin-sdk/command-auth-native");
   const accessParams = {
     accountId: "account-test",
-    rawBody: "hello",
     config: {},
     commands: {
-      shouldComputeCommandAuthorized: () => false,
-      resolveCommandAuthorizedFromAuthorizers: () => false,
+      shouldComputeCommandAuthorized,
+      isControlCommandMessage,
+      resolveCommandAuthorizedFromAuthorizers,
     },
     readAllowFromStore: async () => ["user-allowed"],
   };
-  const allowed = await resolveWeixinSenderAccess({ ...accessParams, senderId: "user-allowed" });
-  const blocked = await resolveWeixinSenderAccess({ ...accessParams, senderId: "user-blocked" });
-  if (allowed.dropped || !blocked.dropped) {
-    throw new Error(
-      `OpenClaw ${hostPackage.version} sender access did not distinguish an allowlisted sender from a blocked sender`,
-    );
+  const cases = [
+    [
+      "allowlisted ordinary text",
+      { senderId: "user-allowed", rawBody: "hello" },
+      { dropped: false, commandAuthorized: false },
+    ],
+    [
+      "allowlisted control command",
+      { senderId: "user-allowed", rawBody: "/help" },
+      { dropped: false, commandAuthorized: true },
+    ],
+    [
+      "allowlisted inline command",
+      { senderId: "user-allowed", rawBody: "hello /status" },
+      { dropped: false, commandAuthorized: true },
+    ],
+    [
+      "allowlisted abort trigger",
+      { senderId: "user-allowed", rawBody: "stop" },
+      { dropped: false, commandAuthorized: true },
+    ],
+    [
+      "unlisted control command",
+      { senderId: "user-blocked", rawBody: "/help" },
+      { dropped: true, commandAuthorized: false },
+    ],
+  ];
+  for (const [label, input, expected] of cases) {
+    const actual = await resolveWeixinSenderAccess({ ...accessParams, ...input });
+    if (!isDeepStrictEqual(actual, expected)) {
+      throw new Error(
+        `OpenClaw ${hostPackage.version} ${label} returned ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`,
+      );
+    }
+  }
+  const emptyStore = await resolveWeixinSenderAccess({
+    ...accessParams,
+    senderId: "user-token-only",
+    rawBody: "hello",
+    readAllowFromStore: async () => [],
+  });
+  if (emptyStore.dropped) {
+    throw new Error(`OpenClaw ${hostPackage.version} dropped a token-only account with an empty pairing store`);
+  }
+  if (!legacyCommandAuth) {
+    const restricted = await resolveWeixinSenderAccess({
+      ...accessParams,
+      senderId: "user-allowed",
+      rawBody: "/help",
+      config: { commands: { ownerAllowFrom: ["user-owner"] } },
+    });
+    if (!restricted.dropped || restricted.commandAuthorized) {
+      throw new Error(
+        `OpenClaw ${hostPackage.version} did not deny a control command excluded by commands.ownerAllowFrom`,
+      );
+    }
   }
 
   const changedModule =
