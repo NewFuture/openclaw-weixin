@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-10-15
+
 ### Fixed
 
 - **OpenClaw 2026.10:** Replace removed SDK subpaths with public imports that still
