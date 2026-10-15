@@ -99,14 +99,23 @@ describe("release preparation", () => {
     expect(checkVersionFiles(directory).version).toBe(target);
   });
 
-  it.each([undefined, "", "v3.10.0", "03.10.0", "3.10.0-beta.1", "3.10.0+build", "3.10.0\ninvalid", "3.9.9", "3.9.8"])(
-    "rejects invalid, unchanged, or decreasing version %s without writing files",
-    (target) => {
-      const { directory, files } = fixture();
-      expect(() => prepareRelease(directory, target, releaseDate)).toThrow();
-      expect(readReleaseFiles(directory)).toEqual(files);
-    },
-  );
+  it.each([
+    undefined,
+    "",
+    "v3.10.0",
+    "03.10.0",
+    "3.10.0-beta.1",
+    "3.10.0+build",
+    "3.10.0\ninvalid",
+    "3.10.0.*",
+    "3.10.0[0-9]",
+    "3.9.9",
+    "3.9.8",
+  ])("rejects invalid, unchanged, or decreasing version %s without writing files", (target) => {
+    const { directory, files } = fixture();
+    expect(() => prepareRelease(directory, target, releaseDate)).toThrow();
+    expect(readReleaseFiles(directory)).toEqual(files);
+  });
 
   it.each([
     ["CHANGELOG.md", "## [未发布]", "### 修复\n\n- 合成修复。"],
@@ -117,6 +126,9 @@ describe("release preparation", () => {
       files[filename].replace(heading, "## [Other]"),
       files[filename].replace(notes, ""),
       files[filename].replace(notes, "### Fixed"),
+      files[filename].replace(notes, "### Fixed\n\n<!-- Release notes pending. -->"),
+      files[filename].replace(notes, "<!--\n### Hidden\n- Not a release note.\n-->"),
+      `## [\n\n${files[filename]}`,
       `## [0.1.0] - 2026-01-01\n\n- Earlier section.\n\n${files[filename]}`,
     ]) {
       writeFileSync(join(directory, filename), contents);
@@ -124,6 +136,25 @@ describe("release preparation", () => {
       expect(() => prepareRelease(directory, version, releaseDate)).toThrow(/Unreleased|release notes/);
       expect(readReleaseFiles(directory)).toEqual(before);
     }
+  });
+
+  it.each([
+    ["CHANGELOG.md", "## [未发布]"],
+    ["CHANGELOG_EN.md", "## [Unreleased]"],
+  ])("preserves comments alongside real release notes in %s", (filename, heading) => {
+    const { directory, files } = fixture();
+    const source = files[filename].replace(
+      `${heading}\n`,
+      `${heading}\n\n<!-- Preserve this release note comment. -->\n`,
+    );
+    writeFileSync(join(directory, filename), source);
+
+    prepareRelease(directory, version, releaseDate);
+
+    expect(readFileSync(join(directory, filename), "utf8")).toBe(
+      source.replace(`${heading}\n`, `${heading}\n\n## [${version}] - ${releaseDate}\n`),
+    );
+    expect(checkVersionFiles(directory).version).toBe(version);
   });
 
   it.each(["CHANGELOG.md", "CHANGELOG_EN.md"])(

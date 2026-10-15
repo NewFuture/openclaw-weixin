@@ -6,11 +6,11 @@ import { assertVersionIncrease, checkVersionFiles, checkVersionMetadata } from "
 import { extractReleaseNotesSection } from "./render-release-notes.mjs";
 
 function releaseChangelog(source, label, unreleased, version, date) {
-  const heading = new RegExp(`^## \\[${unreleased}\\](?=\\r?$)`, "m").exec(source);
-  if (!heading || heading.index !== source.search(/^## \[/m)) {
+  const heading = /^## \[[^\r\n]*/m.exec(source);
+  if (!heading || heading[0] !== `## [${unreleased}]`) {
     throw new Error(`${label} must start with an Unreleased section`);
   }
-  if (new RegExp(`^## \\[${version.replaceAll(".", "\\.")}\\]`, "m").test(source)) {
+  if (source.split(/\r?\n/).some((line) => line.startsWith(`## [${version}]`))) {
     throw new Error(`${label} already contains the target release`);
   }
 
@@ -18,12 +18,7 @@ function releaseChangelog(source, label, unreleased, version, date) {
   const insertion = heading.index + heading[0].length;
   const result = `${source.slice(0, insertion)}${newline}${newline}## [${version}] - ${date}${source.slice(insertion)}`;
   const notes = extractReleaseNotesSection(result, label, version);
-  if (
-    !notes
-      .replace(/<!--[\s\S]*?-->/g, "")
-      .replace(/^### .+$/gm, "")
-      .trim()
-  ) {
+  if (!notes.split(/<!--[\s\S]*?-->|^### .+$/gm).some((part) => part.trim())) {
     throw new Error(`${label} Unreleased notes must not be empty`);
   }
 
