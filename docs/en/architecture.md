@@ -14,7 +14,7 @@ The wire-level endpoint and message shapes are documented in the
 
 | Component | Responsibility |
 | --- | --- |
-| `index.ts` | Validate host compatibility and register the channel |
+| `index.ts` | Skip CLI metadata registration; otherwise validate host compatibility and register the channel |
 | `src/channel.ts` | Implement the OpenClaw channel contract and account lifecycle |
 | `src/auth/` | QR login, account persistence, ID compatibility, and pairing |
 | `src/api/` | Build authenticated backend requests and classify failures |
@@ -29,7 +29,9 @@ The wire-level endpoint and message shapes are documented in the
 
 ```mermaid
 flowchart TD
-  A[index.ts register] --> B[Check OpenClaw host version]
+  A[index.ts register] --> N{CLI metadata?}
+  N -->|yes| O[Return without runtime access or channel registration]
+  N -->|no| B[Check OpenClaw host version]
   B --> C[Register weixinPlugin]
   C --> D{Operation}
   D -->|login| E[Start QR session]

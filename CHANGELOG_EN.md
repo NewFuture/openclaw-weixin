@@ -6,6 +6,13 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- **CLI metadata registration:** Return immediately in `cli-metadata` mode
+  without accessing the host's unavailable runtime or registering a runtime
+  channel. Other registration modes retain the host version guard and channel
+  registration; the minimum host remains `2026.6.1`.
+
 ## [3.3.0] - 2026-10-15
 
 ### Fixed
