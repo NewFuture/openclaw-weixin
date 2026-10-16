@@ -12,7 +12,7 @@
 
 | 组件 | 职责 |
 | --- | --- |
-| `index.ts` | 校验宿主兼容性并注册 channel |
+| `index.ts` | 跳过 CLI 元数据注册；其他模式校验宿主兼容性并注册 channel |
 | `src/channel.ts` | 实现 OpenClaw channel 契约与账号生命周期 |
 | `src/auth/` | 扫码登录、账号持久化、ID 兼容和配对 |
 | `src/api/` | 构造已鉴权的后端请求并分类失败 |
@@ -27,7 +27,9 @@
 
 ```mermaid
 flowchart TD
-  A[index.ts 注册] --> B[检查 OpenClaw 宿主版本]
+  A[index.ts 注册] --> N{CLI 元数据?}
+  N -->|是| O[不访问 runtime 或注册 channel，直接返回]
+  N -->|否| B[检查 OpenClaw 宿主版本]
   B --> C[注册 weixinPlugin]
   C --> D{操作}
   D -->|登录| E[启动扫码会话]
