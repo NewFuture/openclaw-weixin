@@ -543,6 +543,9 @@ export async function sendMessage(params: WeixinApiOptions & { body: SendMessage
   if (resp.ret && resp.ret !== 0) {
     throw new Error(describeSendMessageFailure(resp, params.body));
   }
+  if (resp.errcode && resp.errcode !== 0) {
+    throw new Error(`sendMessage errcode=${resp.errcode}`);
+  }
 }
 
 /** Fetch bot config (includes typing_ticket) for a given user. */

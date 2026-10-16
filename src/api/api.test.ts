@@ -14,6 +14,11 @@ vi.mock("../util/logger.js", () => ({
   },
 }));
 
+vi.mock("../auth/accounts.js", () => ({
+  loadConfigBotAgent: vi.fn(),
+  loadConfigRouteTag: vi.fn(),
+}));
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
@@ -28,6 +33,7 @@ vi.mock("node:crypto", () => ({
   },
 }));
 
+import { logger } from "../util/logger.js";
 import {
   apiGetFetch,
   apiPostFetch,
@@ -209,11 +215,44 @@ describe("getUploadUrl", () => {
 });
 
 describe("sendMessage", () => {
-  it("succeeds on ok response", async () => {
-    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, text: () => Promise.resolve("{}") } as Response);
+  it.each([{}, { ret: 0 }, { errcode: 0 }, { ret: 0, errcode: 0 }])(
+    "succeeds on an HTTP 200 success envelope %j",
+    async (response) => {
+      mockFetch.mockResolvedValueOnce(mockResponse(response));
+      await expect(
+        sendMessage({ baseUrl: "https://api.example.com/", body: { msg: { to_user_id: "u" } } }),
+      ).resolves.toBeUndefined();
+      expect(mockFetch).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([{ errcode: -14 }, { ret: 0, errcode: -14 }, { errcode: 7 }])(
+    "rejects an HTTP 200 failure envelope %j without exposing server detail",
+    async (response) => {
+      const privateDetail = "synthetic-private-server-detail";
+      mockFetch.mockResolvedValueOnce(mockResponse({ ...response, errmsg: privateDetail }));
+      await expect(
+        sendMessage({
+          baseUrl: "https://api.example.com/",
+          body: { msg: { to_user_id: "user-1", context_token: "synthetic-context-token" } },
+        }),
+      ).rejects.toEqual(new Error(`sendMessage errcode=${response.errcode}`));
+      expect(mockFetch).toHaveBeenCalledOnce();
+      expect(JSON.stringify(vi.mocked(logger.debug).mock.calls)).not.toContain(privateDetail);
+      expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain(privateDetail);
+    },
+  );
+
+  it.each([
+    { ret: -2, errcode: 0 },
+    { ret: -2, errcode: -14 },
+    { ret: 2, errcode: -14 },
+  ])("preserves the existing ret error for %j", async (response) => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ ...response, errmsg: "rate limited" }));
     await expect(
       sendMessage({ baseUrl: "https://api.example.com/", body: { msg: { to_user_id: "u" } } }),
-    ).resolves.toBeUndefined();
+    ).rejects.toEqual(new Error(`sendMessage ret=${response.ret} errmsg=rate limited`));
+    expect(mockFetch).toHaveBeenCalledOnce();
   });
 
   it("throws on non-ok response", async () => {
@@ -221,17 +260,28 @@ describe("sendMessage", () => {
     await expect(sendMessage({ baseUrl: "https://api.example.com/", body: { msg: {} } })).rejects.toThrow(
       "sendMessage 403",
     );
+    expect(mockFetch).toHaveBeenCalledOnce();
   });
 
-  it("throws an actionable error when ret is non-zero with empty errmsg and a context_token was sent", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ ret: -2, errmsg: "" }));
-    await expect(
-      sendMessage({
-        baseUrl: "https://api.example.com/",
-        body: { msg: { to_user_id: "u", context_token: "tok" } },
-      }),
-    ).rejects.toThrow(/ret=-2.*context_token.*expired/);
+  it("propagates the original network error without retrying", async () => {
+    const error = new TypeError("synthetic network failure");
+    mockFetch.mockRejectedValueOnce(error);
+    await expect(sendMessage({ baseUrl: "https://api.example.com/", body: { msg: {} } })).rejects.toBe(error);
+    expect(mockFetch).toHaveBeenCalledOnce();
   });
+
+  it.each([{ ret: -2 }, { ret: -2, errcode: -14 }])(
+    "preserves the empty errmsg context hint for %j",
+    async (response) => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ ...response, errmsg: "" }));
+      await expect(
+        sendMessage({
+          baseUrl: "https://api.example.com/",
+          body: { msg: { to_user_id: "u", context_token: "tok" } },
+        }),
+      ).rejects.toThrow(/ret=-2.*context_token.*expired/);
+    },
+  );
 
   it("explains the missing context_token when none was sent", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse({ ret: -2 }));

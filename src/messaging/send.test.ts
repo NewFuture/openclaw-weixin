@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../util/logger.js", () => ({
   logger: {
@@ -17,6 +17,11 @@ vi.mock("../api/api.js", () => ({
   sendMessage: mockSendMessageApi,
 }));
 
+vi.mock("../auth/accounts.js", () => ({
+  loadConfigBotAgent: vi.fn(),
+  loadConfigRouteTag: vi.fn(),
+}));
+
 vi.mock("node:crypto", () => ({
   default: {
     randomBytes: vi.fn(() => Buffer.from("deadbeef", "hex")),
@@ -25,6 +30,7 @@ vi.mock("node:crypto", () => ({
 
 import { MessageItemType } from "../api/types.js";
 import type { UploadedFileInfo } from "../cdn/upload.js";
+import { logger } from "../util/logger.js";
 import {
   sendFileMessageWeixin,
   sendImageMessageWeixin,
@@ -141,6 +147,113 @@ function makeUploadedFileInfo(overrides?: Partial<UploadedFileInfo>): UploadedFi
     ...overrides,
   };
 }
+
+describe("sendMessage HTTP response boundary", () => {
+  const mockFetch = vi.fn<typeof fetch>();
+  const opts = {
+    baseUrl: "https://api.example.com",
+    token: "synthetic-bot-token",
+    contextToken: "synthetic-context-token",
+  };
+  const recipient = "user-1";
+  const privateDetail = "synthetic-private-server-detail";
+  const senders = [
+    {
+      label: "text",
+      send: () => sendMessageWeixin({ to: recipient, text: "synthetic text", opts }),
+    },
+    {
+      label: "structured item",
+      send: () =>
+        sendMessageItemWeixin({
+          to: recipient,
+          item: {
+            type: MessageItemType.TOOL_CALL_START,
+            tool_call_start_item: { tool_name: "read", tool_call_id: "tool-1" },
+          },
+          opts,
+        }),
+    },
+    {
+      label: "image",
+      send: () => sendImageMessageWeixin({ to: recipient, text: "", uploaded: makeUploadedFileInfo(), opts }),
+    },
+    {
+      label: "video",
+      send: () => sendVideoMessageWeixin({ to: recipient, text: "", uploaded: makeUploadedFileInfo(), opts }),
+    },
+    {
+      label: "file",
+      send: () =>
+        sendFileMessageWeixin({
+          to: recipient,
+          text: "",
+          fileName: "synthetic.pdf",
+          uploaded: makeUploadedFileInfo(),
+          opts,
+        }),
+    },
+  ];
+
+  beforeEach(async () => {
+    const { sendMessage } = await vi.importActual<typeof import("../api/api.js")>("../api/api.js");
+    mockSendMessageApi.mockImplementation(sendMessage);
+    mockFetch.mockReset();
+    mockFetch.mockImplementation(async () => new Response('{"ret":0,"errcode":0}'));
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  describe.each(senders)("$label", ({ send }) => {
+    it.each([{ errcode: -14 }, { ret: 0, errcode: -14 }])(
+      "rejects %j instead of returning a success ID or retrying",
+      async (response) => {
+        mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ ...response, errmsg: privateDetail })));
+
+        await expect(send()).rejects.toEqual(new Error("sendMessage errcode=-14"));
+
+        expect(mockFetch).toHaveBeenCalledOnce();
+        expect(logger.error).toHaveBeenCalledOnce();
+        expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain(privateDetail);
+        expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain(opts.contextToken);
+        expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain(recipient);
+        expect(JSON.stringify(vi.mocked(logger.info).mock.calls)).not.toContain("success");
+      },
+    );
+
+    it("returns the existing client ID after a successful HTTP response", async () => {
+      const result = await send();
+      expect(mockFetch).toHaveBeenCalledOnce();
+      const request = JSON.parse(String(mockFetch.mock.calls[0][1]?.body));
+      expect(result.messageId).toBe(request.msg.client_id);
+      expect(result.messageId).toMatch(/^openclaw-weixin:/);
+    });
+  });
+
+  it.each([0, 1])("stops caption/media delivery at failed item %i without retrying", async (failedItem) => {
+    if (failedItem === 1) mockFetch.mockResolvedValueOnce(new Response("{}"));
+    mockFetch.mockResolvedValueOnce(new Response('{"ret":0,"errcode":-14}'));
+
+    await expect(
+      sendImageMessageWeixin({
+        to: recipient,
+        text: "synthetic caption",
+        uploaded: makeUploadedFileInfo(),
+        opts,
+      }),
+    ).rejects.toEqual(new Error("sendMessage errcode=-14"));
+
+    expect(mockFetch).toHaveBeenCalledTimes(failedItem + 1);
+    const sentTypes = mockFetch.mock.calls.map(([, init]) => JSON.parse(String(init?.body)).msg.item_list[0].type);
+    expect(sentTypes).toEqual(
+      failedItem === 0 ? [MessageItemType.TEXT] : [MessageItemType.TEXT, MessageItemType.IMAGE],
+    );
+    expect(JSON.stringify(vi.mocked(logger.info).mock.calls)).not.toContain("success");
+  });
+});
 
 describe("sendImageMessageWeixin", () => {
   it("refuses to send without contextToken (throws)", async () => {
