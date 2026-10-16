@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.3.1] - 2026-10-16
+
 ### Fixed
 
 - **Send failures:** Reject nonzero `sendMessage` `errcode` responses instead of
