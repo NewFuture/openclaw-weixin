@@ -8,6 +8,9 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Fixed
 
+- **Send failures:** Reject nonzero `sendMessage` `errcode` responses instead of
+  reporting success, even with HTTP 200 and a missing or zero `ret`. Preserve
+  existing `ret` error precedence without clearing tokens or retrying.
 - **CLI metadata registration:** Return immediately in `cli-metadata` mode
   without accessing the host's unavailable runtime or registering a runtime
   channel. Other registration modes retain the host version guard and channel
