@@ -12,6 +12,11 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
   without accessing the host's unavailable runtime or registering a runtime
   channel. Other registration modes retain the host version guard and channel
   registration; the minimum host remains `2026.6.1`.
+- **Inbound message IDs:** Parse integer message and item IDs from `getUpdates`
+  without precision loss, preventing adjacent IDs beyond JavaScript's safe
+  integer range from colliding in replay dedupe and `MessageSid`. Preserve
+  existing safe-number keys, account isolation and replay state; do not trust
+  already-rounded unsafe numeric IDs as message identities.
 
 ## [3.3.0] - 2026-10-15
 

@@ -283,7 +283,7 @@ Send or cancel the typing status indicator.
 | Field | Type | Description |
 |-------|------|-------------|
 | `seq` | `number?` | Message sequence number |
-| `message_id` | `number?` | Unique message ID |
+| `message_id` | `string \| number?` | Unique integer message ID; `getUpdates` preserves integer tokens as exact strings |
 | `from_user_id` | `string?` | Sender ID |
 | `to_user_id` | `string?` | Receiver ID |
 | `client_id` | `string?` | Client-generated message ID |
@@ -297,6 +297,13 @@ Send or cancel the typing status indicator.
 | `item_list` | `MessageItem[]?` | Message content list |
 | `context_token` | `string?` | Conversation context token, must be passed back when replying |
 | `run_id` | `string?` | OpenClaw run ID for generated replies |
+
+`getUpdates` also preserves integer `msg_id` tokens as strings, including in
+referenced items. It leaves message text and other numeric fields unchanged.
+Replay dedupe and `MessageSid` accept exact decimal integer strings and legacy
+safe integer numbers; `42` and `"42"` keep the same existing key. Unsafe numeric
+IDs are not reliable identities and use the existing fallback chain instead.
+The account namespace, 24-hour replay TTL and persisted key format are unchanged.
 
 ### MessageItem
 

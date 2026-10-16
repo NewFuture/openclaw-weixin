@@ -274,7 +274,7 @@ Content-Type: application/json
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `seq` | `number?` | 消息序列号 |
-| `message_id` | `number?` | 消息唯一 ID |
+| `message_id` | `string \| number?` | 消息唯一整数 ID；`getUpdates` 将整数原文无损保留为字符串 |
 | `from_user_id` | `string?` | 发送者 ID |
 | `to_user_id` | `string?` | 接收者 ID |
 | `client_id` | `string?` | 客户端生成的消息 ID |
@@ -288,6 +288,11 @@ Content-Type: application/json
 | `item_list` | `MessageItem[]?` | 消息内容列表 |
 | `context_token` | `string?` | 会话上下文令牌，回复时需回传 |
 | `run_id` | `string?` | 生成回复对应的 OpenClaw run ID |
+
+`getUpdates` 同样将条目及引用条目中的整数 `msg_id` 保留为字符串，不改写消息正文或其他
+数值字段。重放去重和 `MessageSid` 接受精确的十进制整数字符串及旧的安全整数数字；
+`42` 与 `"42"` 沿用同一个既有键。不安全数字 ID 不作为可靠身份，而是沿用既有后备链。
+账号命名空间、24 小时重放 TTL 和持久化键格式保持不变。
 
 ### MessageItem
 

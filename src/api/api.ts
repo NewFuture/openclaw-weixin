@@ -463,7 +463,18 @@ export async function getUpdates(
       label: "getUpdates",
       abortSignal: params.abortSignal,
     });
-    const resp: GetUpdatesResp = JSON.parse(rawText);
+    const resp: GetUpdatesResp = JSON.parse(rawText, (key: string, value: unknown, context?: { source?: string }) => {
+      if ((key === "message_id" || key === "msg_id") && typeof value === "number") {
+        if (context?.source === undefined) {
+          throw new Error("getUpdates: JSON source context is required for numeric message IDs");
+        }
+        // The numeric value may already be rounded; only the source token is exact.
+        if (/^-?\d+$/.test(context.source)) {
+          return context.source === "-0" ? "0" : context.source;
+        }
+      }
+      return value;
+    });
     return resp;
   } catch (err) {
     // Long-poll timeout or external abort are both normal control-flow exits.
