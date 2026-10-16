@@ -6,6 +6,14 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Inbound message IDs:** Parse integer message and item IDs from `getUpdates`
+  without precision loss, preventing adjacent IDs beyond JavaScript's safe
+  integer range from colliding in replay dedupe and `MessageSid`. Preserve
+  existing safe-number keys, account isolation and replay state; do not trust
+  already-rounded unsafe numeric IDs as message identities.
+
 ## [3.3.0] - 2026-10-15
 
 ### Fixed

@@ -1,6 +1,9 @@
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -50,6 +53,57 @@ function textMsg(overrides: Partial<WeixinMessage> = {}): WeixinMessage {
 describe("buildWeixinInboundDedupeKey", () => {
   it("prefers message_id", () => {
     expect(buildWeixinInboundDedupeKey("jinjin", textMsg())).toBe("weixin:v1:jinjin:user-1:mid:42");
+  });
+
+  it.each([0, -7, 42, Number.MAX_SAFE_INTEGER])("keeps the legacy key for safe integer %s", (id) => {
+    const legacyKey = buildWeixinInboundDedupeKey("account-test", textMsg({ message_id: id }));
+    expect(buildWeixinInboundDedupeKey("account-test", textMsg({ message_id: String(id) }))).toBe(legacyKey);
+    expect(legacyKey).toBe(`weixin:v1:account-test:user-1:mid:${id}`);
+  });
+
+  it("canonicalizes negative zero to the legacy zero key", () => {
+    expect(buildWeixinInboundDedupeKey("account-test", textMsg({ message_id: "-0" }))).toBe(
+      buildWeixinInboundDedupeKey("account-test", textMsg({ message_id: -0 })),
+    );
+  });
+
+  it.each([
+    undefined,
+    "",
+    " ",
+    "42\n",
+    "NaN",
+    "1.5",
+    "1e30",
+    "0042",
+    "42:extra",
+    1.5,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.MAX_SAFE_INTEGER + 1,
+  ])("uses the existing fallback chain for an unreliable message_id (%s)", (message_id) => {
+    const msg = textMsg({ message_id });
+    expect(buildWeixinInboundDedupeKey("account-test", { ...msg, client_id: "client-test" })).toContain(
+      ":cid:client-test",
+    );
+    expect(buildWeixinInboundDedupeKey("account-test", { ...msg, seq: 7 })).toContain(":seq:7");
+    expect(
+      buildWeixinInboundDedupeKey("account-test", {
+        ...msg,
+        item_list: [{ type: MessageItemType.IMAGE, msg_id: "item-test" }],
+      }),
+    ).toContain(":items:");
+    expect(buildWeixinInboundDedupeKey("account-test", msg)).toContain(":body:");
+    expect(
+      buildWeixinInboundDedupeKey("account-test", { ...msg, item_list: [{ type: MessageItemType.IMAGE }] }),
+    ).toBeNull();
+  });
+
+  it("ignores malformed item IDs instead of crashing or keying media by sender alone", () => {
+    const msg: WeixinMessage = JSON.parse(
+      '{"from_user_id":"user-test","message_id":null,"item_list":[{"type":2,"msg_id":1.5},{"msg_id":true},{"msg_id":{}}]}',
+    );
+    expect(buildWeixinInboundDedupeKey("account-test", msg)).toBeNull();
   });
 
   it("falls back to client_id then seq then item msg_ids then body fingerprint", () => {
@@ -186,38 +240,29 @@ describe("tryClaimWeixinInboundMessage", () => {
     ).toEqual({ kind: "duplicate" });
   });
 
-  it("persists committed claims across restart", async () => {
+  it("preserves legacy safe-number tombstones and exact large IDs across restart", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "weixin-replay-dedupe-"));
-    const previous = process.env.OPENCLAW_STATE_DIR;
-    process.env.OPENCLAW_STATE_DIR = dir;
     try {
-      resetWeixinInboundDedupeForTests({ persistent: true });
-      const key = buildWeixinInboundDedupeKey("jinjin", textMsg());
-      expect(key).toBeTruthy();
-      if (!key) return;
-      expect(await tryClaimWeixinInboundMessage(key, { namespace: "jinjin" })).toEqual({ kind: "claimed" });
-      await commitWeixinInboundMessage(key, { namespace: "jinjin" });
+      const script = fileURLToPath(new URL("../../test/helpers/inbound-dedupe-persistence.mjs", import.meta.url));
+      for (const stage of ["legacy", "current", "replay"]) {
+        // Each process owns its host SQLite workers and closes them before cleanup.
+        await promisify(execFile)(process.execPath, [script, stage], {
+          env: {
+            ...process.env,
+            OPENCLAW_STATE_DIR: dir,
+            OPENCLAW_OAUTH_DIR: path.join(dir, "oauth"),
+          },
+          timeout: 60_000,
+        });
+      }
 
-      resetWeixinInboundDedupeForTests({ persistent: true });
-      expect(await tryClaimWeixinInboundMessage(key, { namespace: "jinjin" })).toEqual({ kind: "duplicate" });
-
-      const jsonPath = path.join(dir, "openclaw-weixin", "replay-dedupe", "jinjin.json");
+      const jsonPath = path.join(dir, "openclaw-weixin", "replay-dedupe", "account-test.json");
       const sqlitePath = path.join(dir, "state", "openclaw.sqlite");
       expect(fs.existsSync(jsonPath) || fs.existsSync(sqlitePath)).toBe(true);
     } finally {
-      if (previous === undefined) {
-        delete process.env.OPENCLAW_STATE_DIR;
-      } else {
-        process.env.OPENCLAW_STATE_DIR = previous;
-      }
-      resetWeixinInboundDedupeForTests({ persistent: false });
-      try {
-        fs.rmSync(dir, { recursive: true, force: true });
-      } catch {
-        // Windows may keep the OpenClaw state DB open until process exit.
-      }
+      fs.rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, 180_000);
 
   it("redacts persistent commit errors and still allows released claims to retry", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "weixin-replay-dedupe-error-"));
@@ -269,10 +314,10 @@ describe("tryClaimWeixinInboundMessage", () => {
 });
 
 describe("logWeixinInboundDuplicate", () => {
-  it("logs only non-sensitive identity metadata", () => {
+  it.each([1, "9007199254740993"])("logs only non-sensitive identity metadata for ID %s", (messageId) => {
     logWeixinInboundDuplicate({
       key: "weixin:v1:jinjin:user-secret:mid:1",
-      messageId: 1,
+      messageId,
       seq: 2,
     });
     expect(logger.info).toHaveBeenCalledWith(
@@ -282,5 +327,6 @@ describe("logWeixinInboundDuplicate", () => {
     expect(logged).not.toContain("jinjin");
     expect(logged).not.toContain("user-secret");
     expect(logged).not.toContain("weixin:v1");
+    expect(logged).not.toContain("9007199254740993");
   });
 });
