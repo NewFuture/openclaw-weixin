@@ -76,7 +76,7 @@ export function collectWeixinItemMsgIds(itemList?: MessageItem[]): string[] {
   if (!itemList?.length) return [];
   const ids: string[] = [];
   for (const item of itemList) {
-    const id = item?.msg_id?.trim();
+    const id = typeof item?.msg_id === "string" ? item.msg_id.trim() : "";
     if (id) ids.push(id);
   }
   return ids.sort();
@@ -91,8 +91,12 @@ export function buildWeixinInboundDedupeKey(accountId: string, msg: WeixinMessag
   const from = msg.from_user_id ?? "";
   if (!accountId) return null;
 
-  if (msg.message_id != null && Number.isFinite(msg.message_id)) {
-    return `weixin:v1:${accountId}:${from}:mid:${msg.message_id}`;
+  const messageId = msg.message_id;
+  if (
+    (typeof messageId === "string" && messageId.trim() === messageId && /^-?(?:0|[1-9]\d*)$/.test(messageId)) ||
+    (typeof messageId === "number" && Number.isSafeInteger(messageId))
+  ) {
+    return `weixin:v1:${accountId}:${from}:mid:${messageId === "-0" ? "0" : messageId}`;
   }
   if (msg.client_id) {
     return `weixin:v1:${accountId}:${from}:cid:${msg.client_id}`;
@@ -192,7 +196,11 @@ export function resetWeixinInboundDedupeForTests(options?: { persistent?: boolea
   });
 }
 
-export function logWeixinInboundDuplicate(params: { key: string; messageId?: number; seq?: number }): void {
+export function logWeixinInboundDuplicate(params: {
+  key: string;
+  messageId?: WeixinMessage["message_id"];
+  seq?: number;
+}): void {
   const identity = describeWeixinInboundDedupeIdentity(params.key);
   logger.info(
     `[weixin] dropping duplicate inbound message identity=${identity} hasMsgId=${params.messageId != null} hasSeq=${params.seq != null}`,
