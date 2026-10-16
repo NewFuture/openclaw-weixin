@@ -11,6 +11,10 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 - **Send failures:** Reject nonzero `sendMessage` `errcode` responses instead of
   reporting success, even with HTTP 200 and a missing or zero `ret`. Preserve
   existing `ret` error precedence without clearing tokens or retrying.
+- **CLI metadata registration:** Return immediately in `cli-metadata` mode
+  without accessing the host's unavailable runtime or registering a runtime
+  channel. Other registration modes retain the host version guard and channel
+  registration; the minimum host remains `2026.6.1`.
 - **Inbound message IDs:** Parse integer message and item IDs from `getUpdates`
   without precision loss, preventing adjacent IDs beyond JavaScript's safe
   integer range from colliding in replay dedupe and `MessageSid`. Preserve

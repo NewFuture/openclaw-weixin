@@ -10,6 +10,9 @@ export default {
   description: "Community-maintained WeChat (微信 / Weixin) channel plugin for OpenClaw using the iLink bot API.",
   configSchema: WeixinChannelConfigSchema,
   register(api: OpenClawPluginApi) {
+    // This plugin has no CLI commands; metadata collection has no runtime.
+    if (api.registrationMode === "cli-metadata") return;
+
     // Fail-fast: reject incompatible host versions before any side-effects.
     assertHostCompatibility(api.runtime?.version);
 

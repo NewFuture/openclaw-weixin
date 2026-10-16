@@ -55,8 +55,8 @@ export function isHostVersionSupported(hostVersion: string): boolean {
 }
 
 /**
- * Fail-fast guard.  Call at the very start of `register()` to prevent the
- * plugin from loading on an incompatible host.
+ * Fail-fast guard. Call before runtime channel registration to prevent the
+ * plugin from loading on an incompatible host. CLI metadata needs no runtime.
  *
  * @throws {Error} with a human-readable message when the host is out of range.
  */

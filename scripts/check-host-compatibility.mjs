@@ -250,6 +250,28 @@ async function stableTempDirectory(prefix) {
   return mkdtemp(path.join(await realpath(tmpdir()), prefix));
 }
 
+async function exerciseCliMetadata(rootDirectory) {
+  // Use the installed host's loader, including its real unavailable-runtime API.
+  const { loadOpenClawPluginCliRegistry } = await import(
+    pathToFileURL(path.join(rootDirectory, "node_modules", "openclaw", "dist", "plugins", "loader.js")).href
+  );
+  const registry = await loadOpenClawPluginCliRegistry({
+    config: JSON.parse(await readFile(process.env.OPENCLAW_CONFIG_PATH, "utf8")),
+    onlyPluginIds: [CANONICAL_ID],
+    cache: false,
+  });
+  const plugins = registry.plugins.filter((entry) => entry.id === CANONICAL_ID);
+  if (
+    plugins.length !== 1 ||
+    plugins[0].status !== "loaded" ||
+    registry.channels.length !== 0 ||
+    registry.cliRegistrars.length !== 0 ||
+    registry.diagnostics.some((entry) => entry.level === "error")
+  ) {
+    throw new PluginLifecycleCheckFailure("CLI metadata must load the plugin without runtime channels or commands");
+  }
+}
+
 async function checkHostChannelAliasResolution(rootDirectory, hostVersion) {
   const stateDirectory = await stableTempDirectory("openclaw-weixin-compat-");
   const pluginDirectory = await stableTempDirectory("openclaw-weixin-plugin-");
@@ -279,6 +301,15 @@ async function checkHostChannelAliasResolution(rootDirectory, hostVersion) {
       )}\n`,
       "utf8",
     );
+    const metadataResult = spawnSync(
+      process.execPath,
+      [path.join(rootDirectory, "scripts", "check-host-compatibility.mjs"), "--cli-metadata", rootDirectory],
+      { cwd: stateDirectory, env, encoding: "utf8", timeout: 180_000 },
+    );
+    if (metadataResult.error || metadataResult.status !== 0) {
+      throw new PluginLifecycleCheckFailure("CLI metadata registration runtime check failed");
+    }
+
     const canonicalCapabilities = readSuccessfulJson(
       runOpenClaw(rootDirectory, ["channels", "capabilities", "--channel", CANONICAL_ID, "--json"], env),
       `channel id check for ${CANONICAL_ID}`,
@@ -540,7 +571,14 @@ export async function checkHostCompatibility(rootDirectory = process.cwd()) {
 
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : undefined;
 if (import.meta.url === invokedPath) {
-  if (process.argv[2] === "--config-mutation") {
+  if (process.argv[2] === "--cli-metadata") {
+    try {
+      await exerciseCliMetadata(process.argv[3]);
+    } catch (error) {
+      console.error(formatCheckFailure(error));
+      process.exitCode = 1;
+    }
+  } else if (process.argv[2] === "--config-mutation") {
     try {
       await exerciseConfigMutation(process.argv[3]);
     } catch (error) {
