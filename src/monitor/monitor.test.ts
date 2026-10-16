@@ -63,6 +63,7 @@ vi.mock("../storage/sync-buf.js", () => ({
 
 vi.mock("../util/logger.js", () => ({
   logger: {
+    ...accountLogger,
     withAccount: () => accountLogger,
   },
 }));
@@ -384,6 +385,58 @@ describe("monitorWeixinProvider", () => {
     await expect(monitor).resolves.toBeUndefined();
     await vi.waitFor(() => expect(started).toEqual(["hello", "/approve plugin:test approve"]));
     expect(processOneMessageMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["ordinary", "same"],
+    ["approval", "/approve plugin:test approve"],
+  ])("preserves adjacent raw large IDs and drops replays on the %s lane", async (_lane, text) => {
+    vi.useFakeTimers();
+    const { getUpdates } = await vi.importActual<typeof import("../api/api.js")>("../api/api.js");
+    const { weixinMessageToMsgContext } =
+      await vi.importActual<typeof import("../messaging/inbound.js")>("../messaging/inbound.js");
+    const abortController = new AbortController();
+    const rawMessages = ["9007199254740992", "9007199254740992", "9007199254740993", "9007199254740993"].map(
+      (id) =>
+        `{"message_id":${id},"from_user_id":"user-a","item_list":[{"type":1,"text_item":{"text":${JSON.stringify(text)}}}]}`,
+    );
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(`{"msgs":[${rawMessages.join(",")}]}`))
+      .mockImplementationOnce(
+        async (_url, options) =>
+          await new Promise<Response>((_, reject) => {
+            options?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), {
+              once: true,
+            });
+          }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    getUpdatesMock.mockImplementation((opts) => getUpdates({ ...opts, baseUrl: "https://example.test" }));
+    const sids: string[] = [];
+    processOneMessageMock.mockImplementation(async (message, deps) => {
+      sids.push(weixinMessageToMsgContext(message, deps.accountId).MessageSid);
+    });
+    const monitor = startMonitor(abortController, createChannelRuntimeHarness().channelRuntime);
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(sids).toEqual([
+        "weixin:v1:acc-monitor:user-a:mid:9007199254740992",
+        "weixin:v1:acc-monitor:user-a:mid:9007199254740993",
+      ]);
+      expect(processOneMessageMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const logs = Object.values(accountLogger)
+        .flatMap((fn) => fn.mock.calls.flat())
+        .join(" ");
+      for (const sensitive of ["9007199254740992", "9007199254740993", "weixin:v1", "user-a"]) {
+        expect(logs).not.toContain(sensitive);
+      }
+    } finally {
+      abortController.abort();
+      await monitor;
+      vi.unstubAllGlobals();
+    }
   });
 
   it("does not block the ordinary lane while an in-flight replay waits on the owner", async () => {

@@ -179,7 +179,8 @@ export interface MessageItem {
 /** Unified message (proto: WeixinMessage). Replaces the old split Message + MessageContent + FullMessage. */
 export interface WeixinMessage {
   seq?: number;
-  message_id?: number;
+  /** getUpdates preserves integer IDs as strings; legacy callers may supply safe integers. */
+  message_id?: string | number;
   from_user_id?: string;
   to_user_id?: string;
   client_id?: string;

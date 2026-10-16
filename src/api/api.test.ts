@@ -4,6 +4,14 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { weixinMessageToMsgContext } from "../messaging/inbound.js";
+import {
+  buildWeixinInboundDedupeKey,
+  commitWeixinInboundMessage,
+  resetWeixinInboundDedupeForTests,
+  tryClaimWeixinInboundMessage,
+} from "../messaging/inbound-dedupe.js";
+
 // Mock logger
 vi.mock("../util/logger.js", () => ({
   logger: {
@@ -24,14 +32,19 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 // Mock crypto for deterministic headers
-vi.mock("node:crypto", () => ({
-  default: {
-    randomBytes: vi.fn(() => ({
-      readUInt32BE: () => 12345,
-      toString: () => "deadbeef",
-    })),
-  },
-}));
+vi.mock("node:crypto", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:crypto")>();
+  return {
+    ...actual,
+    default: {
+      ...actual,
+      randomBytes: vi.fn(() => ({
+        readUInt32BE: () => 12345,
+        toString: () => "deadbeef",
+      })),
+    },
+  };
+});
 
 import { logger } from "../util/logger.js";
 import {
@@ -110,6 +123,99 @@ describe("getUpdates", () => {
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toContain("ilink/bot/getupdates");
     expect(opts.method).toBe("POST");
+  });
+
+  it("keeps adjacent large transport IDs distinct through claims and MessageSid", async () => {
+    mockFetch.mockResolvedValueOnce(
+      mockResponse(`{"msgs":[
+        {"from_user_id":"user-test","message_id":9007199254740992,"item_list":[{"type":1,"text_item":{"text":"same"}}]},
+        {"from_user_id":"user-test","message_id":9007199254740993,"item_list":[{"type":1,"text_item":{"text":"same"}}]},
+        {"from_user_id":"user-test","message_id":9007199254740992,"item_list":[{"type":1,"text_item":{"text":"same"}}]}
+      ]}`),
+    );
+    resetWeixinInboundDedupeForTests({ persistent: false });
+    try {
+      const { msgs = [] } = await getUpdates({ baseUrl: "https://api.example.com" });
+      expect(msgs.map((msg) => msg.message_id)).toEqual(["9007199254740992", "9007199254740993", "9007199254740992"]);
+      const sids = msgs.map((msg) => weixinMessageToMsgContext(msg, "account-test").MessageSid);
+      expect(sids).toEqual([
+        "weixin:v1:account-test:user-test:mid:9007199254740992",
+        "weixin:v1:account-test:user-test:mid:9007199254740993",
+        "weixin:v1:account-test:user-test:mid:9007199254740992",
+      ]);
+      const options = { namespace: "account-test" };
+      for (const sid of sids.slice(0, 2)) {
+        expect(await tryClaimWeixinInboundMessage(sid, options)).toEqual({ kind: "claimed" });
+        await commitWeixinInboundMessage(sid, options);
+      }
+      expect(await tryClaimWeixinInboundMessage(sids[2], options)).toEqual({ kind: "duplicate" });
+      const otherSid = weixinMessageToMsgContext(msgs[0], "account-other").MessageSid;
+      expect(otherSid).not.toBe(sids[0]);
+      expect(await tryClaimWeixinInboundMessage(otherSid, { namespace: "account-other" })).toEqual({
+        kind: "claimed",
+      });
+    } finally {
+      resetWeixinInboundDedupeForTests({ persistent: false });
+    }
+  });
+
+  it.each(["0", "-7", "42", "9007199254740991", "18446744073709551615"])(
+    "preserves integer ID token %s as a string",
+    async (id) => {
+      mockFetch.mockResolvedValueOnce(mockResponse(`{"msgs":[{"message_id":${id}}]}`));
+      const result = await getUpdates({ baseUrl: "https://api.example.com" });
+      expect(result.msgs?.[0].message_id).toBe(id);
+    },
+  );
+
+  it("preserves item IDs without rewriting escaped text or unrelated numeric fields", async () => {
+    const raw = String.raw`{"ret":0,"longpolling_timeout_ms":35000,"msgs":[
+      {"from_user_id":"user-test","seq":7,"create_time_ms":1700000000000,"message_type":1,
+       "item_list":[{"type":1,"msg_id":9007199254740992,"is_completed":true,
+       "text_item":{"text":"{\"message_id\":9007199254740993,\"msg_id\":42}\nquote: \" slash: \\"},
+       "ref_msg":{"message_item":{"type":1,"msg_id":18446744073709551615}}}]},
+      {"from_user_id":"user-test","item_list":[{"type":2,"msg_id":9007199254740993}]},
+      {"from_user_id":"user-test","item_list":[{"type":2,"msg_id":"opaque-item-test"}]}
+    ]}`;
+    mockFetch.mockResolvedValueOnce(mockResponse(raw));
+    const result = await getUpdates({ baseUrl: "https://api.example.com" });
+    const expected = JSON.parse(raw);
+    expected.msgs[0].item_list[0].msg_id = "9007199254740992";
+    expected.msgs[0].item_list[0].ref_msg.message_item.msg_id = "18446744073709551615";
+    expected.msgs[1].item_list[0].msg_id = "9007199254740993";
+    expect(result).toEqual(expected);
+    const msgs = result.msgs ?? [];
+    const first = { ...msgs[0], seq: undefined };
+    const firstKey = buildWeixinInboundDedupeKey("account-test", first);
+    const secondKey = buildWeixinInboundDedupeKey("account-test", msgs[1]);
+    expect(firstKey).toContain(":items:");
+    expect(secondKey).toContain(":items:");
+    expect(secondKey).not.toBe(firstKey);
+    expect(weixinMessageToMsgContext(first, "account-test").MessageSid).toBe(firstKey);
+  });
+
+  it("does not promote non-integer ID tokens into exact string identities", async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse('{"msgs":[{"message_id":1.5},{"message_id":1e30}]}'));
+    const result = await getUpdates({ baseUrl: "https://api.example.com" });
+    expect(result.msgs?.map((msg) => msg.message_id)).toEqual([1.5, 1e30]);
+    for (const msg of result.msgs ?? []) {
+      expect(buildWeixinInboundDedupeKey("account-test", msg)).toBeNull();
+    }
+  });
+
+  it("fails explicitly when numeric IDs cannot be recovered from JSON source", async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse('{"msgs":[{"message_id":9007199254740993}]}'));
+    const parse = JSON.parse;
+    const spy = vi
+      .spyOn(JSON, "parse")
+      .mockImplementationOnce((text, reviver) => parse(text, (key, value) => reviver?.(key, value)));
+    try {
+      await expect(getUpdates({ baseUrl: "https://api.example.com" })).rejects.toThrow(
+        "getUpdates: JSON source context is required for numeric message IDs",
+      );
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("throws on non-ok response", async () => {
