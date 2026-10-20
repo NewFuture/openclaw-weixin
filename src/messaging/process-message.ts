@@ -207,6 +207,20 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   }
 
   const ctx = weixinMessageToMsgContext(full, deps.accountId, mediaOpts);
+  const unavailableVoiceCount =
+    full.item_list?.filter(
+      (item) =>
+        item.type === MessageItemType.VOICE &&
+        !item.voice_item?.text &&
+        (item !== mediaItem || !mediaOpts.decryptedVoicePath),
+    ).length ?? 0;
+  if (unavailableVoiceCount > 0) {
+    const placeholder = "[语音消息，暂无法获取语音内容，请发送文字或重试]";
+    ctx.Body = ctx.Body ? `${ctx.Body}\n${placeholder}` : placeholder;
+    logger.warn(
+      `inbound voice unavailable: count=${unavailableVoiceCount} messageId=${redactToken(full.message_id?.toString())}`,
+    );
+  }
 
   // --- Framework command authorization ---
   const rawBody = textBody.trim() || (ctx.Body?.trim() ?? "");

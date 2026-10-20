@@ -6,6 +6,14 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Inbound voice:** When neither a transcript nor a usable voice file is available,
+  pass a visible placeholder to the agent and log a warning with the unavailable
+  voice count and fully masked message ID instead of silently passing empty content.
+  Preserve existing transcription, WAV/SILK downloads, other message content, and
+  sender authorization; no new configuration is required.
+
 ## [3.3.1] - 2026-10-16
 
 ### Fixed
