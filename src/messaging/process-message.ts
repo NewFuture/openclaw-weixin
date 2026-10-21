@@ -207,20 +207,6 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   }
 
   const ctx = weixinMessageToMsgContext(full, deps.accountId, mediaOpts);
-  const unavailableVoiceCount =
-    full.item_list?.filter(
-      (item) =>
-        item.type === MessageItemType.VOICE &&
-        !item.voice_item?.text &&
-        (item !== mediaItem || !mediaOpts.decryptedVoicePath),
-    ).length ?? 0;
-  if (unavailableVoiceCount > 0) {
-    const placeholder = "[语音消息，暂无法获取语音内容，请发送文字或重试]";
-    ctx.Body = ctx.Body ? `${ctx.Body}\n${placeholder}` : placeholder;
-    logger.warn(
-      `inbound voice unavailable: count=${unavailableVoiceCount} messageId=${redactToken(full.message_id?.toString())}`,
-    );
-  }
 
   // --- Framework command authorization ---
   const rawBody = textBody.trim() || (ctx.Body?.trim() ?? "");
@@ -237,6 +223,21 @@ export async function processOneMessage(full: WeixinMessage, deps: ProcessMessag
   if (senderAccess.dropped) {
     logger.info(`authorization: dropping message from=${redactToken(senderId)} outcome=denied`);
     return;
+  }
+
+  const unavailableVoiceCount =
+    full.item_list?.filter(
+      (item) =>
+        item.type === MessageItemType.VOICE &&
+        !item.voice_item?.text &&
+        (!hasDownloadableMedia(item.voice_item?.media) ||
+          !item.voice_item?.media?.aes_key ||
+          (item === mediaItem && !mediaOpts.decryptedVoicePath)),
+    ).length ?? 0;
+  if (unavailableVoiceCount > 0) {
+    const placeholder = "[语音消息，暂无法获取语音内容，请发送文字或重试]";
+    ctx.Body = ctx.Body ? `${ctx.Body}\n${placeholder}` : placeholder;
+    logger.warn(`inbound voice unavailable: count=${unavailableVoiceCount} hasMsgId=${full.message_id != null}`);
   }
 
   logger.debug(
