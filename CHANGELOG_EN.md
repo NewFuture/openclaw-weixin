@@ -8,6 +8,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Fixed
 
+- **Development SDK:** Update the OpenClaw dependency and build metadata to stable
+  `2026.10.5`. Retain `2026.10.3` compatibility checks and the `2026.6.1` minimum host.
 - **Inbound voice:** Pass a placeholder to the agent when a voice item has no
   transcript and lacks media data or a key, or when the selected voice download
   fails. Emit a sanitized warning only after sender authorization succeeds.

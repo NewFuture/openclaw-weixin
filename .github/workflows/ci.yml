@@ -114,16 +114,20 @@ jobs:
           - os: ubuntu-latest
             node-version: "24.16.0"
             openclaw_version: "2026.10.3"
+            validation: compatibility
+          - os: ubuntu-latest
+            node-version: "24.16.0"
+            openclaw_version: "2026.10.5"
             validation: strict
             pack_check: true
             dependency_audit: true
           - os: ubuntu-latest
             node-version: "26"
-            openclaw_version: "2026.10.3"
+            openclaw_version: "2026.10.5"
             validation: compatibility
           - os: windows-latest
             node-version: "24.16.0"
-            openclaw_version: "2026.10.3"
+            openclaw_version: "2026.10.5"
             validation: strict
           - os: ubuntu-latest
             node-version: "24"

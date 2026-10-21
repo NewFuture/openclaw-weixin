@@ -70,7 +70,7 @@ contract.
 - Keep the published package compatible with Node.js >=22.22.3. CI validates
   Node.js 22.22.3, Node.js 24 (the `.nvmrc` development version is 24.16.0), and
   Node.js 26 compatibility.
-- The minimum OpenClaw host is `2026.6.1`; the lockfile SDK is `2026.10.3` and
+- The minimum OpenClaw host is `2026.6.1`; the lockfile SDK is `2026.10.5` and
   requires Node.js `>=24.16.0 <25 || >=26.1.0`. Use `.nvmrc` for development;
   Node.js 22 CI jobs use older hosts. See the compatibility matrix in
   [CONTRIBUTING.md](docs/CONTRIBUTING.md#openclaw-compatibility-matrix).
