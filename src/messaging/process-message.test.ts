@@ -9,7 +9,8 @@ import {
   SYNTHETIC_CONTEXT_TOKEN,
   SYNTHETIC_USER_ID,
 } from "../../test/helpers/messages.js";
-import { MessageItemType, TypingStatus } from "../api/types.js";
+import { type MessageItem, MessageItemType, TypingStatus } from "../api/types.js";
+import { buildWeixinInboundDedupeKey } from "./inbound-dedupe.js";
 import type { WeixinInboundTurn } from "./inbound-turn.js";
 import type { ProcessMessageDeps } from "./process-message.js";
 
@@ -139,6 +140,274 @@ describe("processOneMessage", () => {
     mocks.sendMessage.mockResolvedValue({ messageId: "message-test" });
     mocks.sendMessageItem.mockResolvedValue({ messageId: "progress-test" });
     mocks.sendMedia.mockResolvedValue({ messageId: "media-message-test" });
+  });
+
+  describe("inbound voice", () => {
+    const placeholder = "[语音消息，暂无法获取语音内容，请发送文字或重试]";
+    const media = {
+      encrypt_query_param: "synthetic-voice-query",
+      aes_key: Buffer.alloc(16).toString("base64"),
+    };
+    const voice: MessageItem = { type: MessageItemType.VOICE, voice_item: { media } };
+
+    it.each([
+      { label: "missing voice payload", voice_item: undefined, downloads: false },
+      { label: "missing media and text", voice_item: {}, downloads: false },
+      { label: "empty media and text", voice_item: { media: {}, text: "" }, downloads: false },
+      {
+        label: "missing media reference",
+        voice_item: { media: { aes_key: media.aes_key } },
+        downloads: false,
+      },
+      {
+        label: "missing encryption key",
+        voice_item: { media: { full_url: "https://cdn.example.test/voice" } },
+        downloads: true,
+      },
+      { label: "failed media download", voice_item: { media }, downloads: true },
+    ])("dispatches a visible fallback for $label", async ({ voice_item, downloads }) => {
+      const harness = createChannelRuntimeHarness();
+      const message = makeTextMessage("", {
+        message_id: "9007199254740993",
+        item_list: [{ type: MessageItemType.VOICE, voice_item }],
+      });
+      const originalKey = buildWeixinInboundDedupeKey(SYNTHETIC_ACCOUNT_ID, message);
+
+      await processOneMessage(message, makeDeps(harness.channelRuntime));
+
+      expect(mocks.downloadMedia).toHaveBeenCalledTimes(downloads ? 1 : 0);
+      expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload).toMatchObject({
+        Body: placeholder,
+        BodyForAgent: placeholder,
+        RawBody: placeholder,
+        MessageSid: originalKey,
+      });
+      expect(mocks.resolveSenderAccess).toHaveBeenCalledWith(expect.objectContaining({ rawBody: "" }));
+      expect(mocks.logger.warn).toHaveBeenCalledExactlyOnceWith("inbound voice unavailable: count=1 hasMsgId=true");
+      const logs = Object.values(mocks.logger)
+        .flatMap((mock) => mock.mock.calls)
+        .flat()
+        .join(" ");
+      for (const sensitive of [
+        message.message_id,
+        SYNTHETIC_ACCOUNT_ID,
+        SYNTHETIC_USER_ID,
+        SYNTHETIC_CONTEXT_TOKEN,
+        media.encrypt_query_param,
+        media.aes_key,
+        "https://cdn.example.test/voice",
+        placeholder,
+      ]) {
+        expect(logs).not.toContain(sensitive);
+      }
+    });
+
+    it.each(["legacy", "routed"] as const)("passes the fallback through %s dispatch", async (mode) => {
+      const harness = createChannelRuntimeHarness(mode);
+      const selected = mode === "routed" ? harness.mocks.dispatch : harness.mocks.dispatchReply;
+
+      await processOneMessage(
+        makeTextMessage("", { item_list: [{ type: MessageItemType.VOICE }] }),
+        makeDeps(harness.channelRuntime),
+      );
+
+      expect(selected).toHaveBeenCalledOnce();
+      expect(selected.mock.calls[0]?.[0].ctxPayload.BodyForAgent).toBe(placeholder);
+    });
+
+    it.each([
+      { label: "without media", voice_item: { text: "synthetic transcript" } },
+      { label: "with media", voice_item: { media, text: "synthetic transcript" } },
+    ])("preserves supplied transcription $label", async ({ voice_item }) => {
+      const harness = createChannelRuntimeHarness();
+
+      await processOneMessage(
+        makeTextMessage("", { item_list: [{ type: MessageItemType.VOICE, voice_item }] }),
+        makeDeps(harness.channelRuntime),
+      );
+
+      expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload.BodyForAgent).toBe("synthetic transcript");
+      expect(mocks.downloadMedia).not.toHaveBeenCalled();
+      expect(mocks.logger.warn).not.toHaveBeenCalled();
+    });
+
+    it.each(["audio/wav", "audio/silk"])("preserves a successful %s voice download", async (voiceMediaType) => {
+      const harness = createChannelRuntimeHarness();
+      mocks.downloadMedia.mockResolvedValue({
+        decryptedVoicePath: "C:\\synthetic\\voice.bin",
+        voiceMediaType,
+      });
+
+      await processOneMessage(makeTextMessage("", { item_list: [voice] }), makeDeps(harness.channelRuntime));
+
+      expect(mocks.downloadMedia).toHaveBeenCalledWith(voice, expect.objectContaining({ label: "inbound" }));
+      expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload).toMatchObject({
+        BodyForAgent: "",
+        media: [{ path: "C:\\synthetic\\voice.bin", contentType: voiceMediaType }],
+      });
+      expect(mocks.logger.warn).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      {
+        label: "image",
+        item: { type: MessageItemType.IMAGE, image_item: { media } },
+        downloaded: { decryptedPicPath: "C:\\synthetic\\image.bin" },
+      },
+      {
+        label: "video",
+        item: { type: MessageItemType.VIDEO, video_item: { media } },
+        downloaded: { decryptedVideoPath: "C:\\synthetic\\video.bin" },
+      },
+      {
+        label: "file",
+        item: { type: MessageItemType.FILE, file_item: { media } },
+        downloaded: { decryptedFilePath: "C:\\synthetic\\file.bin" },
+      },
+    ])(
+      "does not mark valid voice skipped for a higher-priority $label as unavailable",
+      async ({ item, downloaded }) => {
+        const harness = createChannelRuntimeHarness();
+        mocks.downloadMedia.mockResolvedValue(downloaded);
+
+        await processOneMessage(makeTextMessage("", { item_list: [voice, item] }), makeDeps(harness.channelRuntime));
+
+        expect(mocks.downloadMedia).toHaveBeenCalledExactlyOnceWith(
+          item,
+          expect.objectContaining({ label: "inbound" }),
+        );
+        expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload.BodyForAgent).toBe("");
+        expect(mocks.logger.warn).not.toHaveBeenCalled();
+      },
+    );
+
+    it("does not mark a second valid voice as unavailable when only the first is downloaded", async () => {
+      const harness = createChannelRuntimeHarness();
+      const secondVoice: MessageItem = {
+        type: MessageItemType.VOICE,
+        voice_item: { media: { full_url: "https://cdn.example.test/voice", aes_key: media.aes_key } },
+      };
+      mocks.downloadMedia.mockResolvedValue({ decryptedVoicePath: "C:\\synthetic\\voice.wav" });
+
+      await processOneMessage(
+        makeTextMessage("", { item_list: [voice, secondVoice] }),
+        makeDeps(harness.channelRuntime),
+      );
+
+      expect(mocks.downloadMedia).toHaveBeenCalledExactlyOnceWith(voice, expect.objectContaining({ label: "inbound" }));
+      expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload).toMatchObject({
+        BodyForAgent: "",
+        media: [{ path: "C:\\synthetic\\voice.wav", contentType: "audio/wav" }],
+      });
+      expect(mocks.logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("counts only genuinely unavailable voice items alongside a successful voice download", async () => {
+      const harness = createChannelRuntimeHarness();
+      mocks.downloadMedia.mockResolvedValue({ decryptedVoicePath: "C:\\synthetic\\voice.wav" });
+
+      await processOneMessage(
+        makeTextMessage("", {
+          item_list: [
+            { type: MessageItemType.VOICE },
+            voice,
+            { type: MessageItemType.VOICE, voice_item: { media: { ...media } } },
+            { type: MessageItemType.VOICE, voice_item: { media: { full_url: "https://cdn.example.test/voice" } } },
+          ],
+        }),
+        makeDeps(harness.channelRuntime),
+      );
+
+      expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload).toMatchObject({
+        BodyForAgent: placeholder,
+        media: [{ path: "C:\\synthetic\\voice.wav", contentType: "audio/wav" }],
+      });
+      expect(mocks.logger.warn).toHaveBeenCalledExactlyOnceWith("inbound voice unavailable: count=2 hasMsgId=false");
+    });
+
+    it("preserves accompanying text and media while reporting missing voice content", async () => {
+      const harness = createChannelRuntimeHarness();
+      mocks.downloadMedia.mockResolvedValue({ decryptedPicPath: "C:\\synthetic\\image.png" });
+
+      await processOneMessage(
+        makeTextMessage("synthetic caption", {
+          item_list: [
+            { type: MessageItemType.VOICE },
+            { type: MessageItemType.TEXT, text_item: { text: "synthetic caption" } },
+            { type: MessageItemType.IMAGE, image_item: { media } },
+          ],
+        }),
+        makeDeps(harness.channelRuntime),
+      );
+
+      expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload).toMatchObject({
+        BodyForAgent: `synthetic caption\n${placeholder}`,
+        media: [{ path: "C:\\synthetic\\image.png", contentType: "image/*" }],
+      });
+      expect(mocks.resolveSenderAccess).toHaveBeenCalledWith(expect.objectContaining({ rawBody: "synthetic caption" }));
+      expect(mocks.logger.warn).toHaveBeenCalledExactlyOnceWith("inbound voice unavailable: count=1 hasMsgId=false");
+    });
+
+    it("does not add a fallback for quoted voice", async () => {
+      const harness = createChannelRuntimeHarness();
+
+      await processOneMessage(
+        makeTextMessage("", {
+          item_list: [
+            {
+              type: MessageItemType.TEXT,
+              text_item: { text: "synthetic reply" },
+              ref_msg: { message_item: { type: MessageItemType.VOICE } },
+            },
+          ],
+        }),
+        makeDeps(harness.channelRuntime),
+      );
+
+      expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload.BodyForAgent).toBe("synthetic reply");
+      expect(mocks.logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("does not add a fallback for other missing media", async () => {
+      const harness = createChannelRuntimeHarness();
+
+      await processOneMessage(
+        makeTextMessage("", { item_list: [{ type: MessageItemType.IMAGE }] }),
+        makeDeps(harness.channelRuntime),
+      );
+
+      expect(harness.mocks.dispatchReply.mock.calls[0]?.[0].ctxPayload.BodyForAgent).toBe("");
+      expect(mocks.logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("does not dispatch or emit a voice-unavailable warning for an unauthorized sender", async () => {
+      const harness = createChannelRuntimeHarness();
+      mocks.resolveSenderAccess.mockResolvedValue({ dropped: true, commandAuthorized: false });
+
+      await processOneMessage(
+        makeTextMessage("", { item_list: [{ type: MessageItemType.VOICE }] }),
+        makeDeps(harness.channelRuntime),
+      );
+
+      expect(harness.mocks.buildContext).not.toHaveBeenCalled();
+      expect(harness.mocks.dispatchReply).not.toHaveBeenCalled();
+      expect(mocks.logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("does not turn the placeholder into a shared identity for messages without IDs", async () => {
+      const harness = createChannelRuntimeHarness();
+
+      for (let i = 0; i < 2; i++) {
+        const message = makeTextMessage("", { item_list: [{ type: MessageItemType.VOICE }] });
+        await processOneMessage(message, makeDeps(harness.channelRuntime));
+        expect(buildWeixinInboundDedupeKey(SYNTHETIC_ACCOUNT_ID, message)).toBeNull();
+      }
+
+      const contexts = harness.mocks.dispatchReply.mock.calls.map(([turn]) => turn.ctxPayload);
+      expect(contexts).toHaveLength(2);
+      expect(contexts.every((ctx) => ctx.BodyForAgent === placeholder)).toBe(true);
+      expect(contexts[0]?.MessageSid).not.toBe(contexts[1]?.MessageSid);
+    });
   });
 
   it("stops before authorization when a slash command handles the message", async () => {

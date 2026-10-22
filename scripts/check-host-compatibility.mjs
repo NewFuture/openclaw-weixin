@@ -14,7 +14,18 @@ import {
 const CANONICAL_ID = "openclaw-weixin";
 const COMPATIBILITY_ALIAS = "openclaw-wechat";
 const UNRELATED_ID = "openclaw-unrelated";
-const CHANNEL_ALIAS_MIN_VERSION = [2026, 7, 1];
+// The June maintenance release backports channel aliases.
+const CHANNEL_ALIAS_MIN_VERSION = [2026, 6, 35];
+
+export function assertHostVersionSpec(spec, installedVersion) {
+  const month = /^(\d+\.\d+)\.x$/.exec(spec)?.[1];
+  const matches = month
+    ? installedVersion.startsWith(`${month}.`) && /^\d+\.\d+\.\d+$/.test(installedVersion)
+    : spec === "beta" || installedVersion === spec;
+  if (!matches) {
+    throw new Error(`expected OpenClaw ${spec}, found ${installedVersion}`);
+  }
+}
 
 export function hostSupportsChannelAliases(hostVersion) {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:-|$)/.exec(hostVersion.trim());

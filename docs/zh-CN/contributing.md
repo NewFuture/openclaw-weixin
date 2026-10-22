@@ -15,27 +15,29 @@ Node.js 24.16.0 环境，以及当前 Node.js 26 运行时。
 
 ### OpenClaw 兼容矩阵
 
-最低支持宿主仍为 `2026.6.1`，锁文件 SDK 和构建元数据固定为 `2026.10.3`。CI 使用
-以下明确组合，不对所有宿主、Node.js 版本和操作系统做全排列：
+最低支持宿主仍为 `2026.6.1`，锁文件 SDK 和构建元数据固定为 `2026.10.5`。CI 使用
+以下明确组合，不对所有宿主、Node.js 版本和操作系统做全排列。旧月份系列使用 npm 的
+`x` 范围，每次运行自动选择该月份最新的稳定补丁版；当前 SDK 仍精确锁定。
+最低支持版本不变，不再作为独立 CI 目标。
 
 | OpenClaw 目标 | Node.js | 运行平台 | 验证方式 |
 | --- | --- | --- | --- |
-| `2026.6.1`（最低宿主） | `24.15.0` | Ubuntu | 兼容性 |
-| `2026.7.1`（旧版宿主） | `22.22.3` | Ubuntu | 兼容性 |
-| `2026.8.2`（旧版 SDK） | `24.15.0` | Ubuntu、Windows | 兼容性 |
-| `2026.9.1`（9 月首个稳定版） | `24.15.0` | Ubuntu | 兼容性 |
-| `2026.9.2`（旧版 SDK / Node.js 22 下限） | `22.22.3` | Ubuntu | 兼容性 |
-| `2026.9.4`（旧版 SDK） | `24.16.0` | Ubuntu | 兼容性 |
-| `2026.10.3`（锁文件 SDK） | `24.16.0` | Ubuntu、Windows | 完整 |
-| `2026.10.3`（当前运行时） | `26` | Ubuntu | 兼容性 |
+| `2026.6.x`（6 月最新稳定补丁） | `24.15.0` | Ubuntu | 兼容性 |
+| `2026.7.x`（7 月最新稳定补丁 / Node.js 22 下限） | `22.22.3` | Ubuntu | 兼容性 |
+| `2026.8.x`（8 月最新稳定补丁） | `24.15.0` | Ubuntu、Windows | 兼容性 |
+| `2026.9.x`（9 月最新稳定补丁） | `24.16.0` | Ubuntu | 兼容性 |
+| `2026.10.5`（锁文件 SDK） | `24.16.0` | Ubuntu、Windows | 完整 |
+| `2026.10.5`（当前运行时） | `26` | Ubuntu | 兼容性 |
 | `beta`（浮动 npm dist-tag） | `24`（当前补丁版） | Ubuntu | 兼容性 |
 
 **完整验证**运行 `npm run check`，Ubuntu 作业还运行 `npm run pack:check` 和
-`npm run audit:all`。**兼容性验证**在不修改锁文件的前提下安装目标宿主，对固定目标
-断言实际安装的精确版本，再使用该宿主运行 `npm run typecheck` 和 `npm run build`。
+`npm run audit:all`。**兼容性验证**在不修改锁文件的前提下安装目标宿主，断言月份范围
+解析为同月份的稳定版本，对精确固定目标仍检查版本相等。记录实际解析版本，先运行
+安装/更新检查，再用该宿主执行 `npm run typecheck` 和 `npm run build`，最后运行 smoke；
+两种检查都接收实际解析的精确版本。
 
 依赖安装使用 Node.js `24.16.0`（`beta` 使用 24.x 当前补丁版），随后再切换到矩阵列出的
-运行时。OpenClaw `2026.9.4` 和 `2026.10.3` 要求 Node.js `>=24.16.0 <25 || >=26.1.0`，因此 Node.js 22
+运行时。9 月目标和锁定 SDK 当前要求 Node.js `>=24.16.0 <25 || >=26.1.0`，因此 Node.js 22
 作业保留旧版宿主；插件自身的 Node.js `22.22.3` 下限不变。
 
 两种方式都会在全新进程中对刚构建的插件运行
@@ -44,11 +46,11 @@ typing 回调、配置变更以及渠道 ID/别名解析。独立的
 `node scripts/check-plugin-install-update.mjs` 验证的是仓库已发布的包，而非当前源码。
 
 beta 作业跟随 Node.js 24 的当前补丁版本，以适应新宿主提高运行时下限；仅该作业启用
-`setup-node` 的 `check-latest` 查询，避免复用 runner 缓存中的旧补丁。固定宿主作业仍
+`setup-node` 的 `check-latest` 查询，避免复用 runner 缓存中的旧补丁。其他作业仍
 保留各自明确的 Node.js 版本。
 
-CI 会记录 `beta` 实际解析到的精确版本。该标签可能指向稳定版，也可能落后于最新稳定版，
-因此不能替代固定的 `2026.9.1`、`2026.9.2`、`2026.9.4` 和 `2026.10.3` 作业。此矩阵描述 CI 覆盖范围，不代表
+CI 会记录各月份范围及 `beta` 实际解析到的精确版本。`beta` 标签可能指向稳定版，也可能落后于最新稳定版，
+因此不能替代各月份目标。此矩阵描述 CI 覆盖范围，不代表
 所有未来 `2026.9.x` 版本或未列出的平台组合均已验证，也不能替代人工整体验证。
 
 ## 选择贡献路径
@@ -163,7 +165,7 @@ npm 兜底。ClawHub 转换器保留直接命令顺序，将暂存标题和包�
 
 ```shell
 npx --yes clawhub@0.23.3 package validate <clawpack-root>/package \
-  --out <report-output> --openclaw-version 2026.10.3 --json
+  --out <report-output> --openclaw-version 2026.10.5 --json
 npx --yes clawhub@0.23.3 package publish \
   <clawhub-output>/openclaw-wechat-<version>.tgz \
   --family code-plugin --owner newfuture --display-name WeChat \
