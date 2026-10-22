@@ -6,6 +6,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.3.2] - 2026-10-22
+
 ### Fixed
 
 - **Development SDK:** Update the OpenClaw dependency and build metadata to stable
