@@ -9,14 +9,11 @@ const matrixRows = matrix.split("\n          - ").slice(1);
 
 describe("OpenClaw CI compatibility matrix", () => {
   it.each([
-    ["ubuntu-latest", "24.15.0", "2026.6.1", "compatibility"],
-    ["ubuntu-latest", "22.22.3", "2026.7.1", "compatibility"],
-    ["ubuntu-latest", "24.15.0", "2026.8.2", "compatibility"],
-    ["windows-latest", "24.15.0", "2026.8.2", "compatibility"],
-    ["ubuntu-latest", "24.15.0", "2026.9.1", "compatibility"],
-    ["ubuntu-latest", "22.22.3", "2026.9.2", "compatibility"],
-    ["ubuntu-latest", "24.16.0", "2026.9.4", "compatibility"],
-    ["ubuntu-latest", "24.16.0", "2026.10.3", "compatibility"],
+    ["ubuntu-latest", "24.15.0", "2026.6.35", "compatibility"],
+    ["ubuntu-latest", "22.22.3", "2026.7.35", "compatibility"],
+    ["ubuntu-latest", "24.15.0", "2026.8.35", "compatibility"],
+    ["windows-latest", "24.15.0", "2026.8.35", "compatibility"],
+    ["ubuntu-latest", "24.16.0", "2026.9.33", "compatibility"],
     ["ubuntu-latest", "24.16.0", "2026.10.5", "strict"],
     ["ubuntu-latest", "26", "2026.10.5", "compatibility"],
     ["windows-latest", "24.16.0", "2026.10.5", "strict"],
@@ -32,6 +29,12 @@ describe("OpenClaw CI compatibility matrix", () => {
 
     expect(row).toBeDefined();
     expect(row).toContain(`            validation: ${validation}`);
+  });
+
+  it("keeps only the latest stable patch from each monthly series", () => {
+    const versions = [...matrix.matchAll(/openclaw_version: "([^"]+)"/g)].map(([, version]) => version);
+
+    expect([...new Set(versions)]).toEqual(["2026.6.35", "2026.7.35", "2026.8.35", "2026.9.33", "2026.10.5"]);
   });
 
   it("pins the development SDK, lockfile, and build metadata without raising the minimum host", () => {

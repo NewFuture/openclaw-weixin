@@ -22,17 +22,16 @@ Node.js 24.16.0 environment, and a current Node.js 26 runtime.
 
 The minimum supported host remains `2026.6.1`; the lockfile SDK and build metadata
 are pinned to `2026.10.5`. CI covers the following explicit combinations rather
-than every host, Node.js version, and operating system combination:
+than every host, Node.js version, and operating system combination. Each monthly
+series keeps only its latest stable patch; update that target instead of adding
+older patches. The declared minimum is unchanged and is not a separate CI target.
 
 | OpenClaw target | Node.js | Runner | Validation |
 | --- | --- | --- | --- |
-| `2026.6.1` (minimum) | `24.15.0` | Ubuntu | Compatibility |
-| `2026.7.1` (previous host) | `22.22.3` | Ubuntu | Compatibility |
-| `2026.8.2` (previous SDK) | `24.15.0` | Ubuntu, Windows | Compatibility |
-| `2026.9.1` (first September stable) | `24.15.0` | Ubuntu | Compatibility |
-| `2026.9.2` (previous SDK / Node.js 22 floor) | `22.22.3` | Ubuntu | Compatibility |
-| `2026.9.4` (previous SDK) | `24.16.0` | Ubuntu | Compatibility |
-| `2026.10.3` (previous SDK) | `24.16.0` | Ubuntu | Compatibility |
+| `2026.6.35` (June) | `24.15.0` | Ubuntu | Compatibility |
+| `2026.7.35` (July / Node.js 22 floor) | `22.22.3` | Ubuntu | Compatibility |
+| `2026.8.35` (August) | `24.15.0` | Ubuntu, Windows | Compatibility |
+| `2026.9.33` (September) | `24.16.0` | Ubuntu | Compatibility |
 | `2026.10.5` (lockfile SDK) | `24.16.0` | Ubuntu, Windows | Full |
 | `2026.10.5` (current runtime) | `26` | Ubuntu | Compatibility |
 | `beta` (moving npm dist-tag) | `24` (current patch) | Ubuntu | Compatibility |
@@ -44,7 +43,7 @@ then runs `npm run typecheck` and `npm run build` against that host.
 
 Dependency installation uses Node.js `24.16.0` (the current 24.x patch for
 `beta`) before switching to the runtime listed in the matrix. OpenClaw
-`2026.9.4`, `2026.10.3`, and `2026.10.5` require Node.js `>=24.16.0 <25 || >=26.1.0`, so Node.js 22 jobs
+`2026.9.33` and `2026.10.5` require Node.js `>=24.16.0 <25 || >=26.1.0`, so Node.js 22 jobs
 retain older hosts. The plugin's own Node.js `22.22.3` floor is unchanged.
 
 Both modes run `node scripts/check-host-compatibility.mjs` in a fresh process
@@ -60,7 +59,7 @@ explicit Node.js versions.
 
 CI records the exact version resolved by `beta`. That tag can point to a stable
 release or an older version than the latest stable, so it does not replace the
-fixed `2026.9.1`, `2026.9.2`, `2026.9.4`, `2026.10.3`, and `2026.10.5` jobs. This matrix describes CI coverage, not a
+fixed monthly targets. This matrix describes CI coverage, not a
 claim that every future `2026.9.x` release or unlisted platform combination has
 been validated. It does not replace human-run whole-system validation.
 

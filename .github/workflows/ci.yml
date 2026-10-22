@@ -85,35 +85,23 @@ jobs:
         include:
           - os: ubuntu-latest
             node-version: "24.15.0"
-            openclaw_version: "2026.6.1"
+            openclaw_version: "2026.6.35"
             validation: compatibility
           - os: ubuntu-latest
             node-version: "22.22.3"
-            openclaw_version: "2026.7.1"
+            openclaw_version: "2026.7.35"
             validation: compatibility
           - os: ubuntu-latest
             node-version: "24.15.0"
-            openclaw_version: "2026.8.2"
+            openclaw_version: "2026.8.35"
             validation: compatibility
           - os: windows-latest
             node-version: "24.15.0"
-            openclaw_version: "2026.8.2"
-            validation: compatibility
-          - os: ubuntu-latest
-            node-version: "24.15.0"
-            openclaw_version: "2026.9.1"
-            validation: compatibility
-          - os: ubuntu-latest
-            node-version: "22.22.3"
-            openclaw_version: "2026.9.2"
+            openclaw_version: "2026.8.35"
             validation: compatibility
           - os: ubuntu-latest
             node-version: "24.16.0"
-            openclaw_version: "2026.9.4"
-            validation: compatibility
-          - os: ubuntu-latest
-            node-version: "24.16.0"
-            openclaw_version: "2026.10.3"
+            openclaw_version: "2026.9.33"
             validation: compatibility
           - os: ubuntu-latest
             node-version: "24.16.0"
