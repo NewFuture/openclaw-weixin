@@ -45,6 +45,7 @@ describe("stageCliPluginRoot", () => {
 describe("hostSupportsChannelAliases", () => {
   it.each([
     ["2026.6.1", false],
+    ["2026.6.35", true],
     ["2026.7.1", true],
     ["2026.8.1-beta.2", true],
     ["2027.1.1", true],
