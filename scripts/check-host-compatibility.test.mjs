@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertConfigMutationResultPreserved,
+  assertHostVersionSpec,
   assertReloadConfigPreserved,
   hostSupportsChannelAliases,
   stageCliPluginRoot,
@@ -39,6 +40,33 @@ describe("stageCliPluginRoot", () => {
       await rm(root, { recursive: true, force: true });
       await rm(stage, { recursive: true, force: true });
     }
+  });
+});
+
+describe("assertHostVersionSpec", () => {
+  it.each([
+    ["2026.6.x", "2026.6.35"],
+    ["2026.6.x", "2026.6.36"],
+    ["2026.9.x", "2026.9.33"],
+    ["2026.10.5", "2026.10.5"],
+    ["beta", "2026.10.10-beta.2"],
+    ["beta", "2026.10.5"],
+  ])("accepts %s resolved to %s", (spec, installedVersion) => {
+    expect(() => assertHostVersionSpec(spec, installedVersion)).not.toThrow();
+  });
+
+  it.each([
+    ["2026.6.x", "2026.7.35"],
+    ["2026.6.x", "2027.6.35"],
+    ["2026.6.x", "2026.6.36-beta.1"],
+    ["2026.6.x", "2026.6.35.1"],
+    ["2026.6.x", "2026.6.x"],
+    ["2026.10.5", "2026.10.4"],
+    ["latest", "2026.10.5"],
+  ])("rejects %s resolved to %s", (spec, installedVersion) => {
+    expect(() => assertHostVersionSpec(spec, installedVersion)).toThrow(
+      `expected OpenClaw ${spec}, found ${installedVersion}`,
+    );
   });
 });
 

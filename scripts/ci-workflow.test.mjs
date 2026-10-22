@@ -9,11 +9,11 @@ const matrixRows = matrix.split("\n          - ").slice(1);
 
 describe("OpenClaw CI compatibility matrix", () => {
   it.each([
-    ["ubuntu-latest", "24.15.0", "2026.6.35", "compatibility"],
-    ["ubuntu-latest", "22.22.3", "2026.7.35", "compatibility"],
-    ["ubuntu-latest", "24.15.0", "2026.8.35", "compatibility"],
-    ["windows-latest", "24.15.0", "2026.8.35", "compatibility"],
-    ["ubuntu-latest", "24.16.0", "2026.9.33", "compatibility"],
+    ["ubuntu-latest", "24.15.0", "2026.6.x", "compatibility"],
+    ["ubuntu-latest", "22.22.3", "2026.7.x", "compatibility"],
+    ["ubuntu-latest", "24.15.0", "2026.8.x", "compatibility"],
+    ["windows-latest", "24.15.0", "2026.8.x", "compatibility"],
+    ["ubuntu-latest", "24.16.0", "2026.9.x", "compatibility"],
     ["ubuntu-latest", "24.16.0", "2026.10.5", "strict"],
     ["ubuntu-latest", "26", "2026.10.5", "compatibility"],
     ["windows-latest", "24.16.0", "2026.10.5", "strict"],
@@ -31,10 +31,10 @@ describe("OpenClaw CI compatibility matrix", () => {
     expect(row).toContain(`            validation: ${validation}`);
   });
 
-  it("keeps only the latest stable patch from each monthly series", () => {
+  it("uses monthly ranges for older hosts while pinning the current SDK", () => {
     const versions = [...matrix.matchAll(/openclaw_version: "([^"]+)"/g)].map(([, version]) => version);
 
-    expect([...new Set(versions)]).toEqual(["2026.6.35", "2026.7.35", "2026.8.35", "2026.9.33", "2026.10.5"]);
+    expect([...new Set(versions)]).toEqual(["2026.6.x", "2026.7.x", "2026.8.x", "2026.9.x", "2026.10.5"]);
   });
 
   it("pins the development SDK, lockfile, and build metadata without raising the minimum host", () => {
@@ -98,16 +98,21 @@ describe("OpenClaw CI compatibility matrix", () => {
     expect(setup).toContain(`check-latest: \${{ matrix.openclaw_version == 'beta' }}`);
   });
 
-  it("checks exact pins before building instead of accepting any installed version", () => {
+  it("validates the resolved version and passes the exact result to runtime checks", () => {
     const install = steps.slice(
       steps.indexOf("      - name: Install compatibility OpenClaw\n"),
       steps.indexOf("      - name: Verify plugin install and update commands\n"),
     );
 
-    expect(install).toContain('if [[ "$OPENCLAW_SPEC" != "beta" && "$installed_version" != "$OPENCLAW_SPEC" ]]; then');
-    expect(install).toContain("exit 1");
+    expect(install).toContain('import { assertHostVersionSpec } from "./scripts/check-host-compatibility.mjs";');
+    expect(install).toContain("assertHostVersionSpec(process.env.OPENCLAW_SPEC, process.argv[1]);");
+    expect(install).toContain(`' "$installed_version"`);
     expect(install).toContain(`echo "installed_version=\${installed_version}" >> "$GITHUB_OUTPUT"`);
     expect(install).toContain("npm install --no-save --package-lock=false --ignore-scripts");
+    expect(steps).toContain(
+      `OPENCLAW_EXPECTED_VERSION: \${{ steps.openclaw.outputs.installed_version || matrix.openclaw_version }}`,
+    );
+    expect(steps).toContain(`OPENCLAW_EXPECTED_VERSION: \${{ steps.openclaw.outputs.installed_version }}`);
   });
 
   it("rebuilds the full target SDK runtime before the unmocked compatibility smoke", () => {

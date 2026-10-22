@@ -85,23 +85,23 @@ jobs:
         include:
           - os: ubuntu-latest
             node-version: "24.15.0"
-            openclaw_version: "2026.6.35"
+            openclaw_version: "2026.6.x"
             validation: compatibility
           - os: ubuntu-latest
             node-version: "22.22.3"
-            openclaw_version: "2026.7.35"
+            openclaw_version: "2026.7.x"
             validation: compatibility
           - os: ubuntu-latest
             node-version: "24.15.0"
-            openclaw_version: "2026.8.35"
+            openclaw_version: "2026.8.x"
             validation: compatibility
           - os: windows-latest
             node-version: "24.15.0"
-            openclaw_version: "2026.8.35"
+            openclaw_version: "2026.8.x"
             validation: compatibility
           - os: ubuntu-latest
             node-version: "24.16.0"
-            openclaw_version: "2026.9.33"
+            openclaw_version: "2026.9.x"
             validation: compatibility
           - os: ubuntu-latest
             node-version: "24.16.0"
@@ -151,10 +151,10 @@ jobs:
           npm install --no-save --package-lock=false --ignore-scripts \
             "openclaw@${OPENCLAW_SPEC}"
           installed_version="$(node -p 'require("./node_modules/openclaw/package.json").version')"
-          if [[ "$OPENCLAW_SPEC" != "beta" && "$installed_version" != "$OPENCLAW_SPEC" ]]; then
-            echo "::error::Expected OpenClaw ${OPENCLAW_SPEC}, found ${installed_version}."
-            exit 1
-          fi
+          node --input-type=module -e '
+            import { assertHostVersionSpec } from "./scripts/check-host-compatibility.mjs";
+            assertHostVersionSpec(process.env.OPENCLAW_SPEC, process.argv[1]);
+          ' "$installed_version"
           echo "Resolved OpenClaw ${OPENCLAW_SPEC} to ${installed_version}."
           echo "installed_version=${installed_version}" >> "$GITHUB_OUTPUT"
 
