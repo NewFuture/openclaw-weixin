@@ -119,5 +119,12 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "overrides": {
+    "openclaw": {
+      "body-parser": "2.4.0",
+      "undici": "8.12.3",
+      "zod": "4.6.7"
+    }
   }
 }
