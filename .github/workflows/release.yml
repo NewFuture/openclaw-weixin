@@ -296,7 +296,6 @@ jobs:
             --family code-plugin \
             --display-name WeChat \
             --categories channels \
-            --topics wechat,weixin,messaging \
             --source-repo "$GITHUB_REPOSITORY" \
             --source-commit "$GITHUB_SHA" \
             --source-ref "$GITHUB_REF" \

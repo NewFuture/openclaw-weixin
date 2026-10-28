@@ -69,6 +69,8 @@ describe("ClawHub publish workflow contract", () => {
     expect(clawHubPublishJob).not.toContain("prepare-clawhub-package.mjs");
     expect(clawHubPublishJob).toContain("bash scripts/validate-clawhub-package.sh");
     expect(clawHubPublishJob).not.toContain("--wait");
+    expect(clawHubPublishJob).not.toContain("--topics");
+    expect(validationScript).not.toContain("--topics");
     expect(clawHubPublishJob).toContain('["submitted", "pending-publication", "published"].includes(result.status)');
     expect(githubPackageJob).toContain("actions/download-artifact@");
     expect(githubPackageJob).not.toContain("prepare-npm-package.mjs");

@@ -202,7 +202,7 @@ npx --yes clawhub@0.23.3 package validate <clawpack-root>/package \
 npx --yes clawhub@0.23.3 package publish \
   <clawhub-output>/openclaw-wechat-<version>.tgz \
   --family code-plugin --owner newfuture --display-name WeChat \
-  --categories channels --topics wechat,weixin,messaging \
+  --categories channels \
   --source-repo NewFuture/openclaw-weixin --source-commit <commit-sha> \
   --source-ref <git-ref> --dry-run --json
 ```

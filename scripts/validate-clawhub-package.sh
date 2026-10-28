@@ -26,7 +26,6 @@ npx --yes clawhub@0.23.3 package publish "$clawpack" \
   --owner newfuture \
   --display-name WeChat \
   --categories channels \
-  --topics wechat,weixin,messaging \
   --source-repo "$GITHUB_REPOSITORY" \
   --source-commit "$GITHUB_SHA" \
   --source-ref "$GITHUB_REF" \
