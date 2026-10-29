@@ -111,7 +111,7 @@ jobs:
             dependency_audit: true
           - os: ubuntu-latest
             node-version: "26"
-            openclaw_version: "2026.10.5"
+            openclaw_version: "2026.10.x"
             validation: compatibility
           - os: windows-latest
             node-version: "24.16.0"
@@ -131,8 +131,8 @@ jobs:
       - name: Set up dependency Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: ${{ matrix.openclaw_version == 'beta' && '24' || '24.16.0' }}
-          check-latest: ${{ matrix.openclaw_version == 'beta' }}
+          node-version: ${{ (matrix.openclaw_version == 'beta' || matrix.openclaw_version == '2026.10.x') && '24' || '24.16.0' }}
+          check-latest: ${{ matrix.openclaw_version == 'beta' || matrix.openclaw_version == '2026.10.x' }}
           cache: npm
           cache-dependency-path: package-lock.json
           registry-url: https://registry.npmjs.org
@@ -163,7 +163,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node-version }}
-          check-latest: ${{ matrix.openclaw_version == 'beta' }}
+          check-latest: ${{ matrix.openclaw_version == 'beta' || matrix.openclaw_version == '2026.10.x' }}
           registry-url: https://registry.npmjs.org
 
       - name: Use lockfile-compatible npm

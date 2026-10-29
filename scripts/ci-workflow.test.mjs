@@ -15,7 +15,7 @@ describe("OpenClaw CI compatibility matrix", () => {
     ["windows-latest", "24.15.0", "2026.8.x", "compatibility"],
     ["ubuntu-latest", "24.16.0", "2026.9.x", "compatibility"],
     ["ubuntu-latest", "24.16.0", "2026.10.5", "strict"],
-    ["ubuntu-latest", "26", "2026.10.5", "compatibility"],
+    ["ubuntu-latest", "26", "2026.10.x", "compatibility"],
     ["windows-latest", "24.16.0", "2026.10.5", "strict"],
     ["ubuntu-latest", "24", "beta", "compatibility"],
   ])("covers %s / Node.js %s / OpenClaw %s with %s validation", (os, node, host, validation) => {
@@ -31,10 +31,10 @@ describe("OpenClaw CI compatibility matrix", () => {
     expect(row).toContain(`            validation: ${validation}`);
   });
 
-  it("uses monthly ranges for older hosts while pinning the current SDK", () => {
+  it("uses monthly ranges for compatibility hosts while pinning the lockfile SDK", () => {
     const versions = [...matrix.matchAll(/openclaw_version: "([^"]+)"/g)].map(([, version]) => version);
 
-    expect([...new Set(versions)]).toEqual(["2026.6.x", "2026.7.x", "2026.8.x", "2026.9.x", "2026.10.5"]);
+    expect([...new Set(versions)]).toEqual(["2026.6.x", "2026.7.x", "2026.8.x", "2026.9.x", "2026.10.5", "2026.10.x"]);
   });
 
   it("pins the development SDK, lockfile, and build metadata without raising the minimum host", () => {
@@ -65,8 +65,12 @@ describe("OpenClaw CI compatibility matrix", () => {
     expect(runtimeSetupIndex).toBeGreaterThan(hostInstallIndex);
     expect(verifyIndex).toBeGreaterThan(runtimeSetupIndex);
     const dependencySetup = steps.slice(dependencySetupIndex, installIndex);
-    expect(dependencySetup).toContain(`node-version: \${{ matrix.openclaw_version == 'beta' && '24' || '24.16.0' }}`);
-    expect(dependencySetup).toContain(`check-latest: \${{ matrix.openclaw_version == 'beta' }}`);
+    expect(dependencySetup).toContain(
+      `node-version: \${{ (matrix.openclaw_version == 'beta' || matrix.openclaw_version == '2026.10.x') && '24' || '24.16.0' }}`,
+    );
+    expect(dependencySetup).toContain(
+      `check-latest: \${{ matrix.openclaw_version == 'beta' || matrix.openclaw_version == '2026.10.x' }}`,
+    );
     expect(steps.slice(runtimeSetupIndex, verifyIndex)).toContain("if: matrix.validation == 'compatibility'");
   });
 
@@ -88,14 +92,16 @@ describe("OpenClaw CI compatibility matrix", () => {
     expect(contents.slice(jobIndex, boundaryIndex)).toContain('node-version: "24.16.0"');
   });
 
-  it("checks for the latest Node.js patch only for the moving beta host", () => {
+  it("checks for the latest Node.js patch for moving host targets", () => {
     const setup = steps.slice(
       steps.indexOf("      - name: Set up Node.js\n"),
       steps.indexOf("      - name: Use lockfile-compatible npm\n"),
     );
 
     expect(setup).toContain(`node-version: \${{ matrix.node-version }}`);
-    expect(setup).toContain(`check-latest: \${{ matrix.openclaw_version == 'beta' }}`);
+    expect(setup).toContain(
+      `check-latest: \${{ matrix.openclaw_version == 'beta' || matrix.openclaw_version == '2026.10.x' }}`,
+    );
   });
 
   it("validates the resolved version and passes the exact result to runtime checks", () => {

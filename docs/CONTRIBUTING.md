@@ -22,9 +22,9 @@ Node.js 24.16.0 environment, and a current Node.js 26 runtime.
 
 The minimum supported host remains `2026.6.1`; the lockfile SDK and build metadata
 are pinned to `2026.10.5`. CI covers the following explicit combinations rather
-than every host, Node.js version, and operating system combination. Older monthly
-series use npm `x` ranges to resolve their latest stable patch automatically on
-each run; the current SDK remains pinned. The declared minimum is unchanged and
+than every host, Node.js version, and operating system combination. Compatibility
+targets use npm `x` ranges to resolve their latest stable patch automatically on
+each run; the lockfile SDK remains pinned. The declared minimum is unchanged and
 is not a separate CI target.
 
 | OpenClaw target | Node.js | Runner | Validation |
@@ -34,7 +34,7 @@ is not a separate CI target.
 | `2026.8.x` (latest stable August patch) | `24.15.0` | Ubuntu, Windows | Compatibility |
 | `2026.9.x` (latest stable September patch) | `24.16.0` | Ubuntu | Compatibility |
 | `2026.10.5` (lockfile SDK) | `24.16.0` | Ubuntu, Windows | Full |
-| `2026.10.5` (current runtime) | `26` | Ubuntu | Compatibility |
+| `2026.10.x` (latest stable October patch / current runtime) | `26` (current patch) | Ubuntu | Compatibility |
 | `beta` (moving npm dist-tag) | `24` (current patch) | Ubuntu | Compatibility |
 
 **Full** runs `npm run check`; the Ubuntu job also runs `npm run pack:check`
@@ -45,10 +45,10 @@ version, runs install/update checks, then `npm run typecheck` and `npm run build
 against that host before the runtime smoke. Both checks receive the exact
 resolved version.
 
-Dependency installation uses Node.js `24.16.0` (the current 24.x patch for
-`beta`) before switching to the runtime listed in the matrix. The September target
-and pinned SDK currently require Node.js `>=24.16.0 <25 || >=26.1.0`, so Node.js 22 jobs
-retain older hosts. The plugin's own Node.js `22.22.3` floor is unchanged.
+Dependency installation uses Node.js `24.16.0` for fixed targets and the current
+24.x patch for `2026.10.x` and `beta`, before switching to the runtime listed in
+the matrix. The moving targets can raise their runtime floor, while older Node.js
+jobs retain older hosts. The plugin's own Node.js `22.22.3` floor is unchanged.
 
 Both modes run `node scripts/check-host-compatibility.mjs` in a fresh process
 against the newly built plugin: real SDK imports, plugin/channel registration,
@@ -56,10 +56,10 @@ typing callbacks, config mutation, and channel ID/alias resolution. The separate
 `node scripts/check-plugin-install-update.mjs` check exercises registry-published
 packages, not the current source checkout.
 
-The beta job follows the current Node.js 24 patch because newer hosts can raise
-their runtime floor. Only this job enables `setup-node`'s `check-latest` lookup
-instead of accepting an older runner-cached patch; other jobs retain their
-explicit Node.js versions.
+The `2026.10.x` and beta jobs follow the current patch of their Node.js major
+because newer hosts can raise their runtime floor. Only these jobs enable
+`setup-node`'s `check-latest` lookup instead of accepting an older runner-cached
+patch; other jobs retain their explicit Node.js versions.
 
 CI records the exact version resolved by every monthly range and `beta`. That tag
 can point to a stable release or an older version than the latest stable, so it does not replace the
